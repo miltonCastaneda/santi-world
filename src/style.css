@@ -1,0 +1,123 @@
+:root {
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  color: #1d2b1a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #87ceeb;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.top-bar {
+  position: fixed;
+  top: 12px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.top-bar h1 {
+  margin: 0;
+  padding: 8px 22px;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 999px;
+  font-size: 1.4rem;
+  box-shadow: 0 4px 0 #3d6b2e;
+}
+
+.hud {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 24px;
+  padding: 12px;
+  box-shadow: 0 8px 0 #3d6b2e;
+}
+
+.modes,
+.actions,
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.mode-btn,
+.action-btn,
+.block-btn {
+  border: 4px solid #2c3e22;
+  border-radius: 16px;
+  min-height: 64px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mode-btn,
+.action-btn {
+  padding: 0 18px;
+  background: #f4e9c7;
+  color: #223318;
+}
+
+.mode-btn.active {
+  background: #7ed957;
+}
+
+.mode-btn.remove.active {
+  background: #ff8a7a;
+}
+
+.block-btn {
+  width: 64px;
+  height: 64px;
+  box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.18);
+}
+
+.block-btn.selected {
+  outline: 5px solid #fff;
+  box-shadow: 0 0 0 4px #2c3e22, inset 0 -8px 0 rgba(0, 0, 0, 0.18);
+}
+
+@media (max-width: 720px) {
+  .top-bar h1 {
+    font-size: 1.1rem;
+  }
+
+  .mode-btn,
+  .action-btn,
+  .block-btn {
+    min-height: 52px;
+    font-size: 1rem;
+  }
+
+  .block-btn {
+    width: 52px;
+    height: 52px;
+  }
+}

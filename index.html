@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minecraf de Santi</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <header class="top-bar">
+      <h1>Minecraf de Santi</h1>
+    </header>
+    <div class="hud">
+      <div class="modes">
+        <button type="button" id="place-btn" class="mode-btn active">Poner</button>
+        <button type="button" id="remove-btn" class="mode-btn remove">Quitar</button>
+      </div>
+      <div id="palette" class="palette"></div>
+      <div class="actions">
+        <button type="button" id="undo-btn" class="action-btn">Deshacer</button>
+        <button type="button" id="reset-btn" class="action-btn">Empezar de nuevo</button>
+        <button type="button" id="full-btn" class="action-btn">Pantalla completa</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
