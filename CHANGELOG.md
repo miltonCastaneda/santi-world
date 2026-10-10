@@ -40,6 +40,12 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - `AudioService` con buses master (tope de 0,8), music, sfx y ambient, botón de silencio, reanudación con la primera interacción y como máximo 3 voces de animales (ADR-0009). Sonidos de pasos, bloques, salto, golpe y UI generados por código (CC0, `docs/assets.md`).
 - Navegador a prueba de niños: sin menú contextual, sin zoom (Ctrl + rueda, Ctrl + "+"), sin desplazar ni seleccionar texto, sin atajos de recargar, buscar o imprimir, y se sueltan las teclas al perder el foco.
 - El estado guardado incluye la posición, el rumbo y los corazones del personaje, y la herramienta elegida.
+- Animales de granja (incremento 6): 3 ovejas, 2 vacas, 2 cabras, 3 gallinas y 3 pollitos en la granja, y 2 patos en el estanque, con spawn slots deterministas por semilla. Deambulan, pastan, descansan, huyen de una amenaza a 6 bloques o menos, vuelven a casa, los pollitos siguen a la gallina y los patos nadan y flotan.
+- Máquinas de estado por datos con un intérprete genérico que piensa cada 4 ticks (ADR-0005) y pathfinding A* con presupuesto de 2000 nodos y 3 búsquedas por tick, cola por prioridad e invalidación por versión de chunk (ADR-0006). La cerca no se salta: con un hueco, alguno se escapa.
+- `EntityRenderer`: animales de cajas con un `InstancedMesh` por especie y parte, animaciones procedurales, sombra plana, "poof" y sin dibujar a más de 64 bloques (19 draw calls con los 15 animales). Luz direccional sin sombras para los modelos.
+- Voces de animales sintetizadas (CC0): `baa`, `moo`, `meh`, `cluck`, `peep` y `quack`, posicionales hasta 24 bloques y como máximo 3 a la vez.
+- Las entidades se guardan con el mundo (posición, rumbo y estado) y se recargan igual. Los mundos anteriores reciben su población una sola vez al abrirse.
+- Overlay `F3` y `npm run perf` con entidades dibujadas, sus draw calls (presupuesto de 60) y los nodos del A*.
 
 ### Cambiado
 - "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.
@@ -54,6 +60,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - El juego ya no usa la cámara orbital (queda solo en el visor de padres): poner es la Mano y romper es el Pico, con clic izquierdo; el botón derecho gira la cámara. Los botones de "poner" y "quitar" desaparecen.
 - El HUD sigue la referencia visual: corazones arriba a la izquierda, botones grandes de íconos arriba a la derecha (deshacer, Mis Mundos, nuevo mundo, silencio y pantalla completa) y herramientas a la derecha.
 - ADR-0007, ADR-0009 y ADR-0010 pasan a "Aceptado".
+- `SCHEMA_VERSION` pasa a 2 (migración de estado: `animalsSpawned`). No se puede poner un bloque donde hay un animal.
+- ADR-0005 y ADR-0006 pasan a "Aceptado".
 
 ## [1.0.0] - 2026-10-10
 

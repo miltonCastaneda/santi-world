@@ -1,6 +1,6 @@
 # ADR 0006: Pathfinding A* sobre la rejilla de vóxeles con presupuesto e invalidación por versión de chunk
 
-- **Estado**: Propuesto
+- **Estado**: Aceptado (incremento 6: animales de granja)
 - **Fecha**: 2026-10-10
 - **Change relacionado**: `openspec/changes/fase-2-mundo-vivo/` (specs `lobos` y `enemigos-nocturnos`)
 
@@ -30,3 +30,11 @@ Los zombis y los lobos tienen que respetar lo que el niño construye: no atravie
 - Positivas: comportamiento correcto ante las construcciones, pruebas con mundos pequeños y una carga de CPU acotada.
 - Negativas: con muchas búsquedas en cola, algunas entidades esperan unos ticks (aceptable dentro de los 2 s).
 - Reversión: está aislado en `sim/systems/pathfinding`. Se puede agregar una caché jerárquica (por chunks) si hiciera falta.
+
+## Implementación (incremento 6)
+
+- `src/sim/systems/pathfinding.ts`: A* en 8 direcciones con montículo binario. Una celda es transitable si la de abajo es sólida y de altura 1 (una cerca de 1,5 no sirve de suelo ni se salta) y hay espacio libre para la altura de la entidad; los que nadan pueden estar sobre la superficie del agua. Se sube 1 bloque y se cae hasta 3 (`MAX_DROP`); las diagonales no cortan esquinas.
+- La búsqueda se limita a una región del rectángulo entre el origen y el destino más un margen de 20 bloques, y a `MAX_NODES = 2000` nodos. Así, un destino encerrado falla rápido y de forma acotada.
+- `PathQueue`: como máximo `SEARCHES_PER_TICK = 3` búsquedas por tick, por prioridad (más baja primero) y en orden de llegada. Pedir otra ruta para la misma entidad reemplaza la anterior. Por ahora la prioridad es: volver a casa y seguir a la gallina 1, deambular y nadar 2; la prioridad 0 queda para los zombis cerca del jugador (incremento 8). Huir no usa A*: el animal se aleja en línea recta de la amenaza y, si choca contra algo, se desliza de costado (tiene que reaccionar en 1 s o menos, sin esperar turno en la cola).
+- Cada ruta guarda la versión de los chunks que cruza (`Path.chunks`), y `isPathValid` la compara con `chunkVersion`: colocar o quitar un bloque en uno de esos chunks hace que la entidad pida otra ruta en su siguiente "pensar". En vez de escuchar `BlockChanged`, se consulta la versión que ya lleva el chunk (más simple y sin suscripciones).
+- Pruebas unitarias (`tests/unit/sim/pathfinding.test.ts`): escalón de 1, muro de 2, caída de 3 y no de 4, cerca no saltable y hueco de 2, esquinas, invalidación al colocar un bloque, límite de nodos, agua y cola con 3 búsquedas por tick por prioridad.

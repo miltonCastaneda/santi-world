@@ -19,8 +19,10 @@ Si en el futuro se usan texturas de terceros, solo se aceptan CC0 o equivalentes
 | Recurso | Fuente | Licencia |
 |---|---|---|
 | 10 efectos (`SOUND_NAMES` en `src/audio/synth.ts`): `step`, `place`, `break`, `bump`, `click`, `jump`, `poof`, `boing`, `swish` y `far` | Sintetizados por código en `src/audio/synth.ts` (`synthesize(name, sampleRate)`): tonos con envolvente y ruido determinista (sin `Math.random`); no hay archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+| 6 voces de animales (`ANIMAL_SOUNDS`): `baa` (oveja), `moo` (vaca), `meh` (cabra), `cluck` (gallina), `peep` (pollito) y `quack` (pato) | Sintetizados por código en `src/audio/synth.ts`: una voz con armónicos y frecuencia variable (vibrato o caída), con sílabas en la gallina y el pollito; sin archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 
+- Los animales suenan en el bus `ambient`, posicionales: se atenúan con la distancia y no se oyen a 24 bloques o más. Como máximo suenan 3 a la vez, y tienen prioridad los más cercanos. Cada especie emite su voz cada cierto tiempo (`soundEveryMs` en `src/domain/entities/species.ts`).
 - Cada sonido dura 0,5 s o menos y su pico es de 0,5 o menos (una prueba unitaria lo verifica), así que ninguno sale fuerte aunque el volumen esté al máximo. Encima de eso, el bus maestro tiene un tope de 0,8 ([ADR-0009](adr/0009-audio-web-audio-buses.md)).
 - Los buffers se generan una vez, al arrancar, y se reutilizan. Son deterministas: el mismo nombre suena siempre igual.
 - Qué evento del juego suena con qué efecto está en `src/audio/gameAudio.ts`.
-- La música y los sonidos de animales y del ambiente llegan en los incrementos siguientes; los que vengan de terceros deben ser CC0 y registrarse en esta tabla con el enlace a la fuente.
+- La música y los sonidos del ambiente llegan en los incrementos siguientes; los que vengan de terceros deben ser CC0 y registrarse en esta tabla con el enlace a la fuente.

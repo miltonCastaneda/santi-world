@@ -6,6 +6,7 @@ import type { ChunkStore } from "../domain/world/chunkStore";
 import type { WorldGenSpec } from "../domain/worldgen/generator";
 import { createBlockMaterials, type BlockMaterials } from "./blockMaterial";
 import { ChunkRenderer } from "./chunkRenderer";
+import { EntityRenderer, type EntityView } from "./entityRenderer";
 import { FollowCamera } from "./followCamera";
 import { PlayerModel, type PlayerView } from "./playerModel";
 import { Sky } from "./sky";
@@ -17,7 +18,7 @@ export type FollowOptions = {
   now: () => number;
 };
 
-export type RenderAppOptions = { viewRadius?: number; workers?: number; follow?: FollowOptions };
+export type RenderAppOptions = { viewRadius?: number; workers?: number; follow?: FollowOptions; entities?: () => Iterable<EntityView> };
 
 const THUMB_W = 320;
 const THUMB_H = 180;
@@ -36,8 +37,10 @@ export class RenderApp {
   readonly playerModel: PlayerModel | null = null;
   readonly materials: BlockMaterials;
   readonly chunks: ChunkRenderer;
+  readonly entities: EntityRenderer | null = null;
   readonly sky: Sky;
   private worldSize: number;
+  private readonly entityViews: (() => Iterable<EntityView>) | null;
   /** Vista fija (pruebas, ruta de rendimiento): la cámara no sigue al personaje hasta `followPlayer()`. */
   private fixed: { target: Vec3 } | null = null;
   private lastRender = 0;
@@ -82,11 +85,21 @@ export class RenderApp {
 
     // Para las entidades (MeshLambert); el terreno usa luz por vértice.
     this.scene.add(new THREE.HemisphereLight(0xfff4d6, 0x4a7c3a, 1.2));
+    // Sol sin sombras: sin él, el blanco de las ovejas y las vacas se ve gris.
+    const sun = new THREE.DirectionalLight(0xffffff, 1.8);
+    sun.position.set(0.4, 1, 0.6);
+    this.scene.add(sun);
 
     this.materials = createBlockMaterials();
     this.sky = new Sky(this.scene, this.materials, viewDistance);
     this.chunks = new ChunkRenderer(store, gen, this.materials, { viewRadius, workers: options.workers ?? 1 });
     this.scene.add(this.chunks.group);
+
+    this.entityViews = options.entities ?? null;
+    if (this.entityViews) {
+      this.entities = new EntityRenderer();
+      this.scene.add(this.entities.group);
+    }
 
     window.addEventListener("resize", this.onResize);
   }
@@ -99,6 +112,7 @@ export class RenderApp {
     this.controls?.dispose();
     this.follow?.dispose();
     this.playerModel?.dispose();
+    this.entities?.dispose();
     this.chunks.dispose();
     this.materials.dispose();
     this.renderer.dispose();
@@ -190,6 +204,7 @@ export class RenderApp {
       this.playerModel.update(dt, p);
       if (this.follow && !this.fixed) this.follow.update(dt, this.playerModel.root.position, p.yaw, p.anim === "walk");
     }
+    if (this.entities && this.entityViews) this.entities.update(dt, this.entityViews(), this.camera.position);
     const f = this.focusPoint();
     this.chunks.setFocus(f.x, f.z);
     this.chunks.update();

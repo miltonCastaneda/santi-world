@@ -1,0 +1,15 @@
+{
+  "worldId": "w-fixture",
+  "schemaVersion": 1,
+  "version": 7,
+  "updatedAt": 1760000000000,
+  "timeOfCycleMs": 0,
+  "dayCount": 1,
+  "player": { "pos": { "x": 128.5, "y": 11, "z": 138.5 }, "yaw": 1.2, "hearts": 4, "selectedTool": "pickaxe", "selectedBlock": "red" },
+  "camera": null,
+  "inventory": { "diamond": 0, "meat": 0, "pigChicken": 0 },
+  "pendingRespawns": [],
+  "burntTrees": [],
+  "minedOres": [],
+  "dragon": { "hitsTaken": 0, "defeatedTonight": false }
+}

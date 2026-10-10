@@ -18,6 +18,8 @@ export type PerfResult = {
   mesherMainMaxMs: number;
   mesherMainP99Ms: number;
   mesherWorkerMsAvg: number;
+  entitiesDrawnMax: number;
+  entityDrawCallsMax: number;
   gpu: string;
   userAgent: string;
 };
@@ -48,6 +50,8 @@ export function createPerfRoute(view: RenderApp, layout: WorldLayout, seed: stri
   let last = 0;
   const frames: number[] = [];
   const calls: number[] = [];
+  let entitiesDrawnMax = 0;
+  let entityDrawCallsMax = 0;
   let done = false;
 
   const targetAt = (u: number) => {
@@ -80,6 +84,10 @@ export function createPerfRoute(view: RenderApp, layout: WorldLayout, seed: stri
       frames.push(now - last);
       last = now;
       calls.push(view.renderer.info.render.calls);
+      if (view.entities) {
+        entitiesDrawnMax = Math.max(entitiesDrawnMax, view.entities.stats.drawn);
+        entityDrawCallsMax = Math.max(entityDrawCallsMax, view.entities.stats.drawCalls);
+      }
       const u = Math.min(1, (now - startedAt) / durationMs);
       const t = targetAt(u);
       const angle = u * Math.PI * 4;
@@ -101,6 +109,8 @@ export function createPerfRoute(view: RenderApp, layout: WorldLayout, seed: stri
           mesherMainMaxMs: view.chunks.stats.maxMainThreadMs,
           mesherMainP99Ms: percentile(view.chunks.updateSamples, 0.99),
           mesherWorkerMsAvg: view.chunks.stats.workerMsAvg,
+          entitiesDrawnMax,
+          entityDrawCallsMax,
           gpu: gpuName(),
           userAgent: navigator.userAgent,
         };

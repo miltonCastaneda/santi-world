@@ -158,15 +158,15 @@
 - **Depende de**: 5. **Paralelizable**: los modelos y los sonidos de cada especie sí, entre sí.
 - **Demo**: la granja con ovejas, vacas, cabras, gallinas, pollos y patos que se mueven y suenan. Si se rompe la cerca, algunos escapan.
 
-- [ ] 6.1 Implementar `EntityStore`, el índice espacial y el intérprete de máquinas de estado definidas con datos, que piensa cada 4 ticks (ADR-0005), y verificarlo con pruebas unitarias de transiciones genéricas con RNG con semilla
-- [ ] 6.2 Implementar el pathfinding A* con presupuesto, cola por prioridad e invalidación por versión de chunk (ADR-0006), y verificar con pruebas unitarias de escalones, caídas, cerca no saltable, invalidación al colocar un bloque y límite de nodos
-- [ ] 6.3 Definir las especies oveja, vaca y cabra (Idle, Wander, Graze, Rest, Flee y ReturnHome) y verificar con pruebas unitarias "Huir de una amenaza" y "Cerca de 1 bloque"
-- [ ] 6.4 Definir gallina, pollo (FollowLeader) y pato (Swim), y verificar con pruebas unitarias "Pollos siguen a gallinas" y que el pato flota
-- [ ] 6.5 Crear la población inicial con spawn slots en la granja y el estanque, y verificarlo con una prueba de integración del escenario "Población inicial"
-- [ ] 6.6 Implementar `EntityRenderer` (InstancedMesh por especie y parte, animaciones procedurales, parpadeo y "poof", sombra plana, sin dibujar a más de 64 bloques) y verificar con el overlay que las entidades suman 60 draw calls o menos
-- [ ] 6.7 Agregar los sonidos por especie (CC0, atenuación hasta 24 bloques y como máximo 3 voces) y verificarlo con pruebas unitarias "Sonido por especie" y "Muchos animales"
-- [ ] 6.8 Persistir las entidades (snapshot por mundo) y verificar con una prueba de integración que se recargan con la misma posición y el mismo estado
-- [ ] 6.9 Verificar con una prueba de integración sin interfaz "Escapar por un hueco", "Animales vivos sin intervención" y "Determinismo" (10 min con la misma semilla)
+- [x] 6.1 Implementar `EntityStore`, el índice espacial y el intérprete de máquinas de estado definidas con datos, que piensa cada 4 ticks (ADR-0005), y verificarlo con pruebas unitarias de transiciones genéricas con RNG con semilla
+- [x] 6.2 Implementar el pathfinding A* con presupuesto, cola por prioridad e invalidación por versión de chunk (ADR-0006), y verificar con pruebas unitarias de escalones, caídas, cerca no saltable, invalidación al colocar un bloque y límite de nodos
+- [x] 6.3 Definir las especies oveja, vaca y cabra (Idle, Wander, Graze, Rest, Flee y ReturnHome) y verificar con pruebas unitarias "Huir de una amenaza" y "Cerca de 1 bloque"
+- [x] 6.4 Definir gallina, pollo (FollowLeader) y pato (Swim), y verificar con pruebas unitarias "Pollos siguen a gallinas" y que el pato flota
+- [x] 6.5 Crear la población inicial con spawn slots en la granja y el estanque, y verificarlo con una prueba de integración del escenario "Población inicial"
+- [x] 6.6 Implementar `EntityRenderer` (InstancedMesh por especie y parte, animaciones procedurales, parpadeo y "poof", sombra plana, sin dibujar a más de 64 bloques) y verificar con el overlay que las entidades suman 60 draw calls o menos
+- [x] 6.7 Agregar los sonidos por especie (CC0, atenuación hasta 24 bloques y como máximo 3 voces) y verificarlo con pruebas unitarias "Sonido por especie" y "Muchos animales"
+- [x] 6.8 Persistir las entidades (snapshot por mundo) y verificar con una prueba de integración que se recargan con la misma posición y el mismo estado
+- [x] 6.9 Verificar con una prueba de integración sin interfaz "Escapar por un hueco", "Animales vivos sin intervención" y "Determinismo" (10 min con la misma semilla)
 - [ ] 6.10 Ejecutar `npm run perf` con todos los animales y registrar los resultados en `docs/performance.md`; actualizar `docs/guia-nino.md` (animales) y `docs/architecture.md`, marcar ADR-0005 y 0006 como Aceptados, agregar la entrada al CHANGELOG, hacer la prueba de juego con Santi y etiquetar `v1.2.0`
 
 ## 7. Ciclo día/noche y reaparición al amanecer

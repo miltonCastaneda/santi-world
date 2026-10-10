@@ -17,6 +17,7 @@ export type ViewControl = {
   cameraPos(): Vec3;
   playerModel(): { anim: PlayerAnim; shownTool: ToolId } | null;
   setPlayerVisible(visible: boolean): void;
+  setEntitiesVisible(visible: boolean): void;
   /** Todo lo visible está dibujado y no queda trabajo del mesher. */
   isWorldReady(): boolean;
   stats(): Record<string, number>;
@@ -32,6 +33,8 @@ export type PlayerSnapshot = {
   anim: PlayerAnim;
   invulnerable: boolean;
 };
+
+export type EntitySnapshot = { id: string; species: string; pos: Vec3; state: string | null; anim: string | null; home: string | null };
 
 export type SantiTestApi = {
   ready: true;
@@ -50,6 +53,7 @@ export type SantiTestApi = {
   cameraPos: ViewControl["cameraPos"];
   playerModel: ViewControl["playerModel"];
   setPlayerVisible: ViewControl["setPlayerVisible"];
+  setEntitiesVisible: ViewControl["setEntitiesVisible"];
   isWorldReady: ViewControl["isWorldReady"];
   stats: ViewControl["stats"];
   /** Coloca un bloque directamente (para preparar escenarios). */
@@ -59,6 +63,10 @@ export type SantiTestApi = {
   player(): PlayerSnapshot;
   teleport(pos: Vec3): void;
   hitPlayer(from: Vec3 | null): string;
+  /** Animales vivos (estado de la simulación). */
+  entities(): EntitySnapshot[];
+  /** Quita todos los animales (escenarios donde uno que pasa estorbaría). */
+  clearEntities(): void;
   audio(): { ready: boolean; muted: boolean; masterGain: number };
   /** Mundo abierto. */
   currentWorld(): World | null;
@@ -112,6 +120,7 @@ export function installTestApi(deps: {
     cameraPos: view.cameraPos,
     playerModel: view.playerModel,
     setPlayerVisible: view.setPlayerVisible,
+    setEntitiesVisible: view.setEntitiesVisible,
     isWorldReady: view.isWorldReady,
     stats: view.stats,
     setBlock: (x, y, z, block) => {
@@ -134,6 +143,16 @@ export function installTestApi(deps: {
     },
     teleport: (pos) => game.player.teleport(pos),
     hitPlayer: (from) => game.hitPlayer(from),
+    entities: () =>
+      [...game.entities.all()].map((e) => ({
+        id: e.id,
+        species: e.species,
+        pos: { ...e.body.pos },
+        state: e.brain?.state ?? null,
+        anim: e.anim ?? null,
+        home: e.home ?? null,
+      })),
+    clearEntities: () => game.entities.clear(),
     audio: () => ({ ready: audio.isReady, muted: audio.isMuted, masterGain: audio.masterGain }),
     currentWorld: () => session.world,
     worlds: () => repo.listWorlds(session.ownerId),

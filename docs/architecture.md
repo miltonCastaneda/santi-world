@@ -2,9 +2,9 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 5)
+## Estado actual (Fase 2, incremento 6)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
@@ -23,11 +23,17 @@ src/
                 repository/model.ts (User, World, GameState, ChunkRecord, SCHEMA_VERSION) y
                 repository/worldRepository.ts (puerto WorldRepository), settings.ts (clampSettings),
                 physics/collide.ts (moveBody: AABB con barrido Y, X, Z, gravedad, borde invisible),
-                rules/tools.ts (Mano, Pico, Espada, Arco y Collar; alcance de 6)                 (puro)
+                rules/tools.ts (Mano, Pico, Espada, Arco y Collar; alcance de 6),
+                entities/fsm.ts (máquinas de estado por datos y su intérprete), entities/species.ts
+                (6 especies como datos), entities/entityStore.ts (entidades + índice espacial),
+                entities/population.ts (población inicial y spawn slots con semilla)             (puro)
   sim/          loop.ts (FixedStepLoop, 20 Hz), game.ts (intents, eventos, replaceWorld, colisión,
                 createHeadlessGame), player.ts (Player: movimiento, salto, corazones, reaparición,
                 animación), session.ts (GameSession: abrir, crear y cambiar de mundo; guardar antes
-                de limpiar; guarda posición, rumbo, corazones y herramienta)                     (puro)
+                de limpiar; guarda posición, rumbo, corazones, herramienta y animales),
+                systems/animals.ts (AnimalSystem: percibir, pensar cada 4 ticks, moverse, sonidos),
+                systems/pathfinding.ts (A* con presupuesto, PathQueue, invalidación por versión de
+                chunk), entitySnapshots.ts (entidad <-> EntitySnapshot)                           (puro)
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
                 autosave.ts (AutosaveService), migrations.ts (migrations[n] puras), legacyImport.ts
                 (v1 a "Mi primer mundo"), exportFormat.ts, errorLog.ts, storage.ts (persist()),
@@ -37,6 +43,7 @@ src/
                 sin sombras, near 0,1 / far 250), followCamera.ts (brazo de resorte de 6 bloques a 20°,
                 se acorta con un DDA para no entrar en los bloques, giro con el botón derecho),
                 playerModel.ts (personaje de cajas con la "S" y animación procedural),
+                entityRenderer.ts (animales: InstancedMesh por especie y parte, sombra, "poof"),
                 chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
                 meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
                 tiles.ts y textures.ts (tiles procedurales de 16 px), blockMaterial.ts
@@ -66,6 +73,15 @@ src/
 2. En cada paso, `Player.step` aplica la velocidad pedida, el salto y `moveBody` contra `Game.collision`, y `Game` emite `footstep`, `jumped` y los cambios de corazones. `Game.hitPlayer` resta un corazón (con invulnerabilidad); sin corazones, "poof" y reaparición en la granja con 5 s de invulnerabilidad y nada perdido.
 3. En cada frame, `RenderApp.render` lee una vista del jugador (`PlayerView`: posición, rumbo, animación, herramienta), `PlayerModel` la interpola y la anima, y `FollowCamera` coloca la cámara detrás. El render nunca escribe en la simulación.
 4. `connectGameAudio` traduce los eventos del juego a sonidos y `AudioService.setListener` recibe la cámara en cada frame para el paneo.
+
+### Animales
+
+1. Al abrir un mundo por primera vez (o uno guardado antes del incremento 6), `Game.spawnPopulation()` crea los animales en los spawn slots que `createSpawnSlots(layout, seed)` calcula de forma determinista: 3 ovejas, 2 vacas, 2 cabras, 3 gallinas y 3 pollitos en la granja, y 2 patos en el estanque. "Mi primer mundo" (pradera plana) no tiene granja ni animales. El estado guardado marca `animalsSpawned` para no volver a crearlos.
+2. En cada paso, después del jugador, `AnimalSystem.step` procesa hasta 3 búsquedas de camino de la `PathQueue` y, para cada animal en orden de creación: percibe (amenaza a 6 bloques o menos, fuera del hogar, distancia a la gallina, en el agua), piensa cada 4 ticks con el intérprete de `fsm.ts` y su `Rng` con semilla propia, sigue su camino o huye en línea recta, se separa de los vecinos y se mueve con la misma física AABB que el personaje (los patos flotan).
+3. Si el niño coloca un bloque en un chunk que cruza el camino de un animal, la versión del chunk cambia y el animal pide otro camino. No se puede poner un bloque en una celda ocupada por un animal (`bump`).
+4. Los animales emiten `animalSound` cada cierto tiempo; el audio lo reproduce posicional en el bus `ambient` con el límite de 3 voces.
+5. En cada frame, `EntityRenderer` lee una vista de cada animal (posición, rumbo, animación), la suaviza y escribe las matrices de las instancias. Si un animal desaparece cerca de la cámara hace "poof".
+6. Al guardar, `GameSession.collect()` agrega `entitySnapshots(worldId)` (posición, rumbo, estado y tiempos relativos del cerebro, slot, hogar). Al abrir, `restoreEntities` los recrea con el mismo estado; los caminos se vuelven a pedir.
 
 ### Guardado
 

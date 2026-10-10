@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { FakeClock } from "../../../src/core/clock";
-import { defaultGameState, type ChunkRecord, type World } from "../../../src/domain/repository/model";
+import { defaultGameState, SCHEMA_VERSION, type ChunkRecord, type World } from "../../../src/domain/repository/model";
 import type { WorldRepository } from "../../../src/domain/repository/worldRepository";
 import type { RepositoryDeps } from "../../../src/persistence/inMemoryRepository";
 
@@ -47,7 +47,7 @@ export function describeRepositoryContract(name: string, factory: RepoFactory): 
 
     it("crea un mundo con estado inicial, versión de esquema y marcas de tiempo", async () => {
       const w = await newWorld("u1", "A");
-      expect(w).toMatchObject({ name: "A", ownerId: "u1", schemaVersion: 1, version: 0, createdAt: clock.now(), updatedAt: clock.now() });
+      expect(w).toMatchObject({ name: "A", ownerId: "u1", schemaVersion: SCHEMA_VERSION, version: 0, createdAt: clock.now(), updatedAt: clock.now() });
       const loaded = await repo.loadWorld(w.id);
       expect(loaded.world).toEqual(w);
       expect(loaded.state).toEqual(defaultGameState(w.id, clock.now()));
@@ -169,7 +169,7 @@ export function describeRepositoryContract(name: string, factory: RepoFactory): 
       await repo.saveSnapshot({ ...loaded, dirtyChunks: [chunkRecord(w.id, 2, 3, 5, 4)] });
       const file = await repo.exportWorld(w.id);
       const doc = JSON.parse(await file.text());
-      expect(doc).toMatchObject({ format: "santi-world", userId: user.id, schemaVersion: 1, world: { id: w.id, updatedAt: w.updatedAt, version: 0 } });
+      expect(doc).toMatchObject({ format: "santi-world", userId: user.id, schemaVersion: SCHEMA_VERSION, world: { id: w.id, updatedAt: w.updatedAt, version: 0 } });
       expect(doc.state).toMatchObject({ worldId: w.id, version: 0, updatedAt: expect.any(Number) });
       expect(doc.chunks[0]).toMatchObject({ cx: 2, cz: 3, version: 4, updatedAt: 1004 });
 

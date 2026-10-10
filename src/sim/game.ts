@@ -2,14 +2,21 @@ import type { Clock } from "../core/clock";
 import { EventBus } from "../core/events";
 import type { Ray, Vec3 } from "../core/math";
 import { Rng } from "../core/rng";
-import { BLOCKS_BY_NUM, type BlockId } from "../domain/blocks";
+import { BLOCK_NUM, BLOCKS_BY_NUM, type BlockId } from "../domain/blocks";
+import { EntityStore } from "../domain/entities/entityStore";
+import { createSpawnSlots, homesOf, type Home, type SpawnSlot } from "../domain/entities/population";
+import type { HomeId } from "../domain/entities/species";
+import type { EntitySnapshot } from "../domain/repository/model";
 import { bodyOverlapsCell, type CollisionQuery } from "../domain/physics/collide";
 import { pickCell } from "../domain/picking";
 import { REACH, TOOLS, type ToolId } from "../domain/rules/tools";
 import { CHUNK_HEIGHT } from "../domain/world/chunk";
 import { TerrainWorld } from "../domain/world/terrainWorld";
+import { entityFromSnapshot, entityToSnapshot } from "./entitySnapshots";
 import { FixedStepLoop, STEP_MS } from "./loop";
 import { Player, type HitResult } from "./player";
+import { AnimalSystem, type AnimalContext, type AnimalSound } from "./systems/animals";
+import type { PathWorld } from "./systems/pathfinding";
 
 export type Selection = { tool: ToolId; block: BlockId };
 
@@ -40,6 +47,7 @@ export type GameEvents = {
   playerRespawned: { pos: Vec3 };
   heartsChanged: { hearts: number };
   inventoryToggled: { open: boolean };
+  animalSound: AnimalSound;
 };
 
 export const PICK_DISTANCE = 200;
@@ -51,6 +59,8 @@ export class Game {
   rng: Rng;
   world: TerrainWorld;
   readonly player: Player;
+  readonly entities = new EntityStore();
+  readonly animals: AnimalSystem;
   selection: Selection = { tool: "hand", block: "grass" };
   inventoryOpen = false;
   tick = 0;
@@ -58,12 +68,59 @@ export class Game {
   private intents: Intent[] = [];
   private nextFootstepAt = 0;
   private lastHearts: number;
+  private homes: Record<HomeId, Home> | null = null;
+  private slots: SpawnSlot[] = [];
 
   constructor(options: { seed?: string; world?: TerrainWorld } = {}) {
     this.world = options.world ?? TerrainWorld.create(options.seed ?? "santi");
     this.rng = new Rng(this.world.seed);
     this.player = new Player(this.spawnPoint());
     this.lastHearts = this.player.hearts;
+    this.animals = new AnimalSystem(this.world.seed);
+    this.prepareHomes();
+  }
+
+  /** Lo que el pathfinding y la física de las entidades consultan del mundo. */
+  readonly pathWorld: PathWorld = {
+    collision: (x, y, z) => this.collision(x, y, z),
+    isWater: (x, y, z) => this.world.store.get(x, y, z) === BLOCK_NUM.water,
+    chunkVersion: (cx, cz) => this.world.store.peek(cx, cz)?.version ?? 0,
+  };
+
+  private get animalContext(): AnimalContext {
+    return { world: this.pathWorld, homes: this.homes };
+  }
+
+  /** Slots de población del mundo (vacío en los mundos sin granja, como "Mi primer mundo"). */
+  get spawnSlots(): readonly SpawnSlot[] {
+    return this.slots;
+  }
+
+  private prepareHomes(): void {
+    const layout = this.world.layout;
+    this.homes = layout ? homesOf(layout) : null;
+    this.slots = layout ? createSpawnSlots(layout, this.world.seed) : [];
+  }
+
+  /** Población inicial de un mundo nuevo: un animal por slot. */
+  spawnPopulation(): void {
+    for (const slot of this.slots) this.animals.spawn(this.entities, this.animalContext, slot, this.timeMs, (x, z) => this.world.store.surfaceY(x, z));
+  }
+
+  restoreEntities(snapshots: readonly EntitySnapshot[]): void {
+    for (const s of snapshots) {
+      const e = entityFromSnapshot(s, this.timeMs);
+      if (e && !this.entities.get(e.id)) this.entities.add(e);
+    }
+  }
+
+  entitySnapshots(worldId: string): EntitySnapshot[] {
+    const out: EntitySnapshot[] = [];
+    for (const e of this.entities.all()) {
+      const s = entityToSnapshot(e, worldId, this.timeMs);
+      if (s) out.push(s);
+    }
+    return out;
   }
 
   get seed(): string {
@@ -96,6 +153,9 @@ export class Game {
     this.world = world;
     this.rng = new Rng(world.seed);
     this.intents = [];
+    this.entities.clear();
+    this.animals.reset(world.seed);
+    this.prepareHomes();
     this.player.setMove(0, 0);
     this.player.teleport(this.spawnPoint());
     this.events.emit("worldReplaced", { world });
@@ -118,6 +178,7 @@ export class Game {
     this.tick++;
     this.timeMs += dtMs;
     this.stepPlayer(dtMs);
+    this.animals.step(this.entities, this.animalContext, this.tick, this.timeMs, dtMs, (s) => this.events.emit("animalSound", s));
   }
 
   /** Golpe de un enemigo (zombis, más adelante). Con 0 corazones reaparece en la granja sin perder nada. */
@@ -197,8 +258,12 @@ export class Game {
     }
     if (tool.onBlock === "place") {
       const { x, y, z } = target.adjacent;
-      // Nunca dentro del propio personaje (se quedaría atascado).
+      // Nunca dentro del propio personaje ni de un animal (quedarían atascados).
       if (bodyOverlapsCell(this.player.body, x, y, z)) return;
+      if (this.entities.near({ x: x + 0.5, y, z: z + 0.5 }, 2, (e) => bodyOverlapsCell(e.body, x, y, z)).length > 0) {
+        this.events.emit("bump", { pos: { x, y, z } });
+        return;
+      }
       const pos = this.world.place(x, y, z, this.selection.block, this.timeMs);
       if (pos) this.events.emit("blockPlaced", { pos, block: this.selection.block });
       this.changed(pos);

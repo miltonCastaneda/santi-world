@@ -142,6 +142,7 @@ export class GameSession {
         version: state.version + 1,
         updatedAt: now,
         camera: this.deps.camera?.() ?? state.camera,
+        animalsSpawned: true,
         player: {
           pos: { ...this.game.player.pos },
           yaw: this.game.player.yaw,
@@ -150,7 +151,7 @@ export class GameSession {
           selectedBlock: this.game.selection.block,
         },
       },
-      entities: [],
+      entities: this.game.entitySnapshots(world.id),
       dirtyChunks,
     };
     return {
@@ -167,7 +168,7 @@ export class GameSession {
 
   private async open(worldId: string): Promise<void> {
     const { repo } = this.deps;
-    const [{ world, state }, records] = await Promise.all([repo.loadWorld(worldId), repo.listChunks(worldId)]);
+    const [{ world, state, entities }, records] = await Promise.all([repo.loadWorld(worldId), repo.listChunks(worldId)]);
     const terrain = TerrainWorld.fromRecords(world.seed, world.generator, records);
     this.world = world;
     this.state = state;
@@ -177,6 +178,9 @@ export class GameSession {
     if (state.player.pos) player.teleport(state.player.pos);
     player.yaw = state.player.yaw;
     player.restoreHearts(state.player.hearts, this.game.timeMs);
+    // Un mundo nuevo (o guardado antes de que hubiera animales) recibe su población inicial.
+    if (state.animalsSpawned) this.game.restoreEntities(entities);
+    else this.game.spawnPopulation();
     this.events.emit("worldOpened", { world, state });
     this.savedStateKey = this.stateKey();
     await repo.setMeta(LAST_WORLD_KEY, worldId);
@@ -220,6 +224,9 @@ export class GameSession {
     const cam = this.deps.camera?.();
     const r = (v: { x: number; y: number; z: number }) => `${v.x.toFixed(1)},${v.y.toFixed(1)},${v.z.toFixed(1)}`;
     const p = this.game.player;
-    return `${this.game.selection.tool}|${this.game.selection.block}|${r(p.pos)}|${p.hearts}|${cam ? `${r(cam.position)}|${r(cam.target)}` : ""}`;
+    // Los animales cuentan al bloque: moverse dentro de la misma celda no obliga a guardar.
+    let animals = 0;
+    for (const e of this.game.entities.all()) animals = (animals * 31 + Math.floor(e.body.pos.x) * 7 + Math.floor(e.body.pos.z) * 13 + e.seq) | 0;
+    return `${this.game.selection.tool}|${this.game.selection.block}|${r(p.pos)}|${p.hearts}|${animals}|${cam ? `${r(cam.position)}|${r(cam.target)}` : ""}`;
   }
 }

@@ -40,9 +40,17 @@ Tienes un **personaje** con una **"S"** en la camiseta. ¡Eres tú!
 
 Tu primer mundo, el de antes, se llama **"Mi primer mundo"**. Si ves el dibujo **⚠️💾**, avísale a papá o a mamá.
 
+## Tus animales
+
+- En la granja viven **ovejas** 🐑 ("beee"), **vacas** 🐄 ("muuu"), **cabras** 🐐 ("meee"), **gallinas** 🐔 ("co-co") con sus **pollitos** 🐤 ("pío-pío"), y en el estanque nadan los **patos** 🦆 ("cuac").
+- Caminan, comen pasto, descansan y los pollitos siguen a su mamá gallina.
+- Si algo los asusta, ¡salen corriendo! Después vuelven tranquilos.
+- La **cerca** los cuida. Si haces un **hueco** en la cerca, ¡alguno se puede escapar! Ciérrala con bloques para que se queden adentro.
+- No puedes poner un bloque encima de un animal: suena "bump".
+
 ## Pronto (Fase 2)
 
-- Habrá **animales** en la granja: ovejas, vacas, gallinas, patos, cabras y el **cerdo-gallina**, que vuela.
+- Llegará el **cerdo-gallina**, que vuela.
 - De noche saldrán **zombis** muy lentos. ¡Construye muros para cuidar a tus animales!
 - Con el **collar** puedes hacerte amigo de un lobo.
 - En la montaña de rocas hay **diamantes** para recoger con el pico.

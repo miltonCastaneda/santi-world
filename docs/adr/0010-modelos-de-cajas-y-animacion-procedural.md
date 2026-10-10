@@ -1,6 +1,6 @@
 # ADR 0010: Modelos de entidades hechos de cajas, con InstancedMesh por especie y parte y animación procedural
 
-- **Estado**: Aceptado (incremento 5: personaje; el instancing llega con los animales)
+- **Estado**: Aceptado (incremento 5: personaje; incremento 6: animales con instancing)
 - **Fecha**: 2026-10-10
 - **Change relacionado**: `openspec/changes/fase-2-mundo-vivo/` (specs `personaje-y-herramientas`, `animales-y-granja` y `rendimiento-y-estabilidad-visual`)
 
@@ -35,3 +35,10 @@ Hay que mostrar el personaje, 8 especies de animales, zombis y un dragón con an
 - Animación procedural según `PlayerView.anim`: `idle` (respiración), `walk` (piernas y brazos en seno, con un leve rebote), `jump` (brazos arriba) y `action` (balanceo del brazo derecho según la herramienta: poner, minar, golpear, disparar o lanzar). Las vueltas a la pose de reposo y de salto se suavizan con una constante de unos 50 ms. La posición se interpola entre los pasos de 20 Hz de la simulación para que se vea fluida a 60 FPS.
 - La herramienta elegida se muestra en la mano derecha (cajas de colores) en el frame siguiente a elegirla. Durante la invulnerabilidad el modelo parpadea.
 - E2E (`tests/e2e/character.spec.ts`): pasa a caminar en 100 ms o menos y a idle en 300 ms o menos, y la Espada aparece en la mano en 200 ms o menos desde el clic.
+
+## Implementación (incremento 6: animales)
+
+- `src/render/entityRenderer.ts`: cada especie tiene **3 partes** (cuerpo, cabeza con sus detalles y pata), y cada parte es un `InstancedMesh`. En vez de un atlas de pieles, las cajas de una parte se unen en una sola geometría con **color por vértice** (manchas de la vaca, pico, cresta, ojos): así cada parte es una sola draw call para toda la especie. Con la sombra plana (un círculo instanciado) y las nubes "poof", las 6 especies suman 20 draw calls o menos (19 medidas en `npm run perf`).
+- Animación procedural escribiendo las matrices por instancia: patas en pares diagonales con seno (`walk`, más rápido en `run`), cabeza que baja al pastar (las aves picotean), cuerpo que se acuesta en `rest` (las patas se recogen), balanceo al nadar y un leve movimiento de cabeza en `idle`. Posición y rumbo suavizados entre los pasos de 20 Hz.
+- Una entidad que desaparece a 64 bloques o menos de la cámara hace "poof" (10 cubitos blancos y amarillos en espiral, 0,6 s, sin azar); al cambiar de mundo no hay "poof". Las entidades a más de 64 bloques no se dibujan. El parpadeo de golpe oculta el modelo en frames alternos (como el personaje); el "flash" blanco por instancia queda para cuando haya golpes a animales (incremento 9).
+- Se agregó una luz direccional sin sombras (el terreno no la usa: tiene su propia luz por vértice). Sin ella, el blanco de las ovejas se veía gris.

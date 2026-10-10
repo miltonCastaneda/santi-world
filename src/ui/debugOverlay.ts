@@ -10,6 +10,11 @@ export type DebugStats = {
   mesherMainMs: number;
   mesherMainMaxMs: number;
   mesherWorkerMsAvg: number;
+  entities: number;
+  entitiesDrawn: number;
+  entityDrawCalls: number;
+  /** Nodos que expandió el pathfinding en el último tick. */
+  pathNodes: number;
   tick: number;
 };
 
@@ -28,6 +33,7 @@ export function setupDebugOverlay(read: () => DebugStats): { toggle(): void; isV
       `draw calls ${s.drawCalls}   triángulos ${(s.triangles / 1000).toFixed(0)} k`,
       `chunks dibujados ${s.chunksMeshed}   pendientes ${s.chunksPending}   en memoria ${s.chunksLoaded}`,
       `mesher hilo principal ${s.mesherMainMs.toFixed(2)} ms (máx ${s.mesherMainMaxMs.toFixed(2)})   worker ${s.mesherWorkerMsAvg.toFixed(1)} ms/chunk`,
+      `entidades ${s.entities}   dibujadas ${s.entitiesDrawn}   draw calls ${s.entityDrawCalls}   nodos A* ${s.pathNodes}`,
       `tick ${s.tick}`,
     ].join("\n");
   };

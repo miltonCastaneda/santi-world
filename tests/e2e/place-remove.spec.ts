@@ -16,6 +16,8 @@ async function waitForCountChange(page: Page, before: number): Promise<number> {
 test("[personaje-y-herramientas] poner con la Mano, romper con el Pico y deshacer", async ({ page }) => {
   const errors = collectErrors(page);
   await openTestGame(page);
+  // Un animal que pase por la celda objetivo haría "bump" en vez de poner el bloque.
+  await page.evaluate(() => window.__santi!.clearEntities());
   // El personaje aparece en el centro de la granja: el objetivo queda a 3 bloques, dentro del alcance.
   const target = await lookAtFarm(page, 3);
   await expect(page.locator('.tool-btn[data-tool="hand"]')).toHaveClass(/active/);

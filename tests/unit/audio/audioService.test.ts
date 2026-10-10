@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { AudioService, MASTER_CAP, MAX_ANIMAL_VOICES, type AudioContextLike } from "../../../src/audio/audioService";
+import { connectGameAudio } from "../../../src/audio/gameAudio";
 import { SOUND_NAMES, synthesize } from "../../../src/audio/synth";
+import { SPECIES, SPECIES_IDS } from "../../../src/domain/entities/species";
+import { Game } from "../../../src/sim/game";
 
 class FakeParam {
   value = 1;
@@ -136,6 +139,26 @@ describe("[experiencia-infantil] Audio controlado", () => {
     expect(audio.play("step", { pos: { x: 0, y: 0, z: 12 } })).toBe(true);
     const voiceGain = ctx.gains[ctx.gains.length - 1];
     expect(voiceGain.gain.value).toBeCloseTo(0.5);
+  });
+
+  it("[animales-y-granja] Sonido por especie: una vaca a 10 bloques muge atenuada; a 24 o más no se oye", async () => {
+    const { audio, ctx } = await setup();
+    const game = new Game({ seed: "sonidos" });
+    connectGameAudio(audio, game);
+    audio.setListener({ x: 0, y: 0, z: 0 }, 0);
+    const before = ctx.sources.length;
+    game.events.emit("animalSound", { id: "cow-0", species: "cow", sound: SPECIES.cow.sound, pos: { x: 10, y: 0, z: 0 } });
+    expect(ctx.sources).toHaveLength(before + 1);
+    const moo = synthesize("moo", ctx.sampleRate);
+    expect((ctx.sources.at(-1)!.buffer as { getChannelData(c: number): Float32Array }).getChannelData(0)).toEqual(moo);
+    // La ganancia de la voz es la de la distancia (1 - 10/24), menor que la de cerca.
+    const voiceGain = ctx.gains[ctx.gains.length - 1];
+    expect(voiceGain.gain.value).toBeCloseTo(1 - 10 / 24);
+    expect(audio.activeAnimalVoices).toBe(1);
+    game.events.emit("animalSound", { id: "cow-1", species: "cow", sound: "moo", pos: { x: 24, y: 0, z: 0 } });
+    expect(ctx.sources).toHaveLength(before + 1);
+    // Todas las especies tienen un sonido generado.
+    for (const id of SPECIES_IDS) expect(SOUND_NAMES as readonly string[], id).toContain(SPECIES[id].sound);
   });
 
   it("los sonidos generados son cortos y suaves (pico de 0,5 o menos)", () => {

@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { defaultGameState, SCHEMA_VERSION, type World } from "../../../src/domain/repository/model";
+import { defaultGameState, SCHEMA_VERSION, type GameState, type World } from "../../../src/domain/repository/model";
 import { migrateState, migrateWorld, runMigrations, type MigrationTable } from "../../../src/persistence/migrations";
 
 describe("[mundos-y-persistencia] Esquema versionado y migraciones", () => {
@@ -34,6 +35,13 @@ describe("[mundos-y-persistencia] Esquema versionado y migraciones", () => {
   it("rechaza datos de una versión más nueva que la del juego y migraciones que faltan", () => {
     expect(() => runMigrations({ schemaVersion: 9 }, table, 2)).toThrow(/más nueva/);
     expect(() => runMigrations({ schemaVersion: 0 }, {}, 1)).toThrow(/Falta la migración/);
+  });
+
+  it("esquema 1 a 2: un estado guardado antes de los animales queda pendiente de poblar", () => {
+    const v1 = JSON.parse(readFileSync("tests/fixtures/state-v1.json", "utf8")) as GameState;
+    const v2 = migrateState(v1);
+    expect(v2).toMatchObject({ schemaVersion: 2, animalsSpawned: false, player: v1.player, inventory: v1.inventory });
+    expect(migrateWorld({ id: "w1", schemaVersion: 1, name: "A" } as World)).toEqual({ id: "w1", schemaVersion: 2, name: "A" });
   });
 
   it("los documentos de la versión actual pasan sin cambios", () => {

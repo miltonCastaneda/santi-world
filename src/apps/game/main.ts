@@ -11,6 +11,7 @@ import { DexieWorldRepository, SantiDatabase } from "../../persistence/dexieRepo
 import { errorMessage, recordError } from "../../persistence/errorLog";
 import { importLegacyWorld } from "../../persistence/legacyImport";
 import { requestPersistentStorage } from "../../persistence/storage";
+import type { EntityView } from "../../render/entityRenderer";
 import type { PlayerView } from "../../render/playerModel";
 import { RenderApp } from "../../render/renderApp";
 import { Game } from "../../sim/game";
@@ -54,14 +55,22 @@ const playerView = (): PlayerView => {
   };
 };
 
+function* entityViews(): Iterable<EntityView> {
+  for (const e of game.entities.all()) yield { id: e.id, species: e.species, pos: e.body.pos, yaw: e.yaw, anim: e.anim ?? "idle" };
+}
+
 const view = new RenderApp(canvas, game.world.store, game.world.gen, game.world.spawn, {
   viewRadius,
   workers,
   follow: { player: playerView, isSolid: (x, y, z) => game.collision(x, y, z) > 0, now: () => performance.now() },
+  entities: entityViews,
 });
 
 game.events.on("blockChanged", ({ pos }) => view.chunks.invalidateBlock(pos.x, pos.z));
-game.events.on("worldReplaced", ({ world }) => view.chunks.rebuildAll(world.store, world.gen));
+game.events.on("worldReplaced", ({ world }) => {
+  view.chunks.rebuildAll(world.store, world.gen);
+  view.entities?.clear();
+});
 game.events.on("playerRespawned", () => view.isFollowing && view.followPlayer());
 
 const repo = new DexieWorldRepository(new SantiDatabase(), { clock: wallClock, newId: () => crypto.randomUUID() });
@@ -89,6 +98,10 @@ setupDebugOverlay(() => ({
   mesherMainMs: view.chunks.stats.mainThreadMs,
   mesherMainMaxMs: view.chunks.stats.maxMainThreadMs,
   mesherWorkerMsAvg: view.chunks.stats.workerMsAvg,
+  entities: game.entities.size,
+  entitiesDrawn: view.entities?.stats.drawn ?? 0,
+  entityDrawCalls: view.entities?.stats.drawCalls ?? 0,
+  pathNodes: game.animals.paths.lastExpanded,
   tick: game.tick,
 }));
 
@@ -198,6 +211,9 @@ async function boot(): Promise<void> {
         setPlayerVisible: (visible) => {
           if (view.playerModel) view.playerModel.root.visible = visible;
         },
+        setEntitiesVisible: (visible) => {
+          if (view.entities) view.entities.group.visible = visible;
+        },
         isWorldReady: () => view.chunks.idle && view.chunks.stats.meshed > 0,
         stats: () => ({
           updateP95: percentile(view.chunks.updateSamples, 0.95),
@@ -207,6 +223,8 @@ async function boot(): Promise<void> {
           maxMainThreadMs: view.chunks.stats.maxMainThreadMs,
           workerMsAvg: view.chunks.stats.workerMsAvg,
           fps: frameStats.fps,
+          entitiesDrawn: view.entities?.stats.drawn ?? 0,
+          entityDrawCalls: view.entities?.stats.drawCalls ?? 0,
         }),
       },
     });

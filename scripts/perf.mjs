@@ -19,7 +19,7 @@ const durationMs = Number(args.ms ?? 60_000);
 const port = 5399;
 const vite = [process.execPath, `${root}node_modules/vite/bin/vite.js`];
 
-const BUDGET = { p95: 20, drawCalls: 300, mesherMainMs: 4, heapMb: 500 };
+const BUDGET = { p95: 20, drawCalls: 300, mesherMainMs: 4, heapMb: 500, entityDrawCalls: 60 };
 
 console.log("Compilando…");
 const build = spawnSync(vite[0], [vite[1], "build"], { cwd: root, stdio: "inherit" });
@@ -52,11 +52,13 @@ try {
     ["Draw calls máx.", result.drawCallsMax, BUDGET.drawCalls, "", result.drawCallsMax < BUDGET.drawCalls],
     ["Mesher en el hilo principal (p99 por frame)", result.mesherMainP99Ms, BUDGET.mesherMainMs, "ms", result.mesherMainP99Ms <= BUDGET.mesherMainMs],
     ["Memoria JS", result.heapMb, BUDGET.heapMb, "MB", result.heapMb === null || result.heapMb < BUDGET.heapMb],
+    ["Draw calls de entidades máx.", result.entityDrawCallsMax, BUDGET.entityDrawCalls, "", result.entityDrawCallsMax <= BUDGET.entityDrawCalls],
   ];
   console.log(`\nGPU: ${result.gpu}`);
   console.log(`Carga inicial: ${result.loadMs} ms · frames: ${result.frames} · FPS medio: ${result.fpsAvg.toFixed(1)}`);
   console.log(`p50 ${result.p50.toFixed(1)} ms · p95 ${result.p95.toFixed(1)} ms · p99 ${result.p99.toFixed(1)} ms · máx. ${result.maxFrame.toFixed(1)} ms`);
   console.log(`Mesher en workers: ${result.mesherWorkerMsAvg.toFixed(2)} ms de media por chunk`);
+  console.log(`Entidades dibujadas a la vez: máx. ${result.entitiesDrawnMax}`);
   console.log(`Mesher en el hilo principal: máx. ${result.mesherMainMaxMs.toFixed(1)} ms en un frame (incluye pausas del GC)\n`);
   for (const [name, value, budget, unit, ok] of checks) {
     const shown = typeof value === "number" ? `${Number(value.toFixed(1))}${unit}` : "n/d";
@@ -87,7 +89,7 @@ async function waitForServer(url, timeoutMs) {
 function record(r, label) {
   const file = `${root}docs/performance.md`;
   const date = new Date().toISOString().slice(0, 10);
-  const row = `| ${label} | ${date} | ${r.p50.toFixed(1)} | ${r.p95.toFixed(1)} | ${r.drawCallsMax} | ${r.mesherMainP99Ms.toFixed(1)} / ${r.mesherMainMaxMs.toFixed(1)} | ${r.loadMs} | ${r.gpu} |`;
+  const row = `| ${label} | ${date} | ${r.p50.toFixed(1)} | ${r.p95.toFixed(1)} | ${r.drawCallsMax} | ${r.mesherMainP99Ms.toFixed(1)} / ${r.mesherMainMaxMs.toFixed(1)} | ${r.entitiesDrawnMax} / ${r.entityDrawCallsMax} | ${r.loadMs} | ${r.gpu} |`;
   const lines = readFileSync(file, "utf8").split(/\r?\n/);
   const header = lines.findIndex((l) => l.startsWith("| Incremento |"));
   if (header < 0) throw new Error("No encontré la tabla de resultados en docs/performance.md");

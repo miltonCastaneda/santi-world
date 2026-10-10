@@ -4,7 +4,7 @@ import { CHUNK_HEIGHT, CHUNK_SIZE } from "../world/chunk";
 import type { GeneratorKind } from "../worldgen/generator";
 
 /** Versión de los documentos guardados (World y GameState). Sube con cada cambio de forma. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type User = { id: string; name: string; createdAt: number };
 
@@ -55,6 +55,8 @@ export type GameState = {
   /** Cámara orbital (hasta que llegue el personaje en el incremento 5). */
   camera: CameraView | null;
   inventory: { diamond: number; meat: number; pigChicken: number };
+  /** Ya se creó la población inicial de animales (desde el esquema 2). */
+  animalsSpawned: boolean;
   pendingRespawns: string[];
   burntTrees: string[];
   minedOres: string[];
@@ -110,6 +112,7 @@ export function defaultGameState(worldId: string, now: number): GameState {
     player: { pos: null, yaw: 0, hearts: 5, selectedTool: "hand", selectedBlock: "grass" },
     camera: null,
     inventory: { diamond: 0, meat: 0, pigChicken: 0 },
+    animalsSpawned: false,
     pendingRespawns: [],
     burntTrees: [],
     minedOres: [],

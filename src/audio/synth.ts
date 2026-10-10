@@ -2,9 +2,14 @@
  * Sonidos generados por código (CC0, docs/assets.md): suaves, cortos y sin nada que asuste. Cada
  * uno es una función pura de la frecuencia de muestreo, así que se pueden probar sin navegador.
  */
-export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far"] as const;
+export const ANIMAL_SOUNDS = ["baa", "moo", "meh", "cluck", "peep", "quack"] as const;
+export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", ...ANIMAL_SOUNDS] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];
+
+export function isSoundName(value: string): value is SoundName {
+  return (SOUND_NAMES as readonly string[]).includes(value);
+}
 
 /** Ruido determinista (no usa Math.random: el mismo sonido siempre suena igual). */
 function noise(seed: number): () => number {
@@ -32,6 +37,20 @@ function render(rate: number, seconds: number, sample: (t: number, i: number) =>
 
 const tone = (f0: number, f1: number, seconds: number) => (t: number) => Math.sin(2 * Math.PI * (f0 + ((f1 - f0) * t) / (2 * seconds)) * t);
 
+/** Voz con armónicos (más "animal" que un seno puro); la fase se integra para poder variar la frecuencia. */
+function voice(rate: number, freq: (t: number) => number, harmonics: readonly number[]): (t: number) => number {
+  let phase = 0;
+  return (t) => {
+    phase += (2 * Math.PI * freq(t)) / rate;
+    let v = 0;
+    harmonics.forEach((h, k) => (v += h * Math.sin(phase * (k + 1))));
+    return v;
+  };
+}
+
+/** Ventana suave de 0 a 1 y vuelta a 0 entre `from` y `to` segundos (sílabas de un sonido). */
+const syllable = (t: number, from: number, to: number) => (t < from || t > to ? 0 : Math.sin((Math.PI * (t - from)) / (to - from)));
+
 /** Muestras del sonido, con picos de 0,5 o menos (el bus maestro tiene además su tope). */
 export function synthesize(name: SoundName, rate: number): Float32Array<ArrayBuffer> {
   const rnd = noise(SOUND_NAMES.indexOf(name) + 7);
@@ -56,5 +75,30 @@ export function synthesize(name: SoundName, rate: number): Float32Array<ArrayBuf
       return render(rate, 0.15, (t) => rnd() * 0.2 * Math.sin(Math.PI * (t / 0.15)), { attack: 0.02, decay: 0.08 });
     case "far":
       return render(rate, 0.12, (t) => 0.2 * tone(440, 330, 0.12)(t), { attack: 0.01, decay: 0.04 });
+    // Animales: voces suaves y cortas, sin nada que asuste (ni graves fuertes ni chillidos).
+    case "baa": {
+      const v = voice(rate, (t) => 300 - 40 * t + 12 * Math.sin(2 * Math.PI * 16 * t), [0.22, 0.1, 0.06]);
+      return render(rate, 0.45, (t) => v(t) * (0.75 + 0.25 * Math.sin(2 * Math.PI * 16 * t)), { attack: 0.04, decay: 0.2 });
+    }
+    case "moo": {
+      const v = voice(rate, (t) => 150 - 30 * t, [0.2, 0.12, 0.08, 0.04]);
+      return render(rate, 0.5, (t) => v(t) * Math.min(1, t / 0.15), { attack: 0.02, decay: 0.3 });
+    }
+    case "meh": {
+      const v = voice(rate, (t) => 380 - 30 * t + 20 * Math.sin(2 * Math.PI * 24 * t), [0.22, 0.1, 0.05]);
+      return render(rate, 0.35, v, { attack: 0.02, decay: 0.15 });
+    }
+    case "cluck": {
+      const v = voice(rate, () => 520, [0.25, 0.12, 0.05]);
+      return render(rate, 0.3, (t) => (v(t) + 0.06 * rnd()) * Math.max(syllable(t, 0, 0.08), syllable(t, 0.12, 0.2) * 0.8), { attack: 0.003, decay: 0.2 });
+    }
+    case "peep": {
+      const v = voice(rate, (t) => (t < 0.1 ? 2600 + 4000 * t : 2700 + 4000 * (t - 0.14)), [0.25]);
+      return render(rate, 0.25, (t) => v(t) * Math.max(syllable(t, 0, 0.09), syllable(t, 0.14, 0.23)), { attack: 0.003, decay: 0.2 });
+    }
+    case "quack": {
+      const v = voice(rate, (t) => 480 - 120 * t, [0.16, 0.12, 0.09, 0.05]);
+      return render(rate, 0.25, (t) => v(t) + 0.03 * rnd(), { attack: 0.01, decay: 0.09 });
+    }
   }
 }

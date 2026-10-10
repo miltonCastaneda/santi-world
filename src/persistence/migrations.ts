@@ -10,8 +10,14 @@ export type MigrationTable = Record<number, (doc: Doc) => Doc>;
  * documento: subir SCHEMA_VERSION, agregar aquí la función y un fixture de la versión anterior en
  * tests/fixtures/. La estructura de IndexedDB se migra aparte, con `db.version(n).upgrade()`.
  */
-export const WORLD_MIGRATIONS: MigrationTable = {};
-export const STATE_MIGRATIONS: MigrationTable = {};
+export const WORLD_MIGRATIONS: MigrationTable = {
+  // Esquema 2 (animales): el mundo no cambia de forma.
+  2: (doc) => doc,
+};
+export const STATE_MIGRATIONS: MigrationTable = {
+  // Esquema 2: los mundos guardados antes de los animales reciben su población al abrirse.
+  2: (doc) => ({ ...doc, animalsSpawned: false }),
+};
 
 /**
  * Lleva un documento a la versión `target`. Trabaja sobre una copia: si una migración falla, lanza
