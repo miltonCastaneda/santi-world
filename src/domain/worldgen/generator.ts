@@ -1,8 +1,8 @@
-import { hash2 } from "../../core/noise";
 import { BLOCK_NUM } from "../blocks";
 import { Chunk, CHUNK_HEIGHT, CHUNK_SIZE, chunkKey } from "../world/chunk";
 import { ChunkStore } from "../world/chunkStore";
 import { BASE_Y, columnAt, createLayout, riverCenterX, WORLD_CHUNKS, type WorldLayout } from "./layout";
+import { treeCells } from "./trees";
 
 type Voxel = { x: number; y: number; z: number; num: number; onlyIfAir: boolean };
 
@@ -142,20 +142,8 @@ function featureVoxels(layout: WorldLayout): Voxel[] {
     }
   }
 
-  for (const t of layout.trees) {
-    for (let i = 1; i <= t.trunk; i++) put(t.x, t.y + i, t.z, BLOCK_NUM.wood);
-    const top = t.y + t.trunk;
-    for (let dy = -2; dy <= 1; dy++) {
-      const r = dy >= 0 ? 1 : 2;
-      for (let dx = -r; dx <= r; dx++) {
-        for (let dz = -r; dz <= r; dz++) {
-          const corner = Math.abs(dx) === r && Math.abs(dz) === r;
-          if (corner && hash2(layout.seed, t.x * 31 + dx + dy * 7, t.z * 17 + dz) < 0.6) continue;
-          put(t.x + dx, top + dy, t.z + dz, BLOCK_NUM.leaves, true);
-        }
-      }
-    }
-  }
+  // Las mismas celdas que rebrotan al amanecer después del fuego del dragón.
+  for (const t of layout.trees) for (const c of treeCells(layout.seed, t)) put(c.x, c.y, c.z, BLOCK_NUM[c.block], c.block === "leaves");
 
   for (const o of layout.ores) put(o.x, o.y, o.z, BLOCK_NUM.diamond_ore);
   return out;

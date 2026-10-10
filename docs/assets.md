@@ -52,6 +52,8 @@ El lobo es un perrito gris de caricatura: panza y hocico claros, nariz negra, or
 
 El cerdo-gallina sigue la referencia visual: un cerdito rosado con hocico de fosas oscuras, orejitas, cresta roja de gallina, colita enrulada y dos patas naranjas de gallina. Sus alas blancas son una parte aparte del modelo (`wings`): en el suelo quedan pegadas al cuerpo y en el aire aletean rápido, con las patas recogidas.
 
+El dragón es un dragoncito de dibujo animado: cuerpo verde con panza amarilla, cuello y cola en tramos, púas y punta de la cola lilas, cabeza grande con ojos blancos de pupila con brillo, una sonrisa y dos cuernitos amarillos redondeados, sin dientes. Sus alas lilas (`wings`) aletean despacio y en vuelo recoge las patas. No proyecta sombra (siempre vuela). Las flechas (madera, punta gris y plumas blancas) y las llamaradas se dibujan en `src/render/projectileRenderer.ts`.
+
 Los objetos sueltos también son cajas (`ITEM_MODELS`): la carne es un muslito marrón con un hueso claro, más chico que un bloque, que flota a media altura, sube y baja suavemente y gira, con una sombra pequeña. En la mochila se muestran con emojis (💎, 🍖 y 🐷, en `RESOURCES` de `src/domain/rules/inventory.ts`) y la antorcha de la barra de bloques usa 🔥.
 
 ### Checklist "Revisión de efectos"
@@ -78,9 +80,20 @@ Spec `experiencia-infantil`, escenario "Revisión de efectos": todo efecto de go
 | Soltar con 3 libres | Nada aparece; queda en la mochila | `bump` | [x] |
 | El jugador recibe un golpe | Empuje suave, parpadeo de invulnerabilidad y corazón gris en el HUD | `boing` (o `poof` si se queda sin corazones y reaparece) | [x] |
 | Zombi que choca con el jugador o un animal | Se queda quieto un momento (estado `bump`) | Ninguno | [x] |
+| Disparo con el Arco | Una flecha de cajas que vuela hacia donde mira el niño (`ProjectileRenderer`) | `shoot` | [x] |
+| Flecha que choca con un bloque o termina su vuelo | La flecha desaparece, sin astillas ni marcas | `thunk` (solo contra un bloque) | [x] |
+| Flecha que alcanza a un zombi, un animal o un lobo salvaje | Lo mismo que un golpe de cerca: destellos (zombi), rebote y parpadeo (animal) o retroceso (lobo) | `sparkle` o `boing` | [x] |
+| Llega el dragón (a medianoche) | Entra volando desde lejos, sonriente, con las alas aleteando despacio | `rawr` (agudo y corto) | [x] |
+| El dragón echa fuego sobre un árbol | Llamaradas de cubos amarillos y naranjas que suben y se achican, 0,9 s cada una (3 seguidas); sin humo negro | `rawr` suave y `fire` | [x] |
+| El árbol se quema | Nube blanca con estrellas (`poof(pos, "cloud")`); los bloques naturales desaparecen y rebrotan al amanecer | `poof` | [x] |
+| El dragón se come un cerdo-gallina libre | Nube blanca con estrellas (`poof(pos, "cloud")`); reaparece al amanecer | `poof` | [x] |
+| Flecha que alcanza al dragón (1 a 4) | Parpadeo 0,4 s | `ding` | [x] |
+| Quinto impacto al dragón | "Poof" de estrellas grande: varios destellos de colores (`poof(pos, "sparkle")`) | `ding` y `sparkle` | [x] |
+| El dragón se va al amanecer | Se aleja volando y subiendo | `rawr` suave | [x] |
 
 - [x] Sin sangre, heridas, cuerpos ni caídas: nada queda en el suelo (la carne es un ícono de comida que flota, no un cuerpo).
 - [x] Sin gritos, gruñidos ni sonidos de dolor: el zombi solo hace "uuuh" y el lobo, "guau-guau".
 - [x] Los lobos salvajes nunca lastiman al niño: solo cazan animales de granja (no a los patos), y el lobo amigo no recibe daño.
+- [x] El dragón nunca lastima al niño ni rompe sus construcciones; no tiene dientes, sonríe y su "ruar" es agudo y corto. El fuego es de colores cálidos y claros, sin humo ni brasas.
 - [x] Ningún efecto dura más de 1 s ni cubre la pantalla.
 - [x] Los colores de los destellos son pasteles (`SPARKLE_COLORS`), sin rojo intenso.

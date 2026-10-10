@@ -2,9 +2,9 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 12)
+## Estado actual (Fase 2, incremento 13)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer. La Espada convierte a un animal de granja en carne flotante, que se recoge y se guarda en la mochila (inventario por mundo); las antorchas de la barra de bloques iluminan e impiden que aparezcan zombis. En la montaña boscosa viven lobos que una vez por día salen a cazar un animal de granja (una granja bien cerrada los detiene); con el Collar se vuelven amigos que siguen al niño o cuidan la granja y ahuyentan zombis. En la montaña de roca el Pico mina diamantes, que vuelven cada 3 días del juego. En la granja viven 3 cerdos-gallina que vuelan en arcos; se capturan con un clic y se sueltan desde la mochila.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer. La Espada convierte a un animal de granja en carne flotante, que se recoge y se guarda en la mochila (inventario por mundo); las antorchas de la barra de bloques iluminan e impiden que aparezcan zombis. En la montaña boscosa viven lobos que una vez por día salen a cazar un animal de granja (una granja bien cerrada los detiene); con el Collar se vuelven amigos que siguen al niño o cuidan la granja y ahuyentan zombis. En la montaña de roca el Pico mina diamantes, que vuelven cada 3 días del juego. En la granja viven 3 cerdos-gallina que vuelan en arcos; se capturan con un clic y se sueltan desde la mochila. El Arco dispara flechas balísticas, y a mitad de la noche llega un dragón cartoon que quema 2 árboles (rebrotan al amanecer), se come un cerdo-gallina libre y se derrota con 5 flechas.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
@@ -21,18 +21,21 @@ src/
                 blockLightAt para una celda),
                 world/terrainWorld.ts (reglas de poner/quitar/deshacer sobre el ChunkStore),
                 worldgen/layout.ts y generator.ts (generadores "zones" y "legacy-flat", GENERATOR_VERSION),
+                worldgen/trees.ts (celdas de cada árbol: las usan el generador y el rebrote),
                 repository/model.ts (User, World, GameState, ChunkRecord, SCHEMA_VERSION) y
                 repository/worldRepository.ts (puerto WorldRepository), settings.ts (clampSettings),
                 physics/collide.ts (moveBody: AABB con barrido Y, X, Z, gravedad, borde invisible),
                 rules/tools.ts (Mano, Pico, Espada, Arco y Collar; alcance de 6), rules/damage.ts
-                (tabla herramienta x objetivo: boing, derrota, captura o nada; golpes para derrotar;
-                qué suelta cada objetivo), rules/mining.ts (qué mina el Pico y cada cuántos días
+                (tabla herramienta x objetivo: boing, derrota, captura o nada; tabla de flechas;
+                golpes para derrotar; qué suelta cada objetivo), rules/archery.ts (flecha: velocidad,
+                gravedad, cadencia y asistencia de puntería), rules/mining.ts (qué mina el Pico y cada cuántos días
                 vuelven los diamantes), rules/inventory.ts (recursos, inventario saneado, puntos
                 de 1 a 5), entities/items.ts (objetos sueltos: carne; radio y demora de recogida),
                 entities/fsm.ts (máquinas de estado por datos y su intérprete), entities/species.ts
                 (6 especies como datos), entities/zombie.ts (datos y máquina del zombi),
                 entities/wolf.ts (datos del lobo y sus máquinas: salvaje y amigo),
                 entities/pigChicken.ts (datos y máquina del cerdo-gallina),
+                entities/dragon.ts (datos del dragón: vuelo, ruta, árboles, 5 impactos),
                 entities/entityStore.ts (entidades + índice espacial),
                 entities/population.ts (población inicial y spawn slots con semilla)             (puro)
   sim/          loop.ts (FixedStepLoop, 20 Hz), game.ts (intents, eventos, replaceWorld, colisión,
@@ -47,7 +50,9 @@ src/
                 objetivo, caminos, contacto, separación), systems/wolves.ts (WolfSystem: caza con
                 viaje por tramos, acecho, guarida, domesticar, seguir, cuidar y ahuyentar zombis),
                 systems/regrowth.ts (diamantes que vuelven a sus vetas), systems/pigChickens.ts
-                (PigChickenSystem: caminar, vuelo en arcos, aterrizar y huir),
+                (PigChickenSystem: caminar, vuelo en arcos, aterrizar y huir), systems/projectiles.ts
+                (ProjectileSystem: flechas con subpasos, DDA y rayo contra cajas), systems/dragon.ts
+                (DragonDirector: la ruta del dragón por fases),
                 systems/interaction.ts (objetos al alcance de recogida), entitySnapshots.ts
                 (entidad <-> EntitySnapshot; animales, cerdos-gallina, lobos y objetos sueltos)    (puro)
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
@@ -59,9 +64,10 @@ src/
                 sin sombras, near 0,1 / far 250), followCamera.ts (brazo de resorte de 6 bloques a 20°,
                 se acorta con un DDA para no entrar en los bloques, giro con el botón derecho),
                 playerModel.ts (personaje de cajas con la "S" y animación procedural),
-                entityRenderer.ts (animales, cerdos-gallina, lobos, zombis y objetos sueltos:
+                entityRenderer.ts (animales, cerdos-gallina, lobos, zombis, el dragón y objetos sueltos:
                 InstancedMesh por especie y parte, alas que aletean, sombra, "poof", destellos y
-                corazones, parpadeo, la carne flota y gira),
+                corazones, parpadeo, la carne flota y gira), projectileRenderer.ts (flechas
+                instanciadas y llamaradas cartoon),
                 chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
                 meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
                 tiles.ts y textures.ts (tiles procedurales de 16 px), blockMaterial.ts
@@ -153,6 +159,16 @@ src/
 3. `useTool` con cualquier herramienta sobre un cerdo-gallina da `capture` (`resolveHit`): a más de 4 bloques, `tooFar`; si no, `capturePigChicken` lo quita con `removeEntity` (el slot queda pendiente), suma 1 al inventario y emite `pigChickenCaptured`. Nunca suelta carne.
 4. El intent `toggleRelease` (el ícono 🐷 de la mochila) arma la suelta si hay alguno en la mochila (`releaseArmed`); elegir otra herramienta o bloque la desarma. Armado, el siguiente `useTool` llama a `release`: en la celda vacía junto al bloque apuntado (a 6 bloques o menos), si hay menos de 3 libres, crea uno que ocupa un slot pendiente, resta 1 al inventario y emite `pigChickenReleased`; si no, `releaseBlocked` (sonido `bump`). Al amanecer, `respawnPending` rellena los slots que quedaron pendientes.
 5. `entitySnapshots` los guarda como `kind: "pigChicken"`; uno guardado en vuelo o huyendo vuelve en `land`. El render usa una parte `wings` del modelo que aletea con `anim: "fly"`.
+
+### Arco y dragón
+
+1. Con el Arco, `useTool` primero mira la criatura apuntada: la carne a 6 bloques o menos se recoge y un cerdo-gallina a 4 o menos se captura. Si no, `Game.shoot` apunta desde los ojos del personaje al punto que toca el rayo de la cámara (la criatura o el bloque apuntados, o 60 bloques adelante) y `aimArrow` (`domain/rules/archery`) devuelve la velocidad: recta a 30 bloques/s o, con el dragón a 12° o menos, `leadVelocity` hacia su posición prevista (compensando la caída). `ProjectileSystem.shoot` descarta los disparos a menos de 334 ms del anterior (3 por segundo) y `Game` emite `arrowShot`.
+2. En cada paso, después del dragón, `ProjectileSystem.step` mueve cada flecha en 3 subpasos (gravedad de 10): en cada uno, `raycastVoxels` contra los bloques sólidos y `rayAabb` contra las cajas de las criaturas (con un margen), así una flecha rápida nunca atraviesa nada. Al chocar o a los 3 s emite `arrowEnded`. Si alcanza a una criatura, `resolveArrowHit` (tabla `ARROW_HITS`) decide: el zombi hace "poof", los animales y el cerdo-gallina rebotan, el lobo salvaje retrocede y el dragón cuenta un impacto (`hitDragon`).
+3. En el evento `midnight`, sin la noche tranquila, `DragonDirector.arrive` crea el dragón (una entidad `dragon` sin cerebro, que no se guarda) a 48 bloques del niño, una vez por noche y con los impactos en 0. Elige 2 árboles al azar (con su `Rng` propio) entre los 6 naturales más cercanos: `isNaturalTree` exige el tronco entero de madera natural.
+4. `DragonDirector.step` sigue las fases `enter` (llega volando), `circle` (20 s de vueltas alrededor del niño), `burn` (sobre cada árbol: `dragonFire`, 2 s y `burnTree`, que con `treeCells` y `TerrainWorld.clearNatural` quita solo las celdas naturales que coinciden con el árbol; nunca un bloque `placed`), `seek` (va hacia el cerdo-gallina libre más cercano a cielo abierto y lo hace "poof" con `removeEntity`: su slot queda pendiente) y `linger` (vueltas hasta el amanecer). Vuela directo, por encima del terreno, sin colisión, y nunca toca al niño.
+5. Con 5 impactos `hitDragon` lo quita (`dragonDefeated`, "poof" de estrellas) y `defeatedTonight` evita que vuelva esa noche. Al amanecer (o con la noche tranquila), `leave` lo pasa a `exit`: se aleja subiendo y desaparece a los 8 s o al salir del mundo (`dragonLeft`).
+6. En el evento `dawn`, antes de las reapariciones, `regrowTrees` vuelve a poner con `TerrainWorld.growNatural` las celdas de cada árbol quemado que estén libres (aire, sin el niño ni una criatura dentro) y emite `treesRegrown`. `burntTrees` y los impactos de la noche se guardan en el estado del mundo (`GameState.burntTrees` y `dragon`).
+7. El render dibuja el dragón como una especie más (`RENDER_KINDS`, con alas y sin sombra) y `ProjectileRenderer` las flechas (adelantadas con `loop.alpha` entre pasos) y las llamaradas. El audio toca `shoot`, `thunk`, `rawr`, `fire` y `ding`.
 
 ### Guardado
 

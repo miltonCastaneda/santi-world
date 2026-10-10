@@ -17,8 +17,11 @@ export function connectGameAudio(audio: AudioService, game: Game): void {
   e.on("bump", ({ pos }) => audio.play("bump", { pos }));
   e.on("tooFar", () => audio.play("far"));
   e.on("toolUsed", ({ tool }) => {
-    if (tool === "sword" || tool === "bow" || tool === "collar") audio.play("swish", { volume: 0.7 });
+    if (tool === "sword" || tool === "collar") audio.play("swish", { volume: 0.7 });
   });
+  // El Arco: "fiu" al disparar y un "toc" de madera si la flecha se clava en un bloque.
+  e.on("arrowShot", ({ pos }) => audio.play("shoot", { pos, volume: 0.8 }));
+  e.on("arrowEnded", ({ pos, hit }) => hit === "block" && audio.play("thunk", { pos, volume: 0.6 }));
   e.on("playerHit", ({ result }) => audio.play(result === "poof" ? "poof" : "boing"));
   // Cada especie tiene su voz; comparten un límite de 3 voces, con prioridad para las más cercanas.
   e.on("animalSound", ({ sound, pos }) => {
@@ -32,7 +35,17 @@ export function connectGameAudio(audio: AudioService, game: Game): void {
     if (outcome === "tame") audio.play("tame", { pos });
     if (outcome === "happy") audio.play("woof", { pos, volume: 0.8 });
   });
-  e.on("entityRemoved", ({ species, pos }) => audio.play(species === "zombie" ? "sparkle" : "poof", { pos, volume: 0.8 }));
+  e.on("entityRemoved", ({ species, pos }) => audio.play(species === "zombie" || species === "dragon" ? "sparkle" : "poof", { pos, volume: 0.8 }));
+  // El dragón: un "ruar" de dibujo animado al llegar, fuego suave, un "ding" por cada flecha que lo alcanza.
+  e.on("dragonArrived", ({ pos }) => audio.play("rawr", { pos }));
+  e.on("dragonFire", ({ pos }) => {
+    audio.play("rawr", { pos, volume: 0.6 });
+    audio.play("fire", { pos });
+  });
+  e.on("treeBurnt", ({ pos }) => audio.play("poof", { pos, volume: 0.7 }));
+  e.on("dragonAte", ({ pos }) => audio.play("poof", { pos }));
+  e.on("dragonHit", ({ pos }) => audio.play("ding", { pos }));
+  e.on("dragonLeft", ({ pos }) => audio.play("rawr", { pos, volume: 0.5 }));
   e.on("itemCollected", () => audio.play("pickup"));
   e.on("pigChickenCaptured", ({ pos }) => audio.play("capture", { pos }));
   e.on("pigChickenReleased", ({ pos }) => audio.play("release", { pos }));

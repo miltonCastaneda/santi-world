@@ -5,8 +5,8 @@ import type { EntityAnim } from "../domain/entities/entityStore";
 import { isItemId, ITEM_IDS, type ItemId } from "../domain/entities/items";
 import { SPECIES_IDS } from "../domain/entities/species";
 
-/** Las criaturas que sabe dibujar: los animales de granja, el cerdo-gallina, los lobos (salvaje y amigo, con collar) y los zombis. */
-const RENDER_KINDS = [...SPECIES_IDS, "pigChicken", "zombie", "wolf", "wolfTame"] as const;
+/** Las criaturas que sabe dibujar: los animales de granja, el cerdo-gallina, los lobos (salvaje y amigo, con collar), los zombis y el dragón. */
+const RENDER_KINDS = [...SPECIES_IDS, "pigChicken", "zombie", "wolf", "wolfTame", "dragon"] as const;
 type RenderKind = (typeof RENDER_KINDS)[number];
 const isRenderKind = (s: string): s is RenderKind => (RENDER_KINDS as readonly string[]).includes(s);
 
@@ -136,9 +136,62 @@ const PIG_CHICKEN_MODEL: ModelDef = {
   shadow: 0.38,
 };
 
+const DRAGON_GREEN = 0x5cc96b;
+const DRAGON_DARK = 0x3fa55a;
+const DRAGON_BELLY = 0xf7e08a;
+const DRAGON_PURPLE = 0xb48cf0;
+/**
+ * Dragoncito de dibujo animado (que no asuste): verde con panza amarilla, ojos grandes con brillo,
+ * una sonrisa, cuernitos redondeados, púas lilas y alas grandes que aletean despacio. Sin dientes.
+ */
+const DRAGON_MODEL: ModelDef = {
+  body: [
+    { size: [1.4, 1.0, 2.0], at: [0, 0.85, 0], color: DRAGON_GREEN },
+    { size: [1.1, 0.2, 1.6], at: [0, 0.32, 0.05], color: DRAGON_BELLY },
+    { size: [0.6, 0.7, 0.6], at: [0, 1.35, 1.0], color: DRAGON_GREEN },
+    { size: [0.6, 0.5, 0.9], at: [0, 0.8, -1.4], color: DRAGON_GREEN },
+    { size: [0.4, 0.36, 0.8], at: [0, 0.82, -2.2], color: DRAGON_DARK },
+    { size: [0.5, 0.12, 0.34], at: [0, 0.84, -2.7], color: DRAGON_PURPLE },
+    ...[0.6, 0.1, -0.4].map((z): Box => ({ size: [0.14, 0.26, 0.24], at: [0, 1.44, z], color: DRAGON_PURPLE })),
+  ],
+  head: {
+    pivot: [0, 1.6, 1.2],
+    boxes: [
+      { size: [0.9, 0.76, 0.8], at: [0, 0.2, 0.3], color: DRAGON_GREEN },
+      { size: [0.62, 0.42, 0.5], at: [0, 0.02, 0.88], color: DRAGON_GREEN },
+      { size: [0.08, 0.06, 0.02], at: [-0.14, 0.12, 1.135], color: DRAGON_DARK },
+      { size: [0.08, 0.06, 0.02], at: [0.14, 0.12, 1.135], color: DRAGON_DARK },
+      // Sonrisa.
+      { size: [0.34, 0.05, 0.02], at: [0, -0.1, 1.135], color: 0x2f5d3a },
+      // Ojos grandes: blanco, pupila y brillo.
+      ...[-0.22, 0.22].flatMap((x): Box[] => [
+        { size: [0.22, 0.24, 0.04], at: [x, 0.34, 0.71], color: 0xffffff },
+        { size: [0.12, 0.14, 0.02], at: [x, 0.32, 0.74], color: EYE },
+        { size: [0.05, 0.05, 0.02], at: [x + 0.03, 0.37, 0.755], color: 0xffffff },
+      ]),
+      // Cuernitos amarillos.
+      { size: [0.12, 0.24, 0.12], at: [-0.24, 0.68, 0.18], color: DRAGON_BELLY },
+      { size: [0.12, 0.24, 0.12], at: [0.24, 0.68, 0.18], color: DRAGON_BELLY },
+    ],
+  },
+  legs: { hips: quad(0.45, 0.4, 0.6), boxes: leg(0.3, 0.4, DRAGON_DARK), height: 0.4 },
+  wings: {
+    shoulders: [[0.6, 1.3, 0.2]],
+    boxes: [
+      { size: [1.7, 0.08, 1.1], at: [0.85, 0, -0.15], color: DRAGON_PURPLE },
+      { size: [1.8, 0.14, 0.16], at: [0.9, 0.04, 0.42], color: DRAGON_GREEN },
+    ],
+    rest: -1.1,
+    flap: 0.6,
+    speed: 5,
+  },
+  shadow: 0,
+};
+
 /** Animales de cajas, estilo del personaje (ADR-0010). El frente es +z. */
 const MODELS: Record<RenderKind, ModelDef> = {
   pigChicken: PIG_CHICKEN_MODEL,
+  dragon: DRAGON_MODEL,
   wolf: WOLF_MODEL,
   wolfTame: WOLF_TAME_MODEL,
   // Zombi cartoon (preguntas abiertas, punto 6): verde claro, ojos grandes con brillo y una sonrisa;
@@ -508,7 +561,7 @@ export class EntityRenderer {
     // Lo que dejó de existir hace "poof" (si estaba cerca: lo lejano ni se veía).
     for (const [id, s] of this.shown) {
       if (s.seenAt === this.frame) continue;
-      if (s.pos.distanceTo(camera) <= ENTITY_DRAW_DISTANCE) this.poof(s.pos, s.species === "zombie" || isItemId(s.species) ? "sparkle" : "cloud");
+      if (s.pos.distanceTo(camera) <= ENTITY_DRAW_DISTANCE) this.poof(s.pos, s.species === "zombie" || s.species === "dragon" || isItemId(s.species) ? "sparkle" : "cloud");
       this.shown.delete(id);
     }
     this.drawPoofs();
@@ -621,6 +674,7 @@ export class EntityRenderer {
     }
 
     const r = m.shadow;
+    if (r <= 0) return;
     local.compose(new THREE.Vector3(s.pos.x, s.pos.y + 0.02, s.pos.z), new THREE.Quaternion(), new THREE.Vector3(r, 1, r));
     this.shadows.push(local);
   }

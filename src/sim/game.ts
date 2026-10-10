@@ -1,6 +1,6 @@
 import type { Clock } from "../core/clock";
 import { EventBus } from "../core/events";
-import { rayAabb, type Ray, type Vec3 } from "../core/math";
+import { normalize, rayAabb, type Aabb, type Ray, type Vec3 } from "../core/math";
 import { Rng } from "../core/rng";
 import { BLOCK_NUM, BLOCKS_BY_NUM, type BlockId } from "../domain/blocks";
 import { EntityStore, type Entity, type EntityKind } from "../domain/entities/entityStore";
@@ -13,23 +13,28 @@ import { ZOMBIE } from "../domain/entities/zombie";
 import type { EntitySnapshot } from "../domain/repository/model";
 import { bodyOverlapsCell, type CollisionQuery } from "../domain/physics/collide";
 import { pickCell } from "../domain/picking";
-import { resolveHit, type HitOutcome, type TargetKind } from "../domain/rules/damage";
+import { aimArrow } from "../domain/rules/archery";
+import { resolveArrowHit, resolveHit, type HitOutcome, type TargetKind } from "../domain/rules/damage";
 import { emptyInventory, sanitizeInventory, type Inventory, type ResourceId } from "../domain/rules/inventory";
 import { mineResult, regrowDue } from "../domain/rules/mining";
 import { REACH, TOOLS, type ToolId } from "../domain/rules/tools";
 import { CHUNK_HEIGHT } from "../domain/world/chunk";
 import { blockLightAt } from "../domain/world/light";
 import { TerrainWorld } from "../domain/world/terrainWorld";
+import type { TreeFeature } from "../domain/worldgen/layout";
+import { treeCells } from "../domain/worldgen/trees";
 import { entityFromSnapshot, entityToSnapshot, itemEntity } from "./entitySnapshots";
 import { FixedStepLoop, STEP_MS } from "./loop";
 import { Player, PLAYER_SPEED, type HitResult } from "./player";
 import { AnimalSystem, type AnimalContext, type AnimalSound } from "./systems/animals";
 import { durationsFrom, WorldClock, type Phase } from "./systems/dayNight";
+import { DragonDirector, type DragonContext } from "./systems/dragon";
 import { itemsInPickupRange } from "./systems/interaction";
 import type { PathWorld } from "./systems/pathfinding";
 import { regrowDiamonds } from "./systems/regrowth";
 import { respawnPending, type RespawnWorld } from "./systems/respawn";
 import { PigChickenSystem, type PigChickenContext } from "./systems/pigChickens";
+import { ProjectileSystem, type ArrowTarget } from "./systems/projectiles";
 import { NightSpawner, type SpawnWorld } from "./systems/spawn";
 import { WolfSystem, type WolfContext } from "./systems/wolves";
 import { ZombieSystem, type ZombieContext } from "./systems/zombies";
@@ -90,6 +95,26 @@ export type GameEvents = {
   releaseBlocked: { pos: Vec3 };
   /** Hay un cerdo-gallina elegido para soltar. */
   releaseArmed: { armed: boolean };
+  /** El Arco disparó una flecha (como mucho 3 por segundo). */
+  arrowShot: { id: string; pos: Vec3; vel: Vec3 };
+  /** La flecha chocó con un bloque o con una criatura, o se terminó su vuelo (desaparece). */
+  arrowEnded: { id: string; pos: Vec3; hit: "block" | "entity" | "expired" };
+  /** A mitad de la noche llegó el dragón. */
+  dragonArrived: { id: string; pos: Vec3 };
+  /** El dragón echa fuego sobre un árbol (llamarada cartoon). */
+  dragonFire: { treeId: string; pos: Vec3 };
+  /** El árbol se quemó: sus bloques naturales desaparecen hasta el amanecer. */
+  treeBurnt: { treeId: string; pos: Vec3 };
+  /** El dragón se comió un cerdo-gallina libre ("poof"; vuelve al amanecer). */
+  dragonAte: { pigId: string; pos: Vec3 };
+  /** Una flecha alcanzó al dragón: lleva `hits` de 5. */
+  dragonHit: { id: string; pos: Vec3; hits: number };
+  /** Quinto impacto: "poof" de estrellas y no vuelve esa noche. */
+  dragonDefeated: { id: string; pos: Vec3 };
+  /** El dragón se fue volando (terminó su ruta o amaneció). */
+  dragonLeft: { id: string; pos: Vec3 };
+  /** Al amanecer volvieron los árboles quemados. */
+  treesRegrown: { treeIds: string[] };
   phaseChanged: { phase: Phase; dayCount: number };
   /** Falta un minuto para la noche. */
   nightSoon: Record<string, never>;
@@ -120,6 +145,8 @@ export class Game {
   readonly pigChickens: PigChickenSystem;
   readonly zombies: ZombieSystem;
   readonly spawner: NightSpawner;
+  readonly dragon: DragonDirector;
+  readonly projectiles = new ProjectileSystem();
   readonly clock = new WorldClock();
   /** Sin zombis ni dragón (la noche llega igual). */
   quietNight = false;
@@ -151,6 +178,7 @@ export class Game {
     this.pigChickens = new PigChickenSystem(this.world.seed);
     this.zombies = new ZombieSystem(this.world.seed, this.animals.paths);
     this.spawner = new NightSpawner(this.world.seed);
+    this.dragon = new DragonDirector(this.world.seed);
     this.prepareHomes();
   }
 
@@ -217,6 +245,145 @@ export class Game {
       homes: this.homes,
       onSound: ({ id, pos }) => this.events.emit("animalSound", { id, species: "pigChicken", sound: PIG_CHICKEN.sound, pos }),
     };
+  }
+
+  private get dragonContext(): DragonContext {
+    const store = this.world.store;
+    return {
+      size: store.sizeInBlocks,
+      trees: this.world.layout?.trees ?? [],
+      surfaceY: (x, z) => store.surfaceY(x, z),
+      player: this.player.pos,
+      isNaturalTree: (t) => {
+        for (let i = 1; i <= t.trunk; i++) if (store.get(t.x, t.y + i, t.z) !== BLOCK_NUM.wood || store.isPlaced(t.x, t.y + i, t.z)) return false;
+        return true;
+      },
+      burnTree: (t) => this.burnTree(t),
+      freePigChickens: () => [...this.entities.all()].filter((e) => e.species === "pigChicken"),
+      eatPigChicken: (id) => this.removeEntity(id),
+    };
+  }
+
+  /** El fuego quita solo las celdas naturales del árbol: lo que construyó el niño queda igual. */
+  private burnTree(t: TreeFeature): Vec3[] {
+    const layout = this.world.layout;
+    if (!layout) return [];
+    const store = this.world.store;
+    const out: Vec3[] = [];
+    for (const c of treeCells(layout.seed, t)) {
+      if (store.get(c.x, c.y, c.z) !== BLOCK_NUM[c.block]) continue;
+      const pos = this.world.clearNatural(c.x, c.y, c.z, this.timeMs);
+      if (pos) out.push(pos);
+    }
+    for (const pos of out) this.changed(pos);
+    return out;
+  }
+
+  /** Al amanecer rebrotan los árboles quemados, solo en las celdas libres (nunca sobre una construcción ni una criatura). */
+  regrowTrees(): string[] {
+    const layout = this.world.layout;
+    const ids = this.dragon.burntTrees;
+    this.dragon.burntTrees = [];
+    if (!layout || ids.length === 0) return [];
+    for (const id of ids) {
+      const t = layout.trees.find((tree) => tree.id === id);
+      if (!t) continue;
+      for (const c of treeCells(layout.seed, t)) {
+        if (bodyOverlapsCell(this.player.body, c.x, c.y, c.z)) continue;
+        if (this.entities.near({ x: c.x + 0.5, y: c.y, z: c.z + 0.5 }, 3, (e) => bodyOverlapsCell(e.body, c.x, c.y, c.z)).length > 0) continue;
+        this.changed(this.world.growNatural(c.x, c.y, c.z, c.block, this.timeMs));
+      }
+    }
+    this.events.emit("treesRegrown", { treeIds: [...ids] });
+    return ids;
+  }
+
+  /** A mitad de la noche (sin la noche tranquila) llega el dragón, una vez por noche. */
+  private summonDragon(): void {
+    if (!this.world.layout) return;
+    const e = this.dragon.arrive(this.entities, this.dragonContext, this.clock.dayCount, this.timeMs);
+    if (e) this.events.emit("dragonArrived", { id: e.id, pos: { ...e.body.pos } });
+  }
+
+  private stepDragon(dtMs: number): void {
+    if (this.dragon.dragonId === null) return;
+    if (this.quietNight || !this.clock.isNight) this.dragon.leave(this.timeMs);
+    for (const ev of this.dragon.step(this.entities, this.dragonContext, this.timeMs, dtMs)) {
+      switch (ev.type) {
+        case "fire":
+          this.events.emit("dragonFire", { treeId: ev.treeId, pos: ev.pos });
+          break;
+        case "treeBurnt":
+          this.events.emit("treeBurnt", { treeId: ev.treeId, pos: ev.pos });
+          break;
+        case "ate":
+          this.events.emit("dragonAte", { pigId: ev.pigId, pos: ev.pos });
+          break;
+        case "left":
+          this.events.emit("dragonLeft", { id: ev.id, pos: ev.pos });
+          break;
+      }
+    }
+  }
+
+  /** Un impacto en el dragón (una flecha o una prueba): con el quinto hace "poof" de estrellas. */
+  hitDragon(): boolean {
+    const id = this.dragon.dragonId;
+    const r = this.dragon.hit(this.entities);
+    if (!id || !r) return false;
+    this.events.emit("dragonHit", { id, pos: r.pos, hits: r.hits });
+    if (r.defeated) {
+      this.events.emit("dragonDefeated", { id, pos: r.pos });
+      this.events.emit("entityRemoved", { id, species: "dragon", pos: r.pos });
+    }
+    return true;
+  }
+
+  /** Dispara una flecha desde los ojos hacia `aim`, con asistencia de puntería hacia el dragón. */
+  private shoot(aim: Vec3): void {
+    const eye = this.player.eye();
+    const dir = normalize({ x: aim.x - eye.x, y: aim.y - eye.y, z: aim.z - eye.z });
+    const id = this.dragon.dragonId;
+    const d = id ? this.entities.get(id) : undefined;
+    const target = d ? { center: { x: d.body.pos.x, y: d.body.pos.y + d.body.height / 2, z: d.body.pos.z }, vel: d.body.vel } : null;
+    const arrow = this.projectiles.shoot(eye, aimArrow(eye, dir, target), this.timeMs);
+    if (arrow) this.events.emit("arrowShot", { id: arrow.id, pos: { ...arrow.pos }, vel: { ...arrow.vel } });
+  }
+
+  private stepArrows(dtMs: number): void {
+    if (this.projectiles.arrows.length === 0) return;
+    const targets: ArrowTarget[] = [];
+    for (const e of this.entities.all()) {
+      if (e.species === "threat" || isItemId(e.species)) continue;
+      targets.push({ id: e.id, box: paddedBox(e, e.species === "dragon" ? 0.3 : 0.1) });
+    }
+    const ends = this.projectiles.step(dtMs, this.timeMs, (x, y, z) => this.collision(x, y, z) > 0, targets);
+    for (const end of ends) {
+      this.events.emit("arrowEnded", { id: end.arrow.id, pos: end.pos, hit: end.type });
+      if (end.type === "entity") this.arrowHit(end.targetId);
+    }
+  }
+
+  /** Una flecha alcanzó a una criatura (design D11, columna del Arco). */
+  private arrowHit(id: string): void {
+    const e = this.entities.get(id);
+    if (!e) return;
+    if (e.species === "dragon") {
+      this.hitDragon();
+      return;
+    }
+    const kind = targetKind(e);
+    if (!kind) return;
+    const { outcome, defeated, hits } = resolveArrowHit(kind, e.hits ?? 0);
+    if (outcome === "none") return;
+    e.hits = hits;
+    this.events.emit("entityHit", { id: e.id, species: e.species, pos: { ...e.body.pos }, outcome, defeated });
+    if (defeated) {
+      this.removeEntity(e.id);
+      return;
+    }
+    if (e.body.onGround) e.body.vel.y = 4;
+    if (kind === "wolf") this.wolves.flee(e, this.player.pos, this.timeMs);
   }
 
   /** Hace aparecer lo que corresponde a un slot: un animal de granja, un cerdo-gallina o un lobo. */
@@ -455,6 +622,8 @@ export class Game {
     this.pigChickens.reset(world.seed);
     this.zombies.reset(world.seed);
     this.spawner.reset(world.seed);
+    this.dragon.reset(world.seed);
+    this.projectiles.reset();
     this.pendingRespawns = [];
     this.armRelease(false);
     this.itemCount = 0;
@@ -489,6 +658,8 @@ export class Game {
     this.pigChickens.step(this.entities, this.pigChickenContext, this.tick, this.timeMs, dtMs);
     this.zombies.step(this.entities, this.zombieContext, this.tick, this.timeMs, dtMs);
     this.stepNight();
+    this.stepDragon(dtMs);
+    this.stepArrows(dtMs);
     this.stepClock(dtMs);
   }
 
@@ -503,11 +674,16 @@ export class Game {
           this.events.emit("nightSoon", {});
           break;
         case "midnight":
+          if (!this.quietNight) this.summonDragon();
           this.events.emit("midnight", { dayCount });
           break;
         case "dawn":
           // Si la hora saltó (padres o pruebas) y quedó algún zombi, se va antes de las reapariciones.
           for (const e of [...this.entities.all()]) if (e.species === "zombie") this.removeEntity(e.id);
+          this.dragon.leave(this.timeMs);
+          this.dragon.dawn();
+          // Primero los árboles: lo que reaparece después ya no queda atrapado dentro de un tronco.
+          this.regrowTrees();
           this.events.emit("dawn", { dayCount, respawned: this.dawn() });
           if (regrowDue(dayCount)) this.regrowDiamonds();
           break;
@@ -595,6 +771,14 @@ export class Game {
     const target = pickCell(ray, PICK_DISTANCE, (x, y, z) => this.world.isPickable(x, y, z));
     // Una criatura delante del bloque apuntado recibe el golpe en su lugar.
     const creature = this.pickEntity(ray, target?.distance ?? PICK_DISTANCE);
+    if (tool.id === "bow") {
+      // De cerca, el clic igual captura al cerdo-gallina y recoge la carne; si no, sale una flecha.
+      const near = creature && this.gapTo(creature.body) <= (creature.species === "pigChicken" ? PIG_CHICKEN.captureRange : REACH);
+      if (creature && near && isItemId(creature.species)) this.collectItem(creature.id);
+      else if (creature && near && creature.species === "pigChicken") this.capturePigChicken(creature.id);
+      else this.shoot(aimPoint(ray, creature ? this.rayDistanceTo(ray, creature) : target?.distance ?? null));
+      return;
+    }
     if (creature) {
       if (this.gapTo(creature.body) > REACH) this.events.emit("tooFar", { pos: { ...creature.body.pos } });
       // Un clic sobre la carne la recoge, con cualquier herramienta.
@@ -647,12 +831,7 @@ export class Game {
     let bestT = maxDistance;
     for (const e of this.entities.all()) {
       if (e.species === "threat") continue;
-      const { pos, halfWidth: w, height } = e.body;
-      const box = {
-        min: { x: pos.x - w - PICK_PAD, y: pos.y - PICK_PAD, z: pos.z - w - PICK_PAD },
-        max: { x: pos.x + w + PICK_PAD, y: pos.y + height + PICK_PAD, z: pos.z + w + PICK_PAD },
-      };
-      const t = rayAabb(ray, box, bestT);
+      const t = rayAabb(ray, paddedBox(e, PICK_PAD), bestT);
       // Un rayo que sale de dentro de la criatura no la "mira" (el ojo del jugador nunca está dentro).
       if (t !== null && t > 0 && t < bestT) {
         best = e;
@@ -660,6 +839,10 @@ export class Game {
       }
     }
     return best;
+  }
+
+  private rayDistanceTo(ray: Ray, e: Entity): number | null {
+    return rayAabb(ray, paddedBox(e, PICK_PAD), PICK_DISTANCE);
   }
 
   /** Distancia de los ojos del personaje a la caja de un cuerpo (0 si están dentro). */
@@ -718,7 +901,26 @@ export class Game {
   }
 }
 
+/** Caja del cuerpo con un margen (para acertarle con el clic o con una flecha). */
+function paddedBox(e: Entity, pad: number): Aabb {
+  const { pos, halfWidth: w, height } = e.body;
+  return {
+    min: { x: pos.x - w - pad, y: pos.y - pad, z: pos.z - w - pad },
+    max: { x: pos.x + w + pad, y: pos.y + height + pad, z: pos.z + w + pad },
+  };
+}
+
+/** Sin nada en la mira, la flecha va hacia un punto lejano en la dirección de la vista. */
+const AIM_FAR = 60;
+
+function aimPoint(ray: Ray, distance: number | null): Vec3 {
+  const d = normalize(ray.direction);
+  const t = distance ?? AIM_FAR;
+  return { x: ray.origin.x + d.x * t, y: ray.origin.y + d.y * t, z: ray.origin.z + d.z * t };
+}
+
 function targetKind(e: Entity): TargetKind | null {
+  if (e.species === "dragon") return "dragon";
   if (e.species === "zombie") return "zombie";
   if (e.species === "wolf") return e.tamed ? "friendWolf" : "wolf";
   if (e.species === "pigChicken") return "pigChicken";

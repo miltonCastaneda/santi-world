@@ -9,6 +9,7 @@ import { ChunkRenderer } from "./chunkRenderer";
 import { EntityRenderer, type EntityView } from "./entityRenderer";
 import { FollowCamera } from "./followCamera";
 import { PlayerModel, type PlayerView } from "./playerModel";
+import { ProjectileRenderer, type ArrowView } from "./projectileRenderer";
 import { Sky, type SkyTime } from "./sky";
 
 /** Cámara en tercera persona detrás del personaje (el juego). Sin esto, cámara orbital (visor de padres). */
@@ -18,7 +19,14 @@ export type FollowOptions = {
   now: () => number;
 };
 
-export type RenderAppOptions = { viewRadius?: number; workers?: number; follow?: FollowOptions; entities?: () => Iterable<EntityView> };
+export type RenderAppOptions = {
+  viewRadius?: number;
+  workers?: number;
+  follow?: FollowOptions;
+  entities?: () => Iterable<EntityView>;
+  /** Flechas en vuelo (y, con ellas, las llamaradas del dragón). */
+  arrows?: () => Iterable<ArrowView>;
+};
 
 const THUMB_W = 320;
 const THUMB_H = 180;
@@ -38,9 +46,11 @@ export class RenderApp {
   readonly materials: BlockMaterials;
   readonly chunks: ChunkRenderer;
   readonly entities: EntityRenderer | null = null;
+  readonly projectiles: ProjectileRenderer | null = null;
   readonly sky: Sky;
   private worldSize: number;
   private readonly entityViews: (() => Iterable<EntityView>) | null;
+  private readonly arrowViews: (() => Iterable<ArrowView>) | null;
   /** Vista fija (pruebas, ruta de rendimiento): la cámara no sigue al personaje hasta `followPlayer()`. */
   private fixed: { target: Vec3 } | null = null;
   private lastRender = 0;
@@ -104,6 +114,11 @@ export class RenderApp {
       this.entities = new EntityRenderer();
       this.scene.add(this.entities.group);
     }
+    this.arrowViews = options.arrows ?? null;
+    if (this.arrowViews) {
+      this.projectiles = new ProjectileRenderer();
+      this.scene.add(this.projectiles.group);
+    }
 
     window.addEventListener("resize", this.onResize);
   }
@@ -117,6 +132,7 @@ export class RenderApp {
     this.follow?.dispose();
     this.playerModel?.dispose();
     this.entities?.dispose();
+    this.projectiles?.dispose();
     this.sky.dispose();
     this.chunks.dispose();
     this.materials.dispose();
@@ -216,6 +232,7 @@ export class RenderApp {
       if (this.follow && !this.fixed) this.follow.update(dt, this.playerModel.root.position, p.yaw, p.anim === "walk");
     }
     if (this.entities && this.entityViews) this.entities.update(dt, this.entityViews(), this.camera.position);
+    if (this.projectiles && this.arrowViews) this.projectiles.update(dt, this.arrowViews());
     const f = this.focusPoint();
     this.chunks.setFocus(f.x, f.z);
     this.chunks.update();

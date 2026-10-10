@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ZOMBIE } from "../../../src/domain/entities/zombie";
-import { HITS_TO_DEFEAT, MELEE, resolveHit, TARGET_KINDS } from "../../../src/domain/rules/damage";
+import { HITS_TO_DEFEAT, MELEE, resolveArrowHit, resolveHit, TARGET_KINDS } from "../../../src/domain/rules/damage";
 import { TOOL_IDS, type ToolId } from "../../../src/domain/rules/tools";
 import { TerrainWorld } from "../../../src/domain/world/terrainWorld";
 import { FLAT_TOP_Y } from "../../../src/domain/worldgen/generator";
@@ -170,12 +170,17 @@ describe("[enemigos-nocturnos] Ataques y golpes", () => {
     expect(HITS_TO_DEFEAT.wolf).toBe(2);
     const table = Object.fromEntries(TOOL_IDS.map((t) => [t, Object.fromEntries(TARGET_KINDS.map((k) => [k, resolveHit(t, k).defeated ? "poof" : MELEE[t][k]]))]));
     expect(table).toEqual({
-      hand: { animal: "boing", zombie: "poof", pigChicken: "capture", wolf: "boing", friendWolf: "happy" },
-      pickaxe: { animal: "boing", zombie: "poof", pigChicken: "capture", wolf: "boing", friendWolf: "happy" },
-      sword: { animal: "poof", zombie: "poof", pigChicken: "capture", wolf: "defeat", friendWolf: "happy" },
-      bow: { animal: "none", zombie: "none", pigChicken: "capture", wolf: "none", friendWolf: "none" },
-      collar: { animal: "boing", zombie: "none", pigChicken: "capture", wolf: "tame", friendWolf: "happy" },
+      hand: { animal: "boing", zombie: "poof", pigChicken: "capture", wolf: "boing", friendWolf: "happy", dragon: "none" },
+      pickaxe: { animal: "boing", zombie: "poof", pigChicken: "capture", wolf: "boing", friendWolf: "happy", dragon: "none" },
+      sword: { animal: "poof", zombie: "poof", pigChicken: "capture", wolf: "defeat", friendWolf: "happy", dragon: "none" },
+      bow: { animal: "none", zombie: "none", pigChicken: "capture", wolf: "none", friendWolf: "none", dragon: "none" },
+      collar: { animal: "boing", zombie: "none", pigChicken: "capture", wolf: "tame", friendWolf: "happy", dragon: "none" },
     });
+    // Las flechas: rebote en los animales, el zombi hace "poof" y el dragón necesita 5.
+    expect(TARGET_KINDS.map((k) => resolveArrowHit(k).outcome)).toEqual(["boing", "defeat", "boing", "boing", "none", "defeat"]);
+    expect(resolveArrowHit("zombie").defeated).toBe(true);
+    expect(resolveArrowHit("dragon", 3).defeated).toBe(false);
+    expect(resolveArrowHit("dragon", 4).defeated).toBe(true);
     // Nunca hace falta más de un golpe para un zombi, aunque haya recibido otros antes.
     expect(resolveHit("sword", "zombie", 3).defeated).toBe(true);
     // El lobo salvaje: el primer espadazo lo hace retroceder; el segundo, "poof" (sin carne).

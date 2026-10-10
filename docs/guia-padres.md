@@ -11,7 +11,7 @@
 
 - Moverse con su personaje (W A S D o flechas, Espacio para saltar) y girar la cámara arrastrando con el botón derecho.
 - Poner bloques con la Mano y romperlos con el Pico (clic izquierdo), y deshacer la última acción.
-- Cuidar a los animales de la granja, defenderse de los zombis de noche, juntar carne y diamantes en la mochila, atrapar y soltar cerdos-gallina y hacerse amigo de los lobos con el Collar.
+- Cuidar a los animales de la granja, defenderse de los zombis de noche, juntar carne y diamantes en la mochila, atrapar y soltar cerdos-gallina, hacerse amigo de los lobos con el Collar y espantar al dragón nocturno con el Arco.
 - Ver sus mundos en **"🌍 Mis Mundos"** y volver a cualquiera de ellos.
 - **"＋ Crear nuevo mundo"**: guarda el mundo actual y recién después crea uno nuevo. Ya no existe "Empezar de nuevo": desde la pantalla del niño no se puede borrar ningún mundo.
 
@@ -58,7 +58,7 @@ Cada tarjeta muestra la miniatura, el nombre, la fecha de creación, la de últi
 **"Configurar"** permite elegir, para ese mundo:
 
 - La duración del **día** y de la **noche**, de **2 a 30 minutos** cada una. Si escribes un valor fuera de ese rango, se ajusta al límite y se te avisa.
-- La **noche tranquila**: sin zombis (ni, más adelante, dragón).
+- La **noche tranquila**: sin zombis ni dragón.
 - El **volumen** general, de la música y de los efectos (0 a 100).
 
 Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el niño lo está jugando en otra pestaña. Si cambias la duración de la noche mientras ya es de noche, se respeta lo que ya pasó: la noche termina cuando se cumple la nueva duración (o enseguida, si ya la superó). Si activas la noche tranquila de noche, los zombis que haya se van con destellos en 4 segundos o menos.
@@ -106,6 +106,14 @@ Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el
 - En la granja viven **3 cerdos-gallina** (cerditos rosados con alas y cresta). Caminan, picotean y vuelan en arcos cortos: nunca a más de 8 bloques del suelo, y pueden pasar por encima de la cerca (se quedan cerca de la granja). Si algo los asusta, huyen volando.
 - Un clic con **cualquier herramienta** a 4 bloques o menos lo **captura** (también en el aire) y va a la mochila. Nunca da carne. Los zombis y los lobos no lo persiguen.
 - Para soltarlo, el niño toca el 🐷 de la mochila (se resalta) y hace clic en el suelo. Nunca hay más de **3 libres**: si ya hay 3, suena un "toc" suave y no se suelta. Los capturados reaparecen en la granja al amanecer, así que la mochila puede juntar varios.
+
+### El Arco y el dragón (qué pasa de noche)
+
+- El **Arco** dispara una flecha con cada clic, hacia el centro de la pantalla: sale a unos 30 bloques por segundo, cae suavemente y desaparece al chocar con un bloque o a los 3 segundos. Las flechas son **infinitas** y salen como mucho **3 por segundo**, aunque el niño haga muchos clics. Una flecha hace "poof" a un zombi, a los animales solo les da un saltito y hace retroceder al lobo salvaje (al lobo amigo no le hace nada). De cerca, el clic con el Arco igual captura al cerdo-gallina y recoge la carne.
+- **Una vez por noche**, a la mitad de la noche (nunca con la noche tranquila), llega un **dragón** de caricatura: verde, sonriente, sin dientes, con alas lilas y un "ruar" agudo y corto. Da vueltas alrededor del niño, echa un fuego cartoon (cubos amarillos y naranjas, sin humo) sobre **2 árboles naturales** cercanos, que desaparecen, y si hay algún **cerdo-gallina libre a cielo abierto** se come uno (hace "poof"). Después sigue dando vueltas hasta el amanecer.
+- El dragón **nunca lastima al niño** ni toca bloques construidos por él: del árbol quema solo los bloques naturales. Los cerdos-gallina de la mochila o los que están bajo un techo (por ejemplo, el granero) están a salvo.
+- Hay **asistencia de puntería**: si el dragón está a 12° o menos del centro de la pantalla, la flecha va sola hacia él. Con **5 impactos** hace un "poof" de estrellas y no vuelve esa noche. Si no lo derrotan, se va volando al amanecer; la noche siguiente vuelve con 0 impactos.
+- **Al amanecer** los árboles quemados vuelven a crecer en su lugar, solo en las celdas libres: si el niño construyó donde estaba el árbol, su construcción se respeta. El cerdo-gallina comido reaparece en la granja. Los árboles quemados se guardan con el mundo: rebrotan aunque se cierre el juego antes del amanecer.
 
 ### Exportar e importar (respaldo)
 

@@ -83,6 +83,18 @@ export class TerrainWorld {
     return change ? { x, y, z } : null;
   }
 
+  /** Quita un bloque natural (el fuego del dragón); nunca uno colocado por el niño. Sin historial. */
+  clearNatural(x: number, y: number, z: number, now = 0): Vec3 | null {
+    if (y <= 0 || this.store.get(x, y, z) === 0 || this.store.isPlaced(x, y, z)) return null;
+    return this.store.set(x, y, z, 0, false, now) ? { x, y, z } : null;
+  }
+
+  /** Algo natural que vuelve a crecer (los árboles al amanecer): solo en celdas de aire. Sin historial. */
+  growNatural(x: number, y: number, z: number, id: BlockId, now = 0): Vec3 | null {
+    if (!this.store.inBounds(x, y, z) || y <= 0 || this.store.get(x, y, z) !== 0) return null;
+    return this.store.set(x, y, z, BLOCK_NUM[id], false, now) ? { x, y, z } : null;
+  }
+
   undo(now = 0): Vec3 | null {
     const last = this.history.pop();
     if (!last) return null;

@@ -266,14 +266,14 @@
 - **Depende de**: 12. **Paralelizable**: el modelo y el arte del dragón sí pueden hacerse en paralelo con 13.1 a 13.3. Si crece demasiado, se divide en 13a (arco) y 13b (dragón).
 - **Demo**: a medianoche aparece el dragón; Santi le dispara 5 flechas y desaparece en estrellas. Al amanecer, los árboles rebrotan.
 
-- [ ] 13.1 Implementar el proyectil balístico (30 bloques/s, gravedad de 10, 3 subpasos, DDA y rayo contra AABB, vida de 3 s, como máximo 3 por segundo) y verificar con pruebas unitarias "Física de la flecha" y "Disparos muy rápidos"
-- [ ] 13.2 Implementar la asistencia de puntería (cono de 12° y posición prevista) y verificarla con una prueba unitaria "Asistencia de puntería"
-- [ ] 13.3 Implementar `DragonDirector` (aparece en `midnight`, ruta fija, quema exactamente 2 árboles naturales, se come 1 cerdo-gallina si hay alguno libre, nunca toca bloques `placed` y respeta la noche tranquila) y verificar con pruebas unitarias "Paso del dragón", "Respeta las construcciones" y "Sin cerdo-gallinas libres"
-- [ ] 13.4 Implementar la regla **dragón = 5 impactos** (4 no bastan; el contador se reinicia la noche siguiente) y verificar con pruebas unitarias "Cinco impactos" y "Cuatro impactos"
-- [ ] 13.5 Implementar que los árboles quemados rebroten al amanecer solo en las celdas libres, y verificarlo con una prueba unitaria "Los árboles rebrotan"
-- [ ] 13.6 Crear el modelo del dragón (partes en cajas y aleteo), el fuego cartoon, las flechas y los sonidos, y verificarlo con la checklist "Revisión de efectos" (que no asuste)
-- [ ] 13.7 Verificar con una prueba de integración sin interfaz una noche completa con el dragón (árboles, cerdo-gallina, 5 impactos y amanecer)
-- [ ] 13.8 Actualizar `docs/guia-nino.md` (el arco y el dragón) y `docs/guia-padres.md` (qué pasa de noche) y agregar la entrada al CHANGELOG
+- [x] 13.1 Implementar el proyectil balístico (30 bloques/s, gravedad de 10, 3 subpasos, DDA y rayo contra AABB, vida de 3 s, como máximo 3 por segundo) y verificar con pruebas unitarias "Física de la flecha" y "Disparos muy rápidos"
+- [x] 13.2 Implementar la asistencia de puntería (cono de 12° y posición prevista) y verificarla con una prueba unitaria "Asistencia de puntería"
+- [x] 13.3 Implementar `DragonDirector` (aparece en `midnight`, ruta fija, quema exactamente 2 árboles naturales, se come 1 cerdo-gallina si hay alguno libre, nunca toca bloques `placed` y respeta la noche tranquila) y verificar con pruebas unitarias "Paso del dragón", "Respeta las construcciones" y "Sin cerdo-gallinas libres"
+- [x] 13.4 Implementar la regla **dragón = 5 impactos** (4 no bastan; el contador se reinicia la noche siguiente) y verificar con pruebas unitarias "Cinco impactos" y "Cuatro impactos"
+- [x] 13.5 Implementar que los árboles quemados rebroten al amanecer solo en las celdas libres, y verificarlo con una prueba unitaria "Los árboles rebrotan"
+- [x] 13.6 Crear el modelo del dragón (partes en cajas y aleteo), el fuego cartoon, las flechas y los sonidos, y verificarlo con la checklist "Revisión de efectos" (que no asuste)
+- [x] 13.7 Verificar con una prueba de integración sin interfaz una noche completa con el dragón (árboles, cerdo-gallina, 5 impactos y amanecer)
+- [x] 13.8 Actualizar `docs/guia-nino.md` (el arco y el dragón) y `docs/guia-padres.md` (qué pasa de noche) y agregar la entrada al CHANGELOG
 
 ## 14. Integración final: rendimiento, estabilidad visual y aceptación
 

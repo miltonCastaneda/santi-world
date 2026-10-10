@@ -87,6 +87,14 @@ export type SantiTestApi = {
   moveEntity(id: string, pos: Vec3): boolean;
   /** Pone un zombi en `pos` (pies); devuelve su id. */
   spawnZombie(pos: Vec3): string;
+  /** El dragón de esta noche, si está en el mundo. */
+  dragon(): { id: string; phase: string | null; hits: number; pos: Vec3 } | null;
+  /** Un impacto en el dragón (como una flecha que lo alcanza). */
+  hitDragon(): boolean;
+  /** Flechas en vuelo. */
+  arrows(): number;
+  /** Detiene (o reanuda) la simulación; el render sigue (para fotos de escenas quietas). */
+  setPaused(paused: boolean): void;
   /** Usa la herramienta elegida con un rayo desde los ojos del personaje hacia `target` (como un clic). */
   useToolToward(target: Vec3): void;
   /** Deja un objeto flotando en `pos`; devuelve su id. */
@@ -198,6 +206,14 @@ export function installTestApi(deps: {
       return true;
     },
     spawnZombie: (pos) => game.spawnZombie(pos).id,
+    dragon: () => {
+      const id = game.dragon.dragonId;
+      const e = id ? game.entities.get(id) : undefined;
+      return e ? { id: e.id, phase: game.dragon.phase, hits: game.dragon.hitsTaken, pos: { ...e.body.pos } } : null;
+    },
+    hitDragon: () => game.hitDragon(),
+    arrows: () => game.projectiles.arrows.length,
+    setPaused: (paused) => loop.setPaused(paused),
     useToolToward: (target) => {
       const origin = game.player.eye();
       const d = { x: target.x - origin.x, y: target.y - origin.y, z: target.z - origin.z };

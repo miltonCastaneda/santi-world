@@ -148,6 +148,8 @@ export class GameSession {
         dayCount: clock.dayCount,
         pendingRespawns: [...this.game.pendingRespawns],
         inventory: { ...this.game.inventory },
+        burntTrees: [...this.game.dragon.burntTrees],
+        dragon: { hitsTaken: this.game.dragon.hitsTaken, defeatedTonight: this.game.dragon.defeatedTonight },
         animalsSpawned: true,
         player: {
           pos: { ...this.game.player.pos },
@@ -190,6 +192,8 @@ export class GameSession {
     this.game.pendingRespawns = [...state.pendingRespawns];
     // Cada mundo tiene su inventario (spec "Inventario independiente por mundo").
     this.game.setInventory(state.inventory);
+    // Los árboles quemados rebrotan al amanecer aunque se cierre el juego antes.
+    this.game.dragon.restore(state.dragon?.hitsTaken ?? 0, state.dragon?.defeatedTonight ?? false, state.burntTrees ?? []);
     // Un mundo nuevo (o guardado antes de que hubiera animales) recibe su población inicial; uno
     // guardado antes de que hubiera lobos los recibe una sola vez (los que faltan por un "poof"
     // siguen pendientes del amanecer).
@@ -248,7 +252,7 @@ export class GameSession {
     // La hora cuenta cada 5 s (spec "Persistir la hora": ± 5 s).
     const clock = `${this.game.clock.dayCount}:${Math.floor(this.game.clock.timeOfCycleMs / 5000)}:${this.game.pendingRespawns.join(",")}`;
     const inv = this.game.inventory;
-    const inventory = `${inv.diamond},${inv.meat},${inv.pigChicken},${this.game.entities.size}`;
+    const inventory = `${inv.diamond},${inv.meat},${inv.pigChicken},${this.game.entities.size},${this.game.dragon.burntTrees.join(",")},${this.game.dragon.hitsTaken}`;
     return `${this.game.selection.tool}|${this.game.selection.block}|${r(p.pos)}|${p.hearts}|${animals}|${clock}|${inventory}|${cam ? `${r(cam.position)}|${r(cam.target)}` : ""}`;
   }
 }

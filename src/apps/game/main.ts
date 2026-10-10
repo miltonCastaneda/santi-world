@@ -13,9 +13,10 @@ import { importLegacyWorld } from "../../persistence/legacyImport";
 import { requestPersistentStorage } from "../../persistence/storage";
 import type { EntityView } from "../../render/entityRenderer";
 import type { PlayerView } from "../../render/playerModel";
+import type { ArrowView } from "../../render/projectileRenderer";
 import { RenderApp } from "../../render/renderApp";
 import { Game } from "../../sim/game";
-import { FixedStepLoop } from "../../sim/loop";
+import { FixedStepLoop, STEP_MS } from "../../sim/loop";
 import { ACTION_MS } from "../../sim/player";
 import { GameSession } from "../../sim/session";
 import { MAX_ZOMBIES } from "../../sim/systems/spawn";
@@ -72,11 +73,20 @@ function* entityViews(): Iterable<EntityView> {
   }
 }
 
+/** Las flechas van a 30 bloques/s: entre dos pasos de la simulación se adelantan con su velocidad. */
+function* arrowViews(): Iterable<ArrowView> {
+  const ahead = (loop.alpha * STEP_MS) / 1000;
+  for (const a of game.projectiles.arrows) {
+    yield { pos: { x: a.pos.x + a.vel.x * ahead, y: a.pos.y + a.vel.y * ahead, z: a.pos.z + a.vel.z * ahead }, vel: a.vel };
+  }
+}
+
 const view = new RenderApp(canvas, game.world.store, game.world.gen, game.world.spawn, {
   viewRadius,
   workers,
   follow: { player: playerView, isSolid: (x, y, z) => game.collision(x, y, z) > 0, now: () => performance.now() },
   entities: entityViews,
+  arrows: arrowViews,
 });
 
 game.events.on("blockChanged", ({ pos }) => view.chunks.invalidateBlock(pos.x, pos.z));
@@ -90,7 +100,23 @@ game.events.on("entityHit", ({ id, pos, outcome, defeated }) => {
 game.events.on("worldReplaced", ({ world }) => {
   view.chunks.rebuildAll(world.store, world.gen);
   view.entities?.clear();
+  view.projectiles?.clear();
 });
+// El fuego del dragón: llamaradas cartoon mientras quema el árbol, y una nube cuando desaparece.
+const FIRE_BURSTS_MS = [0, 600, 1200];
+game.events.on("dragonFire", ({ pos }) => {
+  for (const ms of FIRE_BURSTS_MS) setTimeout(() => view.projectiles?.fire(pos), ms);
+});
+game.events.on("treeBurnt", ({ pos }) => {
+  view.projectiles?.fire(pos);
+  view.entities?.poof({ x: pos.x, y: pos.y + 2, z: pos.z }, "cloud");
+});
+game.events.on("dragonHit", ({ id }) => blinkUntil.set(id, performance.now() + BLINK_MS));
+game.events.on("dragonDefeated", ({ pos }) => {
+  // Un "poof" de estrellas grande, del tamaño del dragón.
+  for (const [dx, dy, dz] of [[0, 0.5, 0], [-1, 1, 0.5], [1, 1, -0.5], [0, 1.5, 1]]) view.entities?.poof({ x: pos.x + dx, y: pos.y + dy, z: pos.z + dz }, "sparkle");
+});
+game.events.on("dragonAte", ({ pos }) => view.entities?.poof(pos, "cloud"));
 game.events.on("playerRespawned", () => view.isFollowing && view.followPlayer());
 
 const repo = new DexieWorldRepository(new SantiDatabase(), { clock: wallClock, newId: () => crypto.randomUUID() });
@@ -262,6 +288,7 @@ async function boot(): Promise<void> {
           entitiesDrawn: view.entities?.stats.drawn ?? 0,
           entityDrawCalls: view.entities?.stats.drawCalls ?? 0,
           poofs: view.entities?.stats.poofs ?? 0,
+          effectDrawCalls: view.projectiles?.drawCalls ?? 0,
         }),
       },
     });

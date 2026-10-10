@@ -19,7 +19,7 @@ Tienes un **personaje** con una **"S"** en la camiseta. ¡Eres tú!
 - ⛏️ **El Pico** rompe bloques. Si tocas un **diamante** 💎 con el Pico, ¡brilla y el diamante va a tu mochila!
 - ⚔️ **La Espada**: con **un golpe** un zombi se va con destellos ✨. Si tocas a un animal de la granja con la espada, hace **poof** y deja un pedazo de **carne** 🍖 (el animal vuelve a la granja por la mañana). Con la Mano o el Pico, el animal solo da un saltito ("boing").
 - 📿 **El Collar** sirve para hacerte **amigo de un lobo**: acércate y haz clic sobre él.
-- 🏹 **El Arco** sirve para algo que llega pronto.
+- 🏹 **El Arco** dispara **flechas** hacia donde miras. Las flechas **nunca se acaban**. ¡Sirve para el dragón!
 - La herramienta que estás usando se pone **verde** y tu personaje la lleva en la mano.
 
 ## Tus bloques (abajo)
@@ -108,6 +108,18 @@ Tu primer mundo, el de antes, se llama **"Mi primer mundo"**. Si ves el dibujo *
 - Nunca hay más de **3 libres**. Si ya hay 3 y quieres soltar otro, suena un "toc" suave y se queda en la mochila.
 - Los que atrapaste vuelven a aparecer en la granja **por la mañana**, así siempre hay cerdos-gallina para jugar.
 
-## Pronto (Fase 2)
+## El Arco 🏹
 
-- El **Arco** 🏹 y una sorpresa que llega de noche.
+- Elige el **Arco** y haz **clic**: sale una flecha hacia el centro de la pantalla. Vuela rápido y baja poquito a poco.
+- Si la flecha toca un bloque, suena "toc" y desaparece. Si toca a un zombi, el zombi se va con **destellos** ✨. A los animales solo les da un saltito.
+- Si haces muchos clics muy rápido, igual salen **3 flechas** por segundo como máximo.
+- Con el Arco también puedes **atrapar un cerdo-gallina** si está bien cerquita.
+
+## El dragón 🐉 (a mitad de la noche)
+
+- Una vez por noche, a la mitad de la noche, llega un **dragoncito verde** con alas lilas. Dice "¡ruar!" y da vueltas en el cielo, cerca tuyo.
+- **A ti nunca te lastima**, y **nunca rompe lo que construiste**.
+- Echa **fuego** sobre **2 árboles** y los árboles desaparecen... ¡pero **vuelven a crecer por la mañana**!
+- Si hay un **cerdo-gallina** suelto, ¡se lo come! (hace poof). No te preocupes: **vuelve a la granja por la mañana**. Los cerdos-gallina que tienes en la **mochila** 🎒 o los que están **bajo un techo** están a salvo.
+- Para que se vaya: elige el **Arco** 🏹 y apunta al dragón. ¡No hace falta apuntar perfecto, la flecha te ayuda! Cada flecha que lo toca hace "ding". Con **5 flechas**, ¡**poof** de estrellas! ⭐ Esa noche ya no vuelve.
+- Si no lo alcanzas, no pasa nada: cuando sale el **sol**, se va volando.
