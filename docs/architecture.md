@@ -2,9 +2,9 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 6)
+## Estado actual (Fase 2, incremento 7)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
@@ -33,7 +33,9 @@ src/
                 de limpiar; guarda posición, rumbo, corazones, herramienta y animales),
                 systems/animals.ts (AnimalSystem: percibir, pensar cada 4 ticks, moverse, sonidos),
                 systems/pathfinding.ts (A* con presupuesto, PathQueue, invalidación por versión de
-                chunk), entitySnapshots.ts (entidad <-> EntitySnapshot)                           (puro)
+                chunk), systems/dayNight.ts (WorldClock: fases, eventos, duraciones en caliente),
+                systems/respawn.ts (reaparición por slots al amanecer), entitySnapshots.ts
+                (entidad <-> EntitySnapshot)                                                      (puro)
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
                 autosave.ts (AutosaveService), migrations.ts (migrations[n] puras), legacyImport.ts
                 (v1 a "Mi primer mundo"), exportFormat.ts, errorLog.ts, storage.ts (persist()),
@@ -47,14 +49,17 @@ src/
                 chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
                 meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
                 tiles.ts y textures.ts (tiles procedurales de 16 px), blockMaterial.ts
-                (DataArrayTexture + MeshBasicMaterial con uDaylight), sky.ts (cielo y niebla)
+                (DataArrayTexture + MeshBasicMaterial con uDaylight), sky.ts (cielo, niebla, sol, luna
+                y estrellas), lighting.ts (skyLighting: colores y luces según la luz del día)
   input/        pointerInput.ts (clic izquierdo a intent "useTool"), gameInput.ts (WASD/flechas relativas
                 a la cámara, Espacio, 1 a 9, rueda, E; protecciones del navegador; suelta todo en blur)
-  audio/        audioService.ts (buses con tope 0,8, silencio, voces de animales, posicional),
-                synth.ts (efectos sintetizados CC0), gameAudio.ts (eventos del juego a sonidos)
+  audio/        audioService.ts (buses con tope 0,8, silencio, voces de animales, posicional, música
+                con cruce), synth.ts (efectos y música sintetizados CC0), gameAudio.ts (eventos del
+                juego a sonidos y a la pista de música)
   ui/           hud.ts (corazones, herramientas, barra de bloques, deshacer, Mis Mundos, nuevo mundo,
                 silencio, pantalla completa, "muy lejos"), kid/misMundos.ts (tarjetas con miniatura,
-                sin borrar), kid/saveWarning.ts (ícono si falla el guardado), debugOverlay.ts (F3), style.css,
+                sin borrar), kid/saveWarning.ts (ícono si falla el guardado), kid/hudClock.ts (sol o
+                luna, arco, "Día N" y aviso de noche), debugOverlay.ts (F3), style.css,
                 parents/parentsView.ts (histórico, papelera, configuración, PIN, exportar/importar), parents.css
   testing/      testApi.ts (window.__santi) y parentsTestApi.ts (window.__padres), solo en desarrollo con ?test=1
 ```
@@ -82,6 +87,14 @@ src/
 4. Los animales emiten `animalSound` cada cierto tiempo; el audio lo reproduce posicional en el bus `ambient` con el límite de 3 voces.
 5. En cada frame, `EntityRenderer` lee una vista de cada animal (posición, rumbo, animación), la suaviza y escribe las matrices de las instancias. Si un animal desaparece cerca de la cámara hace "poof".
 6. Al guardar, `GameSession.collect()` agrega `entitySnapshots(worldId)` (posición, rumbo, estado y tiempos relativos del cerebro, slot, hogar). Al abrir, `restoreEntities` los recrea con el mismo estado; los caminos se vuelven a pedir.
+
+### Día y noche
+
+1. `Game.clock` (`WorldClock`) avanza al final de cada paso de la simulación, así que con la pestaña oculta (bucle en pausa) el tiempo no pasa. Las duraciones vienen de `world.settings` (`Game.configureTime`, también en caliente desde la vista de padres). El atardecer son los últimos 30 s del día y el amanecer, los últimos 30 s de la noche.
+2. `advance` devuelve los eventos en orden y `Game` los emite: `nightSoon` (60 s antes), `phaseChanged`, `midnight` y `dawn`. Al amanecer, `respawnPending` recrea en la celda libre más cercana a su slot (8 bloques o menos, nunca sobre una construcción) a los animales cuyo slot quedó pendiente por `Game.removeEntity`, sin duplicar a los que siguen vivos.
+3. En cada frame, `RenderApp.setTime` recibe `clock.daylight` (curva suave) y la posición del sol o la luna. `skyLighting` calcula el cielo, la niebla, la luz de los modelos (nunca por debajo de `NIGHT_HEMI`) y las estrellas, y `uDaylight` oscurece el terreno sin regenerar mallas.
+4. `hudClock` lee el reloj cada 250 ms. `gameAudio` toca la campanita en `nightSoon` y cambia la música con `phaseChanged` (`AudioService.setMusic`, cruce de 6 s).
+5. Se guardan `timeOfCycleMs`, `dayCount` y los slots pendientes en el estado del mundo; al abrir, el reloj se restaura antes de recrear los animales.
 
 ### Guardado
 

@@ -3,7 +3,7 @@
  * uno es una función pura de la frecuencia de muestreo, así que se pueden probar sin navegador.
  */
 export const ANIMAL_SOUNDS = ["baa", "moo", "meh", "cluck", "peep", "quack"] as const;
-export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", ...ANIMAL_SOUNDS] as const;
+export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];
 
@@ -75,6 +75,11 @@ export function synthesize(name: SoundName, rate: number): Float32Array<ArrayBuf
       return render(rate, 0.15, (t) => rnd() * 0.2 * Math.sin(Math.PI * (t / 0.15)), { attack: 0.02, decay: 0.08 });
     case "far":
       return render(rate, 0.12, (t) => 0.2 * tone(440, 330, 0.12)(t), { attack: 0.01, decay: 0.04 });
+    // Aviso de que se acerca la noche: dos notas de campanita, suaves (sol y mi).
+    case "chime": {
+      const bell = (f: number, t: number) => Math.sin(2 * Math.PI * f * t) + 0.3 * Math.sin(2 * Math.PI * f * 2.76 * t);
+      return render(rate, 0.5, (t) => 0.22 * (t < 0.2 ? bell(784, t) : bell(659, t - 0.2) * Math.min(1, (t - 0.2) / 0.01)), { attack: 0.01, decay: 0.25 });
+    }
     // Animales: voces suaves y cortas, sin nada que asuste (ni graves fuertes ni chillidos).
     case "baa": {
       const v = voice(rate, (t) => 300 - 40 * t + 12 * Math.sin(2 * Math.PI * 16 * t), [0.22, 0.1, 0.06]);
@@ -101,4 +106,76 @@ export function synthesize(name: SoundName, rate: number): Float32Array<ArrayBuf
       return render(rate, 0.25, (t) => v(t) + 0.03 * rnd(), { attack: 0.01, decay: 0.09 });
     }
   }
+}
+
+export const MUSIC_TRACKS = ["day", "night"] as const;
+export type MusicTrack = (typeof MUSIC_TRACKS)[number];
+
+/** Pentatónica mayor: sin semitonos, ninguna combinación de notas suena disonante. */
+export const PENTATONIC = [0, 2, 4, 7, 9] as const;
+
+export type MusicDef = {
+  bpm: number;
+  /** Frecuencia de la nota 0 de la escala. */
+  root: number;
+  /** Grados de la escala en corcheas (-1 = silencio). */
+  melody: readonly number[];
+  /** Un grado por compás (8 corcheas), una octava abajo. */
+  bass: readonly number[];
+  /** Cuánto dura cada nota antes de apagarse (s). */
+  decay: number;
+};
+
+/** Música que no asusta (docs/assets.md): lenta, suave, en mayor y sin ataques bruscos. */
+export const MUSIC: Record<MusicTrack, MusicDef> = {
+  day: {
+    bpm: 96,
+    root: 261.63,
+    melody: [0, 2, 4, 2, 3, 4, 5, -1, 4, 3, 2, 0, 1, 2, 0, -1, 0, 2, 4, 5, 7, 5, 4, -1, 3, 4, 2, 1, 0, -1, -1, -1],
+    bass: [0, 3, 1, 0],
+    decay: 0.35,
+  },
+  // Canción de cuna para la noche: más lenta, más grave y más suave.
+  night: {
+    bpm: 66,
+    root: 196,
+    melody: [4, -1, 2, -1, 3, 2, 0, -1, 1, -1, 2, -1, 0, -1, -1, -1, 4, -1, 5, -1, 4, 2, 3, -1, 2, 1, 0, -1, 0, -1, -1, -1],
+    bass: [0, 1, 3, 0],
+    decay: 0.6,
+  },
+};
+
+/** Pico de la música: por debajo de los efectos, para que acompañe sin tapar. */
+export const MUSIC_PEAK = 0.25;
+
+export function degreeToHz(root: number, degree: number): number {
+  const octave = Math.floor(degree / PENTATONIC.length);
+  const semis = PENTATONIC[((degree % PENTATONIC.length) + PENTATONIC.length) % PENTATONIC.length] + 12 * octave;
+  return root * 2 ** (semis / 12);
+}
+
+/** Un bucle completo de la pista (se repite sin cortes). */
+export function synthesizeMusic(track: MusicTrack, rate: number): Float32Array<ArrayBuffer> {
+  const def = MUSIC[track];
+  const eighth = 30 / def.bpm;
+  const n = Math.round(rate * eighth * def.melody.length);
+  const out = new Float32Array(n);
+  const note = (start: number, freq: number, amp: number, decay: number, len: number) => {
+    const i0 = Math.round(start * rate);
+    const i1 = Math.min(n, i0 + Math.round(len * rate));
+    for (let i = i0; i < i1; i++) {
+      const t = (i - i0) / rate;
+      // Ataque de 40 ms (ninguna nota "golpea") y 50 ms de salida (sin clics al cortar ni en el bucle).
+      const env = Math.min(1, t / 0.04, (len - t) / 0.05) * Math.exp(-t / decay);
+      out[i] += amp * env * (Math.sin(2 * Math.PI * freq * t) + 0.25 * Math.sin(4 * Math.PI * freq * t));
+    }
+  };
+  def.melody.forEach((deg, k) => {
+    if (deg >= 0) note(k * eighth, degreeToHz(def.root, deg), 1, def.decay, Math.min(def.decay * 5, eighth * 4));
+  });
+  def.bass.forEach((deg, bar) => note(bar * 8 * eighth, degreeToHz(def.root / 2, deg), 0.5, eighth * 4, eighth * 8));
+  let peak = 0;
+  for (const v of out) peak = Math.max(peak, Math.abs(v));
+  if (peak > 0) for (let i = 0; i < n; i++) out[i] *= MUSIC_PEAK / peak;
+  return out;
 }

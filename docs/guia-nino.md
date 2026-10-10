@@ -48,6 +48,14 @@ Tu primer mundo, el de antes, se llama **"Mi primer mundo"**. Si ves el dibujo *
 - La **cerca** los cuida. Si haces un **hueco** en la cerca, ¡alguno se puede escapar! Ciérrala con bloques para que se queden adentro.
 - No puedes poner un bloque encima de un animal: suena "bump".
 
+## El sol y la luna (arriba, en el medio)
+
+- Si ves el **sol ☀️**, es de día. Si ves la **luna 🌙**, es de noche.
+- El **círculo** alrededor se va llenando: cuando se llena, cambia el día por la noche (o la noche por el día).
+- Cuando aparece una **lunita que parpadea** y suena una **campanita**, ¡ya casi es de noche! Es buen momento para guardar a tus animales.
+- El número es **qué día es** en tu mundo. Cada mañana sube uno.
+- De noche el cielo se pone oscuro y salen las **estrellas** ⭐. Por la mañana, los animales que se fueron vuelven a la granja.
+
 ## Pronto (Fase 2)
 
 - Llegará el **cerdo-gallina**, que vuela.

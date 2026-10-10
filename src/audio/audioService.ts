@@ -1,5 +1,10 @@
 import type { Vec3 } from "../core/math";
-import { synthesize, type SoundName } from "./synth";
+import { synthesize, synthesizeMusic, type MusicTrack, type SoundName } from "./synth";
+
+/** La música de día y la de noche se cruzan en 5 s o más (design D12). */
+export const MUSIC_FADE_S = 6;
+/** La música se genera a menor frecuencia de muestreo (el navegador la convierte). */
+const MUSIC_RATE = 22050;
 
 /** Ganancia máxima del bus maestro: nunca más del 80 % (oídos de un niño). */
 export const MASTER_CAP = 0.8;
@@ -11,11 +16,16 @@ export const HEARING_DISTANCE = 24;
 export type Bus = "music" | "sfx" | "ambient";
 export type Volumes = { master: number; music: number; sfx: number };
 
-type Param = { value: number; setValueAtTime(value: number, time: number): unknown; cancelScheduledValues(time: number): unknown };
+type Param = {
+  value: number;
+  setValueAtTime(value: number, time: number): unknown;
+  linearRampToValueAtTime(value: number, time: number): unknown;
+  cancelScheduledValues(time: number): unknown;
+};
 type Node = { connect(dest: unknown): unknown; disconnect?(): unknown };
 type GainLike = Node & { gain: Param };
 type PannerLike = Node & { pan: Param };
-type SourceLike = Node & { buffer: unknown; start(when?: number): void; stop(when?: number): void; onended: (() => void) | null };
+type SourceLike = Node & { buffer: unknown; loop: boolean; start(when?: number): void; stop(when?: number): void; onended: (() => void) | null };
 type BufferLike = { getChannelData(channel: number): Float32Array };
 
 /** Lo que usa el servicio de un AudioContext (un contexto falso lo implementa en las pruebas). */
@@ -57,6 +67,11 @@ export class AudioService {
   private volumes: Volumes = { master: DEFAULT_MASTER, music: 0.5, sfx: 0.8 };
   private muted = false;
   private listener = { pos: { x: 0, y: 0, z: 0 } as Vec3, yaw: 0 };
+  private musicBuffers = new Map<MusicTrack, BufferLike>();
+  private music: { track: MusicTrack; source: SourceLike; gain: GainLike } | null = null;
+  private wantedMusic: MusicTrack | null = null;
+  /** Cuántas veces se pidió cada sonido, haya sonado o no (para las pruebas y el overlay). */
+  readonly requests = new Map<string, number>();
 
   constructor(private readonly createContext: () => AudioContextLike | null) {}
 
@@ -126,6 +141,7 @@ export class AudioService {
 
   /** Reproduce un sonido. Devuelve false si no sonó (sin contexto, en silencio, lejos o sin voz libre). */
   play(name: SoundName, opts: PlayOptions = {}): boolean {
+    this.requests.set(name, (this.requests.get(name) ?? 0) + 1);
     const ctx = this.ctx;
     // Suspendido, los sonidos se acumularían y sonarían todos juntos al reanudar.
     if (!ctx || this.muted || ctx.state !== "running") return false;
@@ -168,6 +184,56 @@ export class AudioService {
     return true;
   }
 
+  get musicTrack(): MusicTrack | null {
+    return this.music?.track ?? null;
+  }
+
+  /**
+   * Cambia la música con un cruce de `MUSIC_FADE_S`: la anterior baja hasta 0 mientras la nueva sube.
+   * Sin contexto todavía, queda pedida y empieza cuando se crea.
+   */
+  setMusic(track: MusicTrack | null): void {
+    this.wantedMusic = track;
+    if (this.ctx) this.applyMusic(this.ctx);
+  }
+
+  private applyMusic(ctx: AudioContextLike): void {
+    const track = this.wantedMusic;
+    if (this.music?.track === track) return;
+    const now = ctx.currentTime;
+    if (this.music) {
+      const { source, gain } = this.music;
+      const from = gain.gain.value;
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(from, now);
+      gain.gain.linearRampToValueAtTime(0, now + MUSIC_FADE_S);
+      source.stop(now + MUSIC_FADE_S);
+      this.music = null;
+    }
+    if (!track) return;
+    const source = ctx.createBufferSource();
+    source.buffer = this.musicBuffer(ctx, track);
+    source.loop = true;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(1, now + MUSIC_FADE_S);
+    source.connect(gain);
+    gain.connect(this.buses.get("music"));
+    source.start(now);
+    this.music = { track, source, gain };
+  }
+
+  private musicBuffer(ctx: AudioContextLike, track: MusicTrack): BufferLike {
+    let b = this.musicBuffers.get(track);
+    if (!b) {
+      const data = synthesizeMusic(track, MUSIC_RATE);
+      b = ctx.createBuffer(1, data.length, MUSIC_RATE);
+      b.getChannelData(0).set(data);
+      this.musicBuffers.set(track, b);
+    }
+    return b;
+  }
+
   private claimAnimalVoice(distance: number): boolean {
     this.pruneVoices();
     if (this.animalVoices.length < MAX_ANIMAL_VOICES) return true;
@@ -202,6 +268,7 @@ export class AudioService {
       this.buses.set(bus, g);
     }
     this.applyGains();
+    if (this.wantedMusic) this.applyMusic(ctx);
     return ctx;
   }
 

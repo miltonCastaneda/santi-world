@@ -62,7 +62,16 @@ Cada tarjeta muestra la miniatura, el nombre, la fecha de creación, la de últi
 - La **noche tranquila**: sin zombis ni dragón.
 - El **volumen** general, de la música y de los efectos (0 a 100).
 
-Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el niño lo está jugando en otra pestaña. (El ciclo de día y noche, los enemigos y el sonido llegan en los próximos incrementos; la configuración ya queda guardada.)
+Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el niño lo está jugando en otra pestaña. Si cambias la duración de la noche mientras ya es de noche, se respeta lo que ya pasó: la noche termina cuando se cumple la nueva duración (o enseguida, si ya la superó). La noche tranquila ya queda guardada y se aplica cuando lleguen los enemigos (próximos incrementos).
+
+### El día y la noche
+
+- Un **día del juego** es un día seguido de una noche: por defecto **15 minutos** cada uno (30 minutos en total). El contador "Día N" del niño aumenta en cada amanecer.
+- El tiempo **solo pasa mientras se juega**: con la pestaña oculta, la ventana minimizada o el juego cerrado, el reloj se detiene. Al volver a abrir un mundo, sigue a la misma hora en que se guardó.
+- El **atardecer** y el **amanecer** duran 30 segundos: la luz, el cielo y la música cambian poco a poco. De noche el cielo es azul oscuro con estrellas y luna, pero los animales y el personaje siempre se distinguen.
+- **Un minuto antes de la noche** aparece una luna que parpadea suavemente junto al reloj y suena una campanita una sola vez.
+- **Al amanecer** reaparecen, cerca de su lugar, los animales que hayan desaparecido (nunca se duplican, y esto también se guarda).
+- La **música** es una canción suave de día y una canción de cuna de noche; se cruzan en 6 segundos. Su volumen se ajusta con el control "Música".
 
 ### Exportar e importar (respaldo)
 

@@ -177,13 +177,13 @@
 - **Depende de**: 6. **Paralelizable**: no.
 - **Demo**: con `?test=1`, adelantar el reloj y ver el atardecer, la noche con antorchas, el amanecer, el día 2 y la reaparición de un animal que había desaparecido.
 
-- [ ] 7.1 Implementar `WorldClock` (fases, eventos `PhaseChanged`, duraciones desde la configuración y pausa con la pestaña oculta) y verificar con pruebas unitarias (`FakeClock`) "Duración por defecto", "Pestaña oculta" y "Contador de días", con 2 y 30 min
-- [ ] 7.2 Implementar la transición visual (`uDaylight`, cielo, niebla, sol y luna, al menos 30 s) y verificar con pruebas visuales y unitarias "Atardecer gradual" y "Visibilidad nocturna mínima"
-- [ ] 7.3 Crear el HUD de tiempo sin texto (sol o luna, día N y arco de cuenta regresiva, con aviso un minuto antes) según la referencia, y verificarlo con un E2E "Aviso de que se acerca la noche"
-- [ ] 7.4 Implementar la reaparición por slots solo al amanecer, sin duplicados y persistente, y verificar con pruebas unitarias e integración "Solo reaparecen los que faltan" y "La reaparición sobrevive a recargar"
-- [ ] 7.5 Implementar la música de día y de noche con un cruce de 5 s o más, y verificarlo con una prueba unitaria del cruce y la checklist de "música que no asusta"
-- [ ] 7.6 Aplicar la configuración de los padres en caliente (duración y noche tranquila) y verificar con un E2E "Cambiar la duración de la noche"
-- [ ] 7.7 Actualizar `docs/guia-padres.md` (ciclo y configuración) y `docs/guia-nino.md` (sol y luna) y agregar la entrada al CHANGELOG
+- [x] 7.1 Implementar `WorldClock` (fases, eventos `PhaseChanged`, duraciones desde la configuración y pausa con la pestaña oculta) y verificar con pruebas unitarias (`FakeClock`) "Duración por defecto", "Pestaña oculta" y "Contador de días", con 2 y 30 min
+- [x] 7.2 Implementar la transición visual (`uDaylight`, cielo, niebla, sol y luna, al menos 30 s) y verificar con pruebas visuales y unitarias "Atardecer gradual" y "Visibilidad nocturna mínima"
+- [x] 7.3 Crear el HUD de tiempo sin texto (sol o luna, día N y arco de cuenta regresiva, con aviso un minuto antes) según la referencia, y verificarlo con un E2E "Aviso de que se acerca la noche"
+- [x] 7.4 Implementar la reaparición por slots solo al amanecer, sin duplicados y persistente, y verificar con pruebas unitarias e integración "Solo reaparecen los que faltan" y "La reaparición sobrevive a recargar"
+- [x] 7.5 Implementar la música de día y de noche con un cruce de 5 s o más, y verificarlo con una prueba unitaria del cruce y la checklist de "música que no asusta"
+- [x] 7.6 Aplicar la configuración de los padres en caliente (duración y noche tranquila) y verificar con un E2E "Cambiar la duración de la noche"
+- [x] 7.7 Actualizar `docs/guia-padres.md` (ciclo y configuración) y `docs/guia-nino.md` (sol y luna) y agregar la entrada al CHANGELOG
 
 ## 8. Zombis nocturnos
 

@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { AudioService, MASTER_CAP, MAX_ANIMAL_VOICES, type AudioContextLike } from "../../../src/audio/audioService";
-import { connectGameAudio } from "../../../src/audio/gameAudio";
-import { SOUND_NAMES, synthesize } from "../../../src/audio/synth";
+import { AudioService, MASTER_CAP, MAX_ANIMAL_VOICES, MUSIC_FADE_S, type AudioContextLike } from "../../../src/audio/audioService";
+import { connectGameAudio, musicFor } from "../../../src/audio/gameAudio";
+import { degreeToHz, MUSIC, MUSIC_TRACKS, PENTATONIC, SOUND_NAMES, synthesize, synthesizeMusic } from "../../../src/audio/synth";
 import { SPECIES, SPECIES_IDS } from "../../../src/domain/entities/species";
 import { Game } from "../../../src/sim/game";
+import { NIGHT_WARNING_MS, TRANSITION_MS } from "../../../src/sim/systems/dayNight";
 
 class FakeParam {
   value = 1;
+  ramps: { to: number; at: number }[] = [];
   setValueAtTime(v: number) {
     this.value = v;
+  }
+  linearRampToValueAtTime(to: number, at: number) {
+    this.ramps.push({ to, at });
   }
   cancelScheduledValues() {}
 }
@@ -22,14 +27,17 @@ class FakeNode {
 
 class FakeSource extends FakeNode {
   buffer: unknown = null;
+  loop = false;
   started = false;
   stopped = false;
+  stopAt: number | undefined;
   onended: (() => void) | null = null;
   start() {
     this.started = true;
   }
-  stop() {
+  stop(when?: number) {
     this.stopped = true;
+    this.stopAt = when;
   }
 }
 
@@ -159,6 +167,75 @@ describe("[experiencia-infantil] Audio controlado", () => {
     expect(ctx.sources).toHaveLength(before + 1);
     // Todas las especies tienen un sonido generado.
     for (const id of SPECIES_IDS) expect(SOUND_NAMES as readonly string[], id).toContain(SPECIES[id].sound);
+  });
+
+  it("[ciclo-dia-noche] la música cambia con un cruce suave de 5 s o más y la anterior se apaga", async () => {
+    const { ctx, audio } = await setup();
+    const game = new Game({ seed: "musica" });
+    connectGameAudio(audio, game);
+    audio.setMusic(musicFor(game.clock));
+    expect(audio.musicTrack).toBe("day");
+    const day = ctx.sources.at(-1)!;
+    const dayGain = ctx.gains.at(-1)!;
+    expect(day.loop).toBe(true);
+    expect(dayGain.gain.ramps).toEqual([{ to: 1, at: MUSIC_FADE_S }]);
+
+    ctx.currentTime = 100;
+    // Llega el atardecer: la pista de noche sube mientras la de día baja.
+    game.clock.restore(game.clock.durations.dayMs - TRANSITION_MS - 50, 1);
+    game.step(50);
+    expect(game.clock.phase).toBe("dusk");
+    expect(audio.musicTrack).toBe("night");
+    expect(MUSIC_FADE_S).toBeGreaterThanOrEqual(5);
+    expect(dayGain.gain.ramps.at(-1)).toEqual({ to: 0, at: 100 + MUSIC_FADE_S });
+    expect(day.stopAt).toBe(100 + MUSIC_FADE_S);
+    const night = ctx.sources.at(-1)!;
+    expect(night).not.toBe(day);
+    expect(ctx.gains.at(-1)!.gain.ramps).toEqual([{ to: 1, at: 100 + MUSIC_FADE_S }]);
+    // Pedir la misma pista no la reinicia.
+    const sources = ctx.sources.length;
+    audio.setMusic("night");
+    expect(ctx.sources).toHaveLength(sources);
+  });
+
+  it("[ciclo-dia-noche] aviso de noche: suena una campanita una sola vez", async () => {
+    const { audio } = await setup();
+    const game = new Game({ seed: "campana" });
+    connectGameAudio(audio, game);
+    game.clock.restore(game.clock.durations.dayMs - NIGHT_WARNING_MS - 100, 1);
+    for (let i = 0; i < 40; i++) game.step(50);
+    expect(audio.requests.get("chime")).toBe(1);
+  });
+
+  it("[experiencia-infantil] música que no asusta: lenta, suave, pentatónica y sin saltos de volumen", () => {
+    for (const track of MUSIC_TRACKS) {
+      const def = MUSIC[track];
+      expect(def.bpm, track).toBeLessThanOrEqual(100);
+      // Todas las notas salen de la escala pentatónica mayor (sin semitonos que choquen).
+      for (const deg of [...def.melody, ...def.bass].filter((d) => d >= 0)) {
+        const semis = Math.round(12 * Math.log2(degreeToHz(def.root, deg) / def.root));
+        expect(PENTATONIC as readonly number[], `${track} grado ${deg}`).toContain(((semis % 12) + 12) % 12);
+      }
+      const rate = 8000;
+      const data = synthesizeMusic(track, rate);
+      const peak = Math.max(...data.map(Math.abs));
+      expect(peak, track).toBeLessThanOrEqual(0.3);
+      // El bucle empieza y acaba en silencio: no hay clic al repetirse.
+      expect(Math.abs(data[0]), track).toBeLessThan(0.01);
+      expect(Math.abs(data[data.length - 1]), track).toBeLessThan(0.01);
+      // Volumen por ventanas de 100 ms (en bucle): nivel bajo y nunca sube de golpe.
+      const win = rate / 10;
+      const rms: number[] = [];
+      for (let i = 0; i + win <= data.length; i += win) {
+        let sum = 0;
+        for (let j = i; j < i + win; j++) sum += data[j] * data[j];
+        rms.push(Math.sqrt(sum / win));
+      }
+      rms.forEach((r, k) => {
+        expect(r, `${track} @${k / 10} s`).toBeLessThanOrEqual(0.12);
+        expect(r - rms.at(k - 1)!, `${track} @${k / 10} s`).toBeLessThanOrEqual(0.1);
+      });
+    }
   });
 
   it("los sonidos generados son cortos y suaves (pico de 0,5 o menos)", () => {

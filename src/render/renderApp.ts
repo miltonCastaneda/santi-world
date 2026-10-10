@@ -9,7 +9,7 @@ import { ChunkRenderer } from "./chunkRenderer";
 import { EntityRenderer, type EntityView } from "./entityRenderer";
 import { FollowCamera } from "./followCamera";
 import { PlayerModel, type PlayerView } from "./playerModel";
-import { Sky } from "./sky";
+import { Sky, type SkyTime } from "./sky";
 
 /** Cámara en tercera persona detrás del personaje (el juego). Sin esto, cámara orbital (visor de padres). */
 export type FollowOptions = {
@@ -45,6 +45,7 @@ export class RenderApp {
   private fixed: { target: Vec3 } | null = null;
   private lastRender = 0;
   private readonly followOptions: FollowOptions | null;
+  private skyTime: SkyTime = { isNight: false, progress: 0.35 };
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -83,15 +84,18 @@ export class RenderApp {
       this.controls = controls;
     }
 
-    // Para las entidades (MeshLambert); el terreno usa luz por vértice.
-    this.scene.add(new THREE.HemisphereLight(0xfff4d6, 0x4a7c3a, 1.2));
+    // Para las entidades (MeshLambert); el terreno usa luz por vértice. Sigue la hora en Sky.
+    const hemi = new THREE.HemisphereLight(0xfff4d6, 0x4a7c3a, 1.2);
     // Sol sin sombras: sin él, el blanco de las ovejas y las vacas se ve gris.
     const sun = new THREE.DirectionalLight(0xffffff, 1.8);
     sun.position.set(0.4, 1, 0.6);
-    this.scene.add(sun);
+    const moon = new THREE.DirectionalLight(0x9fb4ff, 0);
+    moon.position.set(-0.4, 1, -0.3);
+    this.scene.add(hemi, sun, moon);
 
     this.materials = createBlockMaterials();
     this.sky = new Sky(this.scene, this.materials, viewDistance);
+    this.sky.attachLights({ hemi, sun, moon });
     this.chunks = new ChunkRenderer(store, gen, this.materials, { viewRadius, workers: options.workers ?? 1 });
     this.scene.add(this.chunks.group);
 
@@ -113,6 +117,7 @@ export class RenderApp {
     this.follow?.dispose();
     this.playerModel?.dispose();
     this.entities?.dispose();
+    this.sky.dispose();
     this.chunks.dispose();
     this.materials.dispose();
     this.renderer.dispose();
@@ -122,6 +127,12 @@ export class RenderApp {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  /** Hora del mundo: luz del día (0 a 1) y dónde va el sol o la luna. */
+  setTime(daylight: number, time: SkyTime): void {
+    this.sky.setDaylight(daylight);
+    this.skyTime = time;
   }
 
   /** Coloca la cámara en una vista fija (visor, pruebas visuales y ruta de rendimiento). */
@@ -208,6 +219,7 @@ export class RenderApp {
     const f = this.focusPoint();
     this.chunks.setFocus(f.x, f.z);
     this.chunks.update();
+    this.sky.update(this.camera, this.skyTime);
     this.renderer.render(this.scene, this.camera);
   }
 

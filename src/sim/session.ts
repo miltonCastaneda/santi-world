@@ -104,6 +104,7 @@ export class GameSession {
     const { world } = await this.deps.repo.loadWorld(worldId);
     if (this.world?.id !== worldId) return false;
     this.world = { ...this.world, settings: world.settings };
+    this.game.configureTime(world.settings);
     this.events.emit("settingsChanged", { world: this.world });
     return true;
   }
@@ -135,13 +136,17 @@ export class GameSession {
       placed: c.placed.slice(),
     }));
     const key = this.stateKey();
+    const clock = this.game.clock;
     const snapshot: SaveSnapshot = {
-      world: { ...world, version: world.version + 1, updatedAt: now },
+      world: { ...world, version: world.version + 1, updatedAt: now, dayCount: clock.dayCount },
       state: {
         ...state,
         version: state.version + 1,
         updatedAt: now,
         camera: this.deps.camera?.() ?? state.camera,
+        timeOfCycleMs: Math.round(clock.timeOfCycleMs),
+        dayCount: clock.dayCount,
+        pendingRespawns: [...this.game.pendingRespawns],
         animalsSpawned: true,
         player: {
           pos: { ...this.game.player.pos },
@@ -178,6 +183,10 @@ export class GameSession {
     if (state.player.pos) player.teleport(state.player.pos);
     player.yaw = state.player.yaw;
     player.restoreHearts(state.player.hearts, this.game.timeMs);
+    // La hora sigue donde quedó: con el juego cerrado el tiempo no pasa.
+    this.game.configureTime(world.settings);
+    this.game.clock.restore(state.timeOfCycleMs, state.dayCount);
+    this.game.pendingRespawns = [...state.pendingRespawns];
     // Un mundo nuevo (o guardado antes de que hubiera animales) recibe su población inicial.
     if (state.animalsSpawned) this.game.restoreEntities(entities);
     else this.game.spawnPopulation();
@@ -227,6 +236,8 @@ export class GameSession {
     // Los animales cuentan al bloque: moverse dentro de la misma celda no obliga a guardar.
     let animals = 0;
     for (const e of this.game.entities.all()) animals = (animals * 31 + Math.floor(e.body.pos.x) * 7 + Math.floor(e.body.pos.z) * 13 + e.seq) | 0;
-    return `${this.game.selection.tool}|${this.game.selection.block}|${r(p.pos)}|${p.hearts}|${animals}|${cam ? `${r(cam.position)}|${r(cam.target)}` : ""}`;
+    // La hora cuenta cada 5 s (spec "Persistir la hora": ± 5 s).
+    const clock = `${this.game.clock.dayCount}:${Math.floor(this.game.clock.timeOfCycleMs / 5000)}:${this.game.pendingRespawns.join(",")}`;
+    return `${this.game.selection.tool}|${this.game.selection.block}|${r(p.pos)}|${p.hearts}|${animals}|${clock}|${cam ? `${r(cam.position)}|${r(cam.target)}` : ""}`;
   }
 }

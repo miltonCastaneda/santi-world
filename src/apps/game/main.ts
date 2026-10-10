@@ -1,5 +1,5 @@
 import { AudioService, type AudioContextLike } from "../../audio/audioService";
-import { connectGameAudio } from "../../audio/gameAudio";
+import { connectGameAudio, musicFor } from "../../audio/gameAudio";
 import { SOUND_NAMES } from "../../audio/synth";
 import type { Clock } from "../../core/clock";
 import { TRASH_RETENTION_MS, type WorldSettings } from "../../domain/repository/model";
@@ -20,6 +20,7 @@ import { ACTION_MS } from "../../sim/player";
 import { GameSession } from "../../sim/session";
 import { setupDebugOverlay } from "../../ui/debugOverlay";
 import { setupHud } from "../../ui/hud";
+import { setupHudClock } from "../../ui/kid/hudClock";
 import { setupMisMundos } from "../../ui/kid/misMundos";
 import { setupSaveWarning } from "../../ui/kid/saveWarning";
 import { FrameStats, percentile } from "./frameStats";
@@ -77,6 +78,8 @@ const repo = new DexieWorldRepository(new SantiDatabase(), { clock: wallClock, n
 const warning = setupSaveWarning();
 const logError = (context: string, error: unknown) => void recordError(repo, { at: wallClock.now(), context, message: errorMessage(error) });
 
+const hudClock = setupHudClock(document.getElementById("day-clock")!, () => game.clock);
+
 const audio = new AudioService(() => (typeof AudioContext === "undefined" ? null : (new AudioContext() as unknown as AudioContextLike)));
 audio.attachUnlock(window);
 setTimeout(() => audio.prepare(SOUND_NAMES), 0);
@@ -116,6 +119,8 @@ async function boot(): Promise<void> {
   session.events.on("worldOpened", ({ world }) => {
     view.followPlayer();
     applyVolumes(world.settings);
+    audio.setMusic(musicFor(game.clock));
+    hudClock.refresh();
   });
   session.events.on("settingsChanged", ({ world }) => applyVolumes(world.settings));
 
@@ -186,6 +191,8 @@ async function boot(): Promise<void> {
     input.update();
     loop.frame(now);
     perf?.frame(now);
+    const clock = game.clock;
+    view.setTime(clock.daylight, { isNight: clock.isNight, progress: clock.phaseProgress });
     view.render(now);
     audio.setListener(view.camera.position, view.headingYaw);
     autosave.tick();

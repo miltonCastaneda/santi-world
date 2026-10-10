@@ -39,3 +39,8 @@ Cada animal necesita su sonido, posicional y limitado (como máximo 3 voces de a
 - Los efectos de este incremento (pasos, poner, romper, golpe contra el fondo, clic de UI, salto, poof, boing, swish y "muy lejos") están **sintetizados por código** (`src/audio/synth.ts`, CC0) en vez de OGG: pesan cero bytes y son cortos y suaves por construcción. Los sonidos de animales y la música, cuando lleguen, seguirán la decisión original (CC0 en `public/audio/`).
 - `src/audio/gameAudio.ts` conecta los eventos del juego con los sonidos; el audio nunca modifica el juego.
 - Pruebas: `tests/unit/audio/audioService.test.ts` con un contexto falso (tope, silencio, voces de animales, distancia, contexto suspendido y sonidos suaves) y la E2E del botón de silencio.
+
+## Implementación (incrementos 6 y 7)
+
+- Las voces de los animales (incremento 6) y la música (incremento 7) también se **sintetizan por código** en lugar de usar OGG de `public/audio/`: así cumplen por construcción la checklist "música que no asusta" de `docs/assets.md` (pentatónica, 100 bpm o menos, pico de 0,25, ataques de 40 ms) y la prueba unitaria la verifica sobre las muestras reales. Si más adelante se agregan grabaciones CC0, siguen la decisión original.
+- `AudioService.setMusic(track)`: una sola pista en bucle en el bus `music`; al cambiar, la anterior baja a 0 y se detiene mientras la nueva sube, en `MUSIC_FADE_S` (6 s). Si el contexto todavía no existe, la pista queda pedida y empieza al crearlo. La música se sintetiza a 22 050 Hz para que el buffer sea liviano.

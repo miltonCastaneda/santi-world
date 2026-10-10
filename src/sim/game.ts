@@ -16,7 +16,9 @@ import { entityFromSnapshot, entityToSnapshot } from "./entitySnapshots";
 import { FixedStepLoop, STEP_MS } from "./loop";
 import { Player, type HitResult } from "./player";
 import { AnimalSystem, type AnimalContext, type AnimalSound } from "./systems/animals";
+import { durationsFrom, WorldClock, type Phase } from "./systems/dayNight";
 import type { PathWorld } from "./systems/pathfinding";
+import { respawnPending, type RespawnWorld } from "./systems/respawn";
 
 export type Selection = { tool: ToolId; block: BlockId };
 
@@ -48,7 +50,17 @@ export type GameEvents = {
   heartsChanged: { hearts: number };
   inventoryToggled: { open: boolean };
   animalSound: AnimalSound;
+  /** Una entidad desapareció ("poof"); si tenía slot, queda pendiente de reaparecer al amanecer. */
+  entityRemoved: { id: string; species: string; pos: Vec3 };
+  phaseChanged: { phase: Phase; dayCount: number };
+  /** Falta un minuto para la noche. */
+  nightSoon: Record<string, never>;
+  midnight: { dayCount: number };
+  dawn: { dayCount: number; respawned: string[] };
 };
+
+/** Configuración del tiempo de un mundo (la ponen los padres). */
+export type TimeSettings = { dayMinutes: number; nightMinutes: number; quietNight: boolean };
 
 export const PICK_DISTANCE = 200;
 const FOOTSTEP_MS = 400;
@@ -61,6 +73,11 @@ export class Game {
   readonly player: Player;
   readonly entities = new EntityStore();
   readonly animals: AnimalSystem;
+  readonly clock = new WorldClock();
+  /** Sin zombis ni dragón (la noche llega igual). */
+  quietNight = false;
+  /** Slots cuyos animales desaparecieron y vuelven al próximo amanecer. */
+  pendingRespawns: string[] = [];
   selection: Selection = { tool: "hand", block: "grass" };
   inventoryOpen = false;
   tick = 0;
@@ -105,6 +122,38 @@ export class Game {
   /** Población inicial de un mundo nuevo: un animal por slot. */
   spawnPopulation(): void {
     for (const slot of this.slots) this.animals.spawn(this.entities, this.animalContext, slot, this.timeMs, (x, z) => this.world.store.surfaceY(x, z));
+  }
+
+  /** Quita una entidad con un "poof". Un animal de un slot queda pendiente de reaparecer al amanecer. */
+  removeEntity(id: string): boolean {
+    const e = this.entities.remove(id);
+    if (!e) return false;
+    this.animals.paths.cancel(id);
+    if (e.slotId && !this.pendingRespawns.includes(e.slotId)) this.pendingRespawns.push(e.slotId);
+    this.events.emit("entityRemoved", { id, species: e.species, pos: { ...e.body.pos } });
+    return true;
+  }
+
+  /** Duración del día y de la noche y noche tranquila; se puede cambiar en caliente. */
+  configureTime(settings: TimeSettings): void {
+    this.clock.setDurations(durationsFrom(settings));
+    this.quietNight = settings.quietNight;
+  }
+
+  private dawn(): string[] {
+    const store = this.world.store;
+    const world: RespawnWorld = {
+      size: store.sizeInBlocks,
+      surfaceY: (x, z) => store.surfaceY(x, z),
+      isPlaced: (x, y, z) => store.isPlaced(x, y, z),
+      isWater: (x, y, z) => store.get(x, y, z) === BLOCK_NUM.water,
+      collision: this.collision,
+    };
+    const { respawned, stillPending } = respawnPending(this.pendingRespawns, this.slots, this.entities, world, (slot) =>
+      this.animals.spawn(this.entities, this.animalContext, slot, this.timeMs, (x, z) => this.world.store.surfaceY(x, z)),
+    );
+    this.pendingRespawns = stillPending;
+    return respawned;
   }
 
   restoreEntities(snapshots: readonly EntitySnapshot[]): void {
@@ -155,6 +204,8 @@ export class Game {
     this.intents = [];
     this.entities.clear();
     this.animals.reset(world.seed);
+    this.pendingRespawns = [];
+    this.clock.restore(0, 1);
     this.prepareHomes();
     this.player.setMove(0, 0);
     this.player.teleport(this.spawnPoint());
@@ -179,6 +230,27 @@ export class Game {
     this.timeMs += dtMs;
     this.stepPlayer(dtMs);
     this.animals.step(this.entities, this.animalContext, this.tick, this.timeMs, dtMs, (s) => this.events.emit("animalSound", s));
+    this.stepClock(dtMs);
+  }
+
+  private stepClock(dtMs: number): void {
+    for (const ev of this.clock.advance(dtMs)) {
+      const dayCount = this.clock.dayCount;
+      switch (ev.type) {
+        case "phase":
+          this.events.emit("phaseChanged", { phase: ev.phase, dayCount });
+          break;
+        case "nightSoon":
+          this.events.emit("nightSoon", {});
+          break;
+        case "midnight":
+          this.events.emit("midnight", { dayCount });
+          break;
+        case "dawn":
+          this.events.emit("dawn", { dayCount, respawned: this.dawn() });
+          break;
+      }
+    }
   }
 
   /** Golpe de un enemigo (zombis, más adelante). Con 0 corazones reaparece en la granja sin perder nada. */

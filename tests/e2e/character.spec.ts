@@ -2,14 +2,24 @@ import { expect, test, type Page } from "@playwright/test";
 import { openTestGame } from "./helpers/game";
 import { collectErrors } from "./helpers/page";
 
-/** Duración media de un frame en esta máquina (con WebGL por software puede pasar de 50 ms). */
+/**
+ * Duración de un frame lento en esta máquina: el más largo de 10. Con WebGL por software un frame
+ * puede pasar de 50 ms y variar al doble de uno a otro.
+ */
 async function frameMs(page: Page): Promise<number> {
   return page.evaluate(
     () =>
       new Promise<number>((resolve) => {
-        const t0 = performance.now();
+        let last = performance.now();
+        let slowest = 0;
         let n = 0;
-        const tick = () => (++n === 10 ? resolve((performance.now() - t0) / 10) : requestAnimationFrame(tick));
+        const tick = () => {
+          const now = performance.now();
+          slowest = Math.max(slowest, now - last);
+          last = now;
+          if (++n === 10) resolve(slowest);
+          else requestAnimationFrame(tick);
+        };
         requestAnimationFrame(tick);
       }),
   );
@@ -186,7 +196,7 @@ test("[experiencia-infantil] Tamaño de los objetivos: 64x64 px o más a 1920x10
   for (const size of [{ width: 1920, height: 1080 }, { width: 1366, height: 768 }]) {
     await page.setViewportSize(size);
     const overlaps = await page.evaluate(() => {
-      const zones = [".hearts", ".actions", ".toolbar", ".hotbar", ".controls-help"].map((s) => [s, document.querySelector(s)!.getBoundingClientRect()] as const);
+      const zones = [".hearts", ".day-clock", ".actions", ".toolbar", ".hotbar", ".controls-help"].map((s) => [s, document.querySelector(s)!.getBoundingClientRect()] as const);
       const hits: string[] = [];
       for (const [i, [sa, a]] of zones.entries())
         for (const [sb, b] of zones.slice(i + 1)) if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) hits.push(`${sa} x ${sb}`);

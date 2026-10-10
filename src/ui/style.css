@@ -60,6 +60,93 @@ body {
   animation: hearts-bounce 0.4s ease-out;
 }
 
+/* Reloj sin texto: sol o luna dentro de un arco que se llena, y el número del día. */
+.day-clock {
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px 4px 6px;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 999px;
+  pointer-events: none;
+  transition: background 2s;
+}
+
+.day-clock.night {
+  background: rgba(40, 52, 96, 0.75);
+  color: #f4f6ff;
+}
+
+.clock-dial {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.clock-dial svg {
+  position: absolute;
+  inset: 0;
+}
+
+.clock-dial circle {
+  fill: none;
+  stroke-width: 6;
+}
+
+.ring-bg {
+  stroke: rgba(0, 0, 0, 0.12);
+}
+
+.ring-fill {
+  stroke: #ffb733;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.25s linear;
+}
+
+.day-clock.night .ring-fill {
+  stroke: #9fb4ff;
+}
+
+.clock-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+}
+
+.day-number {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.day-number small {
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+/* Un minuto antes de la noche aparece la luna y parpadea suavemente (nada brusco). */
+.clock-moon {
+  display: none;
+  font-size: 2rem;
+}
+
+.day-clock.night-soon .clock-moon {
+  display: inline;
+  animation: moon-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes moon-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+}
+
 @keyframes hearts-bounce {
   30% {
     transform: scale(1.15);

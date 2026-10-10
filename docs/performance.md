@@ -31,3 +31,4 @@ GPU integrada tipo Intel UHD 620, 8 GB de RAM, Chrome estable, 1080p y pantalla 
 |---|---|---|---|---|---|---|---|---|
 | incremento 2 (equipo de desarrollo) | 2026-10-10 | 16.6 | 17.1 | 149 | 0.9 / 6.8 | — | 4438 | ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11) |
 | incremento 6, 15 animales (equipo de desarrollo) | 2026-10-10 | 16.7 | 16.8 | 186 | 4.0 / 6.9 | 15 / 19 | 3139 | ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11) |
+| incremento 7, día y noche (equipo de desarrollo) | 2026-10-10 | 16.7 | 17.2 | 186 | 2.3 / 4.3 | 15 / 19 | 3865 | ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11) |

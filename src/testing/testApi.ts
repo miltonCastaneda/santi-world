@@ -34,6 +34,17 @@ export type PlayerSnapshot = {
   invulnerable: boolean;
 };
 
+export type DayNightSnapshot = {
+  phase: string;
+  dayCount: number;
+  timeOfCycleMs: number;
+  dayMs: number;
+  nightMs: number;
+  daylight: number;
+  msUntilNight: number;
+  quietNight: boolean;
+};
+
 export type EntitySnapshot = { id: string; species: string; pos: Vec3; state: string | null; anim: string | null; home: string | null };
 
 export type SantiTestApi = {
@@ -67,7 +78,13 @@ export type SantiTestApi = {
   entities(): EntitySnapshot[];
   /** Quita todos los animales (escenarios donde uno que pasa estorbaría). */
   clearEntities(): void;
-  audio(): { ready: boolean; muted: boolean; masterGain: number };
+  /** "Poof" de una entidad: si es de un slot, queda pendiente de reaparecer al amanecer. */
+  poofEntity(id: string): boolean;
+  pendingRespawns(): string[];
+  dayNight(): DayNightSnapshot;
+  /** Adelanta (o atrasa) el reloj del mundo a ese punto del ciclo. */
+  setTimeOfCycle(ms: number): void;
+  audio(): { ready: boolean; muted: boolean; masterGain: number; music: string | null; requests: Record<string, number> };
   /** Mundo abierto. */
   currentWorld(): World | null;
   /** Mundos del usuario (sin la papelera), del más reciente al más antiguo. */
@@ -153,7 +170,28 @@ export function installTestApi(deps: {
         home: e.home ?? null,
       })),
     clearEntities: () => game.entities.clear(),
-    audio: () => ({ ready: audio.isReady, muted: audio.isMuted, masterGain: audio.masterGain }),
+    poofEntity: (id) => game.removeEntity(id),
+    pendingRespawns: () => [...game.pendingRespawns],
+    dayNight: () => {
+      const c = game.clock;
+      return {
+        phase: c.phase,
+        dayCount: c.dayCount,
+        timeOfCycleMs: c.timeOfCycleMs,
+        ...c.durations,
+        daylight: c.daylight,
+        msUntilNight: c.msUntilNight,
+        quietNight: game.quietNight,
+      };
+    },
+    setTimeOfCycle: (ms) => game.clock.restore(ms, game.clock.dayCount),
+    audio: () => ({
+      ready: audio.isReady,
+      muted: audio.isMuted,
+      masterGain: audio.masterGain,
+      music: audio.musicTrack,
+      requests: Object.fromEntries(audio.requests),
+    }),
     currentWorld: () => session.world,
     worlds: () => repo.listWorlds(session.ownerId),
     saveNow: () => autosave.saveNow(),

@@ -46,6 +46,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Voces de animales sintetizadas (CC0): `baa`, `moo`, `meh`, `cluck`, `peep` y `quack`, posicionales hasta 24 bloques y como máximo 3 a la vez.
 - Las entidades se guardan con el mundo (posición, rumbo y estado) y se recargan igual. Los mundos anteriores reciben su población una sola vez al abrirse.
 - Overlay `F3` y `npm run perf` con entidades dibujadas, sus draw calls (presupuesto de 60) y los nodos del A*.
+- Ciclo de día y noche (incremento 7): `WorldClock` en la simulación (15 + 15 min por defecto, configurable de 2 a 30 min en caliente; se detiene con la pestaña oculta) con eventos `phaseChanged`, `nightSoon`, `midnight` y `dawn`, y la hora y el día del juego guardados con el mundo.
+- Atardecer y amanecer graduales de 30 s: cielo, niebla, `uDaylight` del terreno y luces de los modelos; sol y luna pixel art que cruzan el cielo y 300 estrellas. De noche, luz mínima para que los animales se distingan.
+- Reloj del HUD sin texto: sol o luna dentro de un arco que se llena, "Día N" y, un minuto antes de la noche, una luna que parpadea y una campanita (una sola vez).
+- Reaparición por slots solo al amanecer: los animales que faltan vuelven cerca de su lugar, sin duplicarse ni aparecer sobre construcciones; la lista de pendientes se guarda.
+- Música de día y canción de cuna de noche generadas por código (pentatónica, 96 y 66 bpm, pico 0,25), con cruce de 6 s en el bus `music`.
 
 ### Cambiado
 - "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.

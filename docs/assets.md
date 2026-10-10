@@ -18,11 +18,25 @@ Si en el futuro se usan texturas de terceros, solo se aceptan CC0 o equivalentes
 
 | Recurso | Fuente | Licencia |
 |---|---|---|
-| 10 efectos (`SOUND_NAMES` en `src/audio/synth.ts`): `step`, `place`, `break`, `bump`, `click`, `jump`, `poof`, `boing`, `swish` y `far` | Sintetizados por código en `src/audio/synth.ts` (`synthesize(name, sampleRate)`): tonos con envolvente y ruido determinista (sin `Math.random`); no hay archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+| 11 efectos (`SOUND_NAMES` en `src/audio/synth.ts`): `step`, `place`, `break`, `bump`, `click`, `jump`, `poof`, `boing`, `swish`, `far` y `chime` (aviso de que se acerca la noche) | Sintetizados por código en `src/audio/synth.ts` (`synthesize(name, sampleRate)`): tonos con envolvente y ruido determinista (sin `Math.random`); no hay archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 | 6 voces de animales (`ANIMAL_SOUNDS`): `baa` (oveja), `moo` (vaca), `meh` (cabra), `cluck` (gallina), `peep` (pollito) y `quack` (pato) | Sintetizados por código en `src/audio/synth.ts`: una voz con armónicos y frecuencia variable (vibrato o caída), con sílabas en la gallina y el pollito; sin archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 
 - Los animales suenan en el bus `ambient`, posicionales: se atenúan con la distancia y no se oyen a 24 bloques o más. Como máximo suenan 3 a la vez, y tienen prioridad los más cercanos. Cada especie emite su voz cada cierto tiempo (`soundEveryMs` en `src/domain/entities/species.ts`).
 - Cada sonido dura 0,5 s o menos y su pico es de 0,5 o menos (una prueba unitaria lo verifica), así que ninguno sale fuerte aunque el volumen esté al máximo. Encima de eso, el bus maestro tiene un tope de 0,8 ([ADR-0009](adr/0009-audio-web-audio-buses.md)).
 - Los buffers se generan una vez, al arrancar, y se reutilizan. Son deterministas: el mismo nombre suena siempre igual.
 - Qué evento del juego suena con qué efecto está en `src/audio/gameAudio.ts`.
-- La música y los sonidos del ambiente llegan en los incrementos siguientes; los que vengan de terceros deben ser CC0 y registrarse en esta tabla con el enlace a la fuente.
+| 2 pistas de música (`MUSIC` en `src/audio/synth.ts`): `day` (96 bpm, do mayor) y `night` (canción de cuna, 66 bpm, sol mayor) | Compuestas como datos (grados de la escala pentatónica, melodía en corcheas y un bajo por compás) y sintetizadas por código (`synthesizeMusic`) en un bucle de 10 y 14,5 s | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+
+- La música suena en el bus `music` y se cruza en 6 s (`MUSIC_FADE_S`) cuando empieza el atardecer (pista de noche) o el amanecer (pista de día).
+- Los sonidos de terceros que se agreguen deben ser CC0 y registrarse en esta tabla con el enlace a la fuente.
+
+### Checklist "música que no asusta"
+
+Toda pista nueva la cumple antes de entrar (la prueba unitaria `música que no asusta` en `tests/unit/audio/audioService.test.ts` verifica los cuatro primeros puntos):
+
+- [x] Lenta: 100 bpm o menos.
+- [x] Suave: pico de 0,3 o menos (las pistas actuales, 0,25: por debajo de los efectos) y RMS de 0,12 o menos.
+- [x] Sin sustos: ataques de 40 ms o más, ninguna subida de volumen de más de 0,1 de RMS entre ventanas de 100 ms y el bucle empieza y termina en silencio (sin clic).
+- [x] Sin disonancias: solo notas de la escala pentatónica mayor.
+- [x] Sin graves fuertes ni percusión; nada de sirenas, gritos ni risas.
+- [x] Se puede apagar: botón de silencio y volumen de música en la vista de padres.

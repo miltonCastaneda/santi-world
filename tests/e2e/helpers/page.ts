@@ -58,6 +58,59 @@ export async function countPixelsNear(page: Page, rgb: [number, number, number],
   );
 }
 
+/** Brillo medio (0 a 255) de una captura del canvas. */
+export async function canvasBrightness(page: Page, selector = "canvas"): Promise<number> {
+  const png = await page.locator(selector).first().screenshot();
+  return page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, c.width, c.height).data;
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 4) sum += (data[i] + data[i + 1] + data[i + 2]) / 3;
+    return sum / (data.length / 4);
+  }, png.toString("base64"));
+}
+
+/**
+ * Compara dos capturas del mismo tamaño: cuántos píxeles cambian (distancia Manhattan en RGB mayor
+ * que `threshold`) y cuánto cambian de media esos píxeles.
+ */
+export async function diffShots(page: Page, a: Buffer, b: Buffer, threshold = 30): Promise<{ changed: number; meanDelta: number }> {
+  return page.evaluate(
+    async ([a64, b64, threshold]) => {
+      const pixels = async (b64: string) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = img.width;
+        c.height = img.height;
+        const ctx = c.getContext("2d")!;
+        ctx.drawImage(img, 0, 0);
+        return ctx.getImageData(0, 0, c.width, c.height).data;
+      };
+      const [pa, pb] = await Promise.all([pixels(a64), pixels(b64)]);
+      let changed = 0;
+      let total = 0;
+      for (let i = 0; i < pa.length; i += 4) {
+        const d = Math.abs(pa[i] - pb[i]) + Math.abs(pa[i + 1] - pb[i + 1]) + Math.abs(pa[i + 2] - pb[i + 2]);
+        if (d > threshold) {
+          changed++;
+          total += d;
+        }
+      }
+      return { changed, meanDelta: changed ? total / changed : 0 };
+    },
+    [a.toString("base64"), b.toString("base64"), threshold] as const,
+  );
+}
+
 export async function hideHud(page: Page): Promise<void> {
   await page.addStyleTag({ content: ".hud, .top-bar { display: none !important; }" });
 }
