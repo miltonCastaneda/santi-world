@@ -1,10 +1,12 @@
 import type { Vec3 } from "../core/math";
 import type { Entity } from "../domain/entities/entityStore";
 import { isItemId, ITEMS, type ItemId } from "../domain/entities/items";
-import { isSpeciesId, SPECIES } from "../domain/entities/species";
+import { isHomeId, isSpeciesId, SPECIES } from "../domain/entities/species";
+import { FRIEND_WOLF_MACHINE, WILD_WOLF_MACHINE, WOLF } from "../domain/entities/wolf";
 import type { EntitySnapshot } from "../domain/repository/model";
 
 type AnimalData = { yaw: number; seq: number; untilIn: number; soundIn: number; enteredAgo: number };
+type WolfData = AnimalData & { role?: "follow" | "guard"; huntDay: number; huntFrac: number; hits: number };
 
 /** Entidad a guardar. Los tiempos se guardan relativos (el reloj de la simulación vuelve a 0 al abrir). */
 export function entityToSnapshot(e: Entity, worldId: string, now: number): EntitySnapshot | null {
@@ -12,15 +14,20 @@ export function entityToSnapshot(e: Entity, worldId: string, now: number): Entit
   if (isItemId(e.species)) {
     return { id: e.id, worldId, kind: "item", species: e.species, pos: { ...e.body.pos }, vel: { x: 0, y: 0, z: 0 }, state: "", data: { seq: e.seq } };
   }
+  // El lobo amigo sigue siendo amigo al volver a abrir el mundo (spec "Lobo amigo persistente").
+  if (e.species === "wolf" && e.brain) {
+    const data: WolfData = {
+      ...timing(e, now),
+      role: e.role,
+      huntDay: e.huntDay ?? 0,
+      huntFrac: e.huntFrac ?? 0.5,
+      hits: e.hits ?? 0,
+    };
+    return { id: e.id, worldId, kind: "wolf", species: "wolf", pos: { ...e.body.pos }, vel: { ...e.body.vel }, state: e.brain.state, slotId: e.slotId, homeId: e.home, tamed: e.tamed === true, data };
+  }
   // Los zombis no se guardan: de noche vuelven a aparecer poco a poco.
   if (!isSpeciesId(e.species) || !e.brain) return null;
-  const data: AnimalData = {
-    yaw: e.yaw,
-    seq: e.seq,
-    untilIn: Math.max(0, e.brain.until - now),
-    soundIn: Math.max(0, (e.nextSoundAt ?? now) - now),
-    enteredAgo: Math.max(0, now - e.brain.enteredAt),
-  };
+  const data: AnimalData = timing(e, now);
   return {
     id: e.id,
     worldId,
@@ -35,9 +42,54 @@ export function entityToSnapshot(e: Entity, worldId: string, now: number): Entit
   };
 }
 
+function timing(e: Entity, now: number): AnimalData {
+  const brain = e.brain!;
+  return {
+    yaw: e.yaw,
+    seq: e.seq,
+    untilIn: Math.max(0, brain.until - now),
+    soundIn: Math.max(0, (e.nextSoundAt ?? now) - now),
+    enteredAgo: Math.max(0, now - brain.enteredAt),
+  };
+}
+
+function wolfFromSnapshot(s: EntitySnapshot, now: number): Entity {
+  const tamed = s.tamed === true;
+  const machine = tamed ? FRIEND_WOLF_MACHINE : WILD_WOLF_MACHINE;
+  const d = (s.data ?? {}) as Partial<WolfData>;
+  // Un estado que ya no existe (o la caza a medias) vuelve al reposo.
+  const state = machine.states[s.state] && s.state !== "hunt" && s.state !== "stalk" ? s.state : "idle";
+  return {
+    id: s.id,
+    seq: d.seq ?? 0,
+    species: "wolf",
+    threat: !tamed,
+    tamed,
+    role: tamed ? (d.role === "guard" ? "guard" : "follow") : undefined,
+    body: { pos: { ...s.pos }, vel: { ...s.vel }, halfWidth: WOLF.halfWidth, height: WOLF.height, onGround: false },
+    yaw: d.yaw ?? 0,
+    brain: { state, enteredAt: now - (d.enteredAgo ?? 0), until: now + (d.untilIn ?? 0) },
+    slotId: s.slotId,
+    home: tamed ? "farm" : "den",
+    path: null,
+    pathStatus: "none",
+    goal: null,
+    dest: null,
+    hopFails: 0,
+    targetId: null,
+    huntDay: d.huntDay ?? 0,
+    huntFrac: d.huntFrac ?? 0.5,
+    hits: d.hits ?? 0,
+    nextSoundAt: now + (d.soundIn ?? 0),
+    anim: "idle",
+    fleeDir: null,
+  };
+}
+
 /** Entidad guardada a entidad viva. Devuelve null si la especie o el estado ya no existen. */
 export function entityFromSnapshot(s: EntitySnapshot, now: number): Entity | null {
   if (s.kind === "item") return isItemId(s.species) ? { ...itemEntity(s.id, s.species, s.pos), seq: Number(s.data?.seq ?? 0) } : null;
+  if (s.kind === "wolf") return s.species === "wolf" ? wolfFromSnapshot(s, now) : null;
   if (s.kind !== "animal" || !isSpeciesId(s.species)) return null;
   const def = SPECIES[s.species];
   if (!def.machine.states[s.state]) return null;
@@ -50,7 +102,7 @@ export function entityFromSnapshot(s: EntitySnapshot, now: number): Entity | nul
     yaw: d.yaw ?? 0,
     brain: { state: s.state, enteredAt: now - (d.enteredAgo ?? 0), until: now + (d.untilIn ?? 0) },
     slotId: s.slotId,
-    home: s.homeId === "farm" || s.homeId === "pond" ? s.homeId : def.home,
+    home: isHomeId(s.homeId) ? s.homeId : def.home,
     path: null,
     pathStatus: "none",
     goal: null,

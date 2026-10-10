@@ -86,6 +86,8 @@ test.describe("[mundos-y-persistencia] mundos guardados", () => {
   });
 
   test("[mundos-y-persistencia] ningún botón del niño borra un mundo", async ({ page }) => {
+    // Pulsa todos los botones: crea y abre varios mundos, cada uno con su población.
+    test.slow();
     await openTestGame(page, "persist-3", 2);
     const spot = await placeOnFarm(page, "red");
     const firstId = await page.evaluate(() => window.__santi!.currentWorld()!.id);

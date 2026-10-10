@@ -2,9 +2,9 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 9)
+## Estado actual (Fase 2, incremento 10)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer. La Espada convierte a un animal de granja en carne flotante, que se recoge y se guarda en la mochila (inventario por mundo); las antorchas de la barra de bloques iluminan e impiden que aparezcan zombis.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer. La Espada convierte a un animal de granja en carne flotante, que se recoge y se guarda en la mochila (inventario por mundo); las antorchas de la barra de bloques iluminan e impiden que aparezcan zombis. En la montaña boscosa viven lobos que una vez por día salen a cazar un animal de granja (una granja bien cerrada los detiene); con el Collar se vuelven amigos que siguen al niño o cuidan la granja y ahuyentan zombis.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
@@ -30,6 +30,7 @@ src/
                 de 1 a 5), entities/items.ts (objetos sueltos: carne; radio y demora de recogida),
                 entities/fsm.ts (máquinas de estado por datos y su intérprete), entities/species.ts
                 (6 especies como datos), entities/zombie.ts (datos y máquina del zombi),
+                entities/wolf.ts (datos del lobo y sus máquinas: salvaje y amigo),
                 entities/entityStore.ts (entidades + índice espacial),
                 entities/population.ts (población inicial y spawn slots con semilla)             (puro)
   sim/          loop.ts (FixedStepLoop, 20 Hz), game.ts (intents, eventos, replaceWorld, colisión,
@@ -41,9 +42,10 @@ src/
                 chunk), systems/dayNight.ts (WorldClock: fases, eventos, duraciones en caliente),
                 systems/respawn.ts (reaparición por slots al amanecer), systems/spawn.ts
                 (NightSpawner: dónde y cuándo aparece un zombi), systems/zombies.ts (ZombieSystem:
-                objetivo, caminos, contacto, separación), systems/interaction.ts (objetos al
-                alcance de recogida), entitySnapshots.ts (entidad <-> EntitySnapshot; animales y
-                objetos sueltos)                                                                  (puro)
+                objetivo, caminos, contacto, separación), systems/wolves.ts (WolfSystem: caza con
+                viaje por tramos, acecho, guarida, domesticar, seguir, cuidar y ahuyentar zombis),
+                systems/interaction.ts (objetos al alcance de recogida), entitySnapshots.ts
+                (entidad <-> EntitySnapshot; animales, lobos y objetos sueltos)                    (puro)
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
                 autosave.ts (AutosaveService), migrations.ts (migrations[n] puras), legacyImport.ts
                 (v1 a "Mi primer mundo"), exportFormat.ts, errorLog.ts, storage.ts (persist()),
@@ -53,8 +55,8 @@ src/
                 sin sombras, near 0,1 / far 250), followCamera.ts (brazo de resorte de 6 bloques a 20°,
                 se acorta con un DDA para no entrar en los bloques, giro con el botón derecho),
                 playerModel.ts (personaje de cajas con la "S" y animación procedural),
-                entityRenderer.ts (animales, zombis y objetos sueltos: InstancedMesh por especie y
-                parte, sombra, "poof" y destellos, parpadeo, la carne flota y gira),
+                entityRenderer.ts (animales, lobos, zombis y objetos sueltos: InstancedMesh por
+                especie y parte, sombra, "poof", destellos y corazones, parpadeo, la carne flota y gira),
                 chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
                 meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
                 tiles.ts y textures.ts (tiles procedurales de 16 px), blockMaterial.ts
@@ -112,7 +114,7 @@ src/
 2. Cada 4 ticks el zombi elige el objetivo más cercano a 24 bloques o menos (el jugador o un animal) que no esté marcado como inalcanzable, y pide un camino a la `PathQueue` con prioridad 0, la más alta (los animales usan 1 y 2, y el paseo del zombi, 3). Un objetivo sin camino queda inalcanzable 5 s y el zombi pasea; al moverse el objetivo más de 2 bloques, o si el camino deja de ser válido porque cambió un chunk, lo vuelve a pedir (como mucho cada 0,5 s). Cerca del objetivo (2 bloques) va en línea recta.
 3. Al tocar al jugador, `Game.hitPlayer` le resta un corazón con empuje; al tocar a un animal, `Game.removeEntity` lo hace "poof" y su slot queda pendiente para el amanecer. En ambos casos el zombi pasa a `bump` (quieto un momento).
 4. `useTool` busca primero una criatura en el rayo (más cerca que el bloque apuntado y a 6 bloques o menos) y aplica `resolveHit` de `domain/rules/damage`: el zombi se derrota de 1 golpe con la mano, el pico o la espada; un animal solo rebota (`entityHit` con `boing`).
-5. Los zombis no se guardan (`entitySnapshots` solo toma animales y objetos sueltos). El render los dibuja como una especie más (`RENDER_KINDS`) y, al desaparecer, con destellos; el audio toca `groan`, `boing` y `sparkle`.
+5. Los zombis no se guardan (`entitySnapshots` solo toma animales, lobos y objetos sueltos). El render los dibuja como una especie más (`RENDER_KINDS`) y, al desaparecer, con destellos; el audio toca `groan`, `boing` y `sparkle`.
 
 ### Carne, inventario y antorchas
 
@@ -121,6 +123,15 @@ src/
 3. La carne no desaparece con el tiempo: `entitySnapshots` la guarda como `kind: "item"` y `restoreEntities` la recrea (y adelanta el contador de ids). El `inventory` se guarda en el estado del mundo y `sanitizeInventory` lo limpia al abrir, así que cada mundo tiene su propia mochila. `replaceWorld` la vacía.
 4. La tecla E o el botón 🎒 envían `toggleInventory`; el panel `kid/inventory` muestra cada recurso con su ícono, el número y de 1 a 5 puntos, sin pausar el juego y sin tapar el centro. Construir no gasta nada.
 5. La antorcha es un bloque más de la barra (ícono 🔥, luz 14). El mesher la incluye en la luz de bloque por vértice (con un tinte cálido de noche) y `NightSpawner` no pone zombis donde `blockLightAt` es 8 o más.
+
+### Lobos
+
+1. `createSpawnSlots` agrega de 4 a 6 slots de lobo (`wolf-N`, hogar `den`) en pasto a 12 bloques o menos del centro de la montaña boscosa, lejos de los troncos, con un `Rng` propio (`${seed}:wolves`). `Game.spawnSlot` reparte cada slot a `AnimalSystem` o a `WolfSystem`; un mundo guardado antes de los lobos los recibe con `spawnMissingWolves` (los que no están vivos ni pendientes del amanecer), sin migración de esquema.
+2. En cada paso, después de los animales y antes de los zombis, `WolfSystem.step` piensa cada 4 ticks con `WILD_WOLF_MACHINE` o `FRIEND_WOLF_MACHINE` (`fsm.ts`) y comparte la `PathQueue` de los animales. El lobo salvaje pasea y descansa cerca de su guarida; una vez por día del juego (`huntDay`), cuando la fracción del día llega a su `huntFrac` al azar (entre 0,1 y 0,75, solo de día), entra en `hunt`: elige el animal de granja más cercano (los patos no son presa), viaja por tramos de A* de 14 bloques (el presupuesto de 2000 nodos no alcanza para los ~95 bloques hasta la granja; cada tramo prueba 5 ángulos y a los 6 tramos fallidos desiste) y a 16 bloques pasa a `stalk`, que pide el camino directo cada 2 s. Sin camino (granja cerrada), sin presa o a los 2 min vuelve a la guarida (`returnDen`). Al tocar a la presa la hace "poof" con `removeEntity`.
+3. Un lobo salvaje nunca daña al niño. `resolveHit` tiene las columnas `wolf` (Collar domestica, Espada derrota en 2 golpes, Mano y Pico "boing") y `friendWolf` ("happy" con todo, nunca daño). Cada golpe que no lo derrota lo hace huir (`flee`); derrotado, `removeEntity` deja su slot pendiente y reaparece al amanecer en la montaña, sin carne.
+4. El Collar a 3 bloques o menos (si no, `tooFar`) llama a `WolfSystem.tame`: `tamed`, hogar `farm`, cerebro `FRIEND_WOLF_MACHINE` y rol `follow` si hay menos de 3 seguidores (si no, `guard`). `Game` emite `entityHit` con `tame` y `wolfTamed`; el render muestra corazones y el modelo `wolfTame` (collar rojo), y el audio toca `tame`.
+5. El lobo amigo `follow` se acerca al niño cuando está a más de 5 bloques y se detiene a 3; a más de 30 se teletransporta a su lado. El `guard` pasea alrededor de la granja (radio 24). Con un zombi a 6 bloques o menos interrumpe y lo persigue (`chase`, prioridad 0); al tocarlo, `removeEntity` lo hace irse con destellos.
+6. `entitySnapshots` guarda los lobos como `kind: "wolf"` con `tamed`, rol, `huntDay`, `huntFrac` y golpes; al restaurar, una caza o un acecho en curso vuelve a `idle`.
 
 ### Guardado
 

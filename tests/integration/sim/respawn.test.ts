@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isSpeciesId } from "../../../src/domain/entities/species";
 import { Game } from "../../../src/sim/game";
 import { STEP_MS } from "../../../src/sim/loop";
 import { GameSession } from "../../../src/sim/session";
@@ -14,6 +15,7 @@ const passDawn = (game: Game) => {
   run(game, 1500);
 };
 const ofSpecies = (game: Game, species: string) => [...game.entities.all()].filter((e) => e.species === species);
+const farmAnimals = (game: Game) => [...game.entities.all()].filter((e) => isSpeciesId(e.species)).length;
 
 function farmGame(seed = "reaparicion") {
   const game = new Game({ seed });
@@ -85,7 +87,7 @@ describe("[animales-y-granja] Reaparición al amanecer", () => {
     const game2 = new Game({ seed: "otro" });
     const session2 = new GameSession(game2, user.id, { repo, clock, newSeed: () => "x" });
     await session2.openInitial({ worldId: world.id });
-    expect(game2.entities.size).toBe(13);
+    expect(farmAnimals(game2)).toBe(13);
     expect([...game2.pendingRespawns].sort()).toEqual([a.slotId, b.slotId].sort());
     expect(game2.clock.isNight).toBe(true);
     expect(Math.abs(game2.clock.timeOfCycleMs - (game2.clock.durations.dayMs + 60_000))).toBeLessThanOrEqual(5000);
@@ -94,7 +96,7 @@ describe("[animales-y-granja] Reaparición al amanecer", () => {
     game2.events.on("dawn", (e) => (respawned = e.respawned));
     passDawn(game2);
     expect(respawned.sort()).toEqual([a.slotId, b.slotId].sort());
-    expect(game2.entities.size).toBe(15);
+    expect(farmAnimals(game2)).toBe(15);
     expect(game2.clock.dayCount).toBe(2);
   });
 

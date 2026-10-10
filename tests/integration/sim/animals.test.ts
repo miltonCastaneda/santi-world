@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Entity } from "../../../src/domain/entities/entityStore";
 import { INITIAL_POPULATION, insideFarm } from "../../../src/domain/entities/population";
-import { SPECIES, SPECIES_IDS, type SpeciesId } from "../../../src/domain/entities/species";
+import { isSpeciesId, SPECIES, SPECIES_IDS, type SpeciesId } from "../../../src/domain/entities/species";
 import { WATER_Y } from "../../../src/domain/worldgen/layout";
 import { Game } from "../../../src/sim/game";
 import { STEP_MS } from "../../../src/sim/loop";
@@ -18,7 +18,7 @@ function run(game: Game, ms: number): void {
   for (let t = 0; t < ms; t += STEP_MS) game.step(STEP_MS);
 }
 
-const animals = (game: Game) => [...game.entities.all()].filter((e) => e.species !== "threat");
+const animals = (game: Game) => [...game.entities.all()].filter((e) => isSpeciesId(e.species));
 const ofSpecies = (game: Game, s: SpeciesId) => animals(game).filter((e) => e.species === s);
 const cell = (e: Entity) => ({ x: Math.floor(e.body.pos.x), z: Math.floor(e.body.pos.z) });
 

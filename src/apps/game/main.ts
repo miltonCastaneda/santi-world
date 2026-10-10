@@ -67,7 +67,8 @@ function* entityViews(): Iterable<EntityView> {
   for (const e of game.entities.all()) {
     const until = blinkUntil.get(e.id);
     if (until !== undefined && until < now) blinkUntil.delete(e.id);
-    yield { id: e.id, species: e.species, pos: e.body.pos, yaw: e.yaw, anim: e.anim ?? "idle", blink: until !== undefined && until >= now };
+    const species = e.species === "wolf" && e.tamed ? "wolfTame" : e.species;
+    yield { id: e.id, species, pos: e.body.pos, yaw: e.yaw, anim: e.anim ?? "idle", blink: until !== undefined && until >= now };
   }
 }
 
@@ -79,8 +80,10 @@ const view = new RenderApp(canvas, game.world.store, game.world.gen, game.world.
 });
 
 game.events.on("blockChanged", ({ pos }) => view.chunks.invalidateBlock(pos.x, pos.z));
-game.events.on("entityHit", ({ id, outcome }) => {
-  if (outcome === "boing") blinkUntil.set(id, performance.now() + BLINK_MS);
+game.events.on("entityHit", ({ id, pos, outcome, defeated }) => {
+  // Rebote o golpe que no hace "poof" (el lobo salvaje retrocede): parpadeo cartoon.
+  if (outcome === "boing" || (outcome === "defeat" && !defeated)) blinkUntil.set(id, performance.now() + BLINK_MS);
+  if (outcome === "tame" || outcome === "happy") view.entities?.poof(pos, "hearts");
 });
 game.events.on("worldReplaced", ({ world }) => {
   view.chunks.rebuildAll(world.store, world.gen);

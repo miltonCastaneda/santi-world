@@ -5,8 +5,8 @@ import type { EntityAnim } from "../domain/entities/entityStore";
 import { isItemId, ITEM_IDS, type ItemId } from "../domain/entities/items";
 import { SPECIES_IDS } from "../domain/entities/species";
 
-/** Las criaturas que sabe dibujar: los animales de granja y los zombis. */
-const RENDER_KINDS = [...SPECIES_IDS, "zombie"] as const;
+/** Las criaturas que sabe dibujar: los animales de granja, los lobos (salvaje y amigo, con collar) y los zombis. */
+const RENDER_KINDS = [...SPECIES_IDS, "zombie", "wolf", "wolfTame"] as const;
 type RenderKind = (typeof RENDER_KINDS)[number];
 const isRenderKind = (s: string): s is RenderKind => (RENDER_KINDS as readonly string[]).includes(s);
 
@@ -51,8 +51,43 @@ const leg = (w: number, h: number, color: number): Box[] => [{ size: [w, h, w], 
 const ZOMBIE_SKIN = 0x8fd16a;
 const ZOMBIE_SHIRT = 0x3fa7c9;
 
+const WOLF_FUR = 0x9aa3ad;
+const WOLF_LIGHT = 0xe6e9ec;
+/** Lobo cartoon: gris claro con panza blanca, orejas paradas, hocico corto y la cola hacia arriba. */
+const WOLF_MODEL: ModelDef = {
+  body: [
+    { size: [0.42, 0.36, 0.8], at: [0, 0.6, 0], color: WOLF_FUR },
+    { size: [0.36, 0.08, 0.6], at: [0, 0.43, 0.02], color: WOLF_LIGHT },
+    { size: [0.48, 0.42, 0.3], at: [0, 0.64, 0.26], color: WOLF_FUR },
+    { size: [0.12, 0.12, 0.36], at: [0, 0.8, -0.52], color: WOLF_FUR },
+    { size: [0.11, 0.11, 0.12], at: [0, 0.84, -0.74], color: WOLF_LIGHT },
+  ],
+  head: {
+    pivot: [0, 0.78, 0.42],
+    boxes: [
+      { size: [0.36, 0.34, 0.32], at: [0, 0.06, 0.14], color: WOLF_FUR },
+      { size: [0.2, 0.15, 0.18], at: [0, -0.03, 0.38], color: WOLF_LIGHT },
+      { size: [0.08, 0.06, 0.04], at: [0, 0.03, 0.48], color: EYE },
+      { size: [0.1, 0.14, 0.06], at: [-0.12, 0.29, 0.08], color: WOLF_FUR },
+      { size: [0.1, 0.14, 0.06], at: [0.12, 0.29, 0.08], color: WOLF_FUR },
+      { size: [0.06, 0.08, 0.02], at: [-0.12, 0.28, 0.115], color: 0xf2a7a7 },
+      { size: [0.06, 0.08, 0.02], at: [0.12, 0.28, 0.115], color: 0xf2a7a7 },
+      ...eyes(0.09, 0.11, 0.305, 0.06),
+    ],
+  },
+  legs: { hips: quad(0.13, 0.42, 0.26), boxes: leg(0.12, 0.42, WOLF_FUR), height: 0.42 },
+  shadow: 0.5,
+};
+/** El lobo amigo lleva un collar rojo con una medalla dorada (spec "Domesticar"). */
+const WOLF_TAME_MODEL: ModelDef = {
+  ...WOLF_MODEL,
+  body: [...WOLF_MODEL.body, { size: [0.52, 0.1, 0.2], at: [0, 0.76, 0.34], color: 0xe0433a }, { size: [0.1, 0.1, 0.04], at: [0, 0.68, 0.45], color: 0xffd23f }],
+};
+
 /** Animales de cajas, estilo del personaje (ADR-0010). El frente es +z. */
 const MODELS: Record<RenderKind, ModelDef> = {
+  wolf: WOLF_MODEL,
+  wolfTame: WOLF_TAME_MODEL,
   // Zombi cartoon (preguntas abiertas, punto 6): verde claro, ojos grandes con brillo y una sonrisa;
   // los brazos estirados hacia adelante, sin heridas ni dientes.
   zombie: {
@@ -301,12 +336,19 @@ const scratch = new THREE.Matrix4();
 /** Estado visual de cada animal: posición suavizada y fase de las animaciones. */
 type Shown = { species: RenderKind | ItemId; pos: THREE.Vector3; yaw: number; phase: number; swing: number; headPitch: number; lower: number; seenAt: number };
 
-/** `cloud`: nube blanca con estrellas (animales). `sparkle`: destellos de colores que suben (zombis y objetos recogidos). */
-export type PoofStyle = "cloud" | "sparkle";
+/**
+ * `cloud`: nube blanca con estrellas (animales). `sparkle`: destellos de colores que suben (zombis y
+ * objetos recogidos). `hearts`: corazones que suben (un lobo domesticado o contento).
+ */
+export type PoofStyle = "cloud" | "sparkle" | "hearts";
 type Poof = { origin: THREE.Vector3; startedAt: number; style: PoofStyle };
 const POOF_PARTICLES = 10;
 const POOF_SECONDS = 0.6;
 const SPARKLE_SECONDS = 0.9;
+const HEARTS = 5;
+const HEARTS_SECONDS = 1;
+const HEART_COLORS = [new THREE.Color(0xff5c8a), new THREE.Color(0xff8fb1)];
+const effectSeconds = (style: PoofStyle) => (style === "sparkle" ? SPARKLE_SECONDS : style === "hearts" ? HEARTS_SECONDS : POOF_SECONDS);
 const MAX_POOFS = 24;
 const POOF_COLORS = [new THREE.Color(0xffffff), new THREE.Color(0xffd23f)];
 const SPARKLE_COLORS = [new THREE.Color(0xffe066), new THREE.Color(0x8ee8ff), new THREE.Color(0xffb3e6), new THREE.Color(0xffffff)];
@@ -377,7 +419,7 @@ export class EntityRenderer {
   /** Nube "poof" con estrellas en `pos` (desaparición de una criatura). */
   poof(pos: Vec3, style: PoofStyle = "cloud"): void {
     if (this.poofs.length >= MAX_POOFS) this.poofs.shift();
-    this.poofs.push({ origin: new THREE.Vector3(pos.x, pos.y + (style === "sparkle" ? 0.9 : 0.4), pos.z), startedAt: this.time, style });
+    this.poofs.push({ origin: new THREE.Vector3(pos.x, pos.y + (style === "sparkle" ? 0.9 : style === "hearts" ? 1 : 0.4), pos.z), startedAt: this.time, style });
   }
 
   update(dtSeconds: number, views: Iterable<EntityView>, camera: THREE.Vector3): void {
@@ -515,13 +557,17 @@ export class EntityRenderer {
   }
 
   private drawPoofs(): void {
-    this.poofs = this.poofs.filter((p) => this.time - p.startedAt < (p.style === "sparkle" ? SPARKLE_SECONDS : POOF_SECONDS));
+    this.poofs = this.poofs.filter((p) => this.time - p.startedAt < effectSeconds(p.style));
     this.poofMesh.begin();
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     for (const p of this.poofs) {
       if (p.style === "sparkle") {
         this.drawSparkle(p, m, q);
+        continue;
+      }
+      if (p.style === "hearts") {
+        this.drawHearts(p, m, q);
         continue;
       }
       const t = (this.time - p.startedAt) / POOF_SECONDS;
@@ -552,6 +598,30 @@ export class EntityRenderer {
       const size = (0.16 * (1 - t) + 0.02) * twinkle;
       m.compose(pos, q, new THREE.Vector3(size, size, size));
       this.poofMesh.push(m, SPARKLE_COLORS[i % SPARKLE_COLORS.length]);
+    }
+  }
+
+  /** Corazones rosados que suben despacio y se balancean; cada uno, dos cubos arriba y uno girado abajo. */
+  private drawHearts(p: Poof, m: THREE.Matrix4, q: THREE.Quaternion): void {
+    const t = (this.time - p.startedAt) / HEARTS_SECONDS;
+    const z = new THREE.Vector3(0, 0, 1);
+    for (let i = 0; i < HEARTS; i++) {
+      const a = i * 2.39996;
+      const delay = i * 0.08;
+      const k = Math.max(0, Math.min(1, (t - delay) / (1 - delay)));
+      if (k <= 0) continue;
+      const s = 0.18 * Math.sin(Math.min(1, k * 3) * Math.PI * 0.5) * (1 - Math.max(0, k - 0.75) * 4);
+      if (s <= 0.005) continue;
+      const c = new THREE.Vector3(p.origin.x + Math.cos(a) * 0.5 + Math.sin(this.time * 4 + i) * 0.08, p.origin.y + k * 1.1, p.origin.z + Math.sin(a) * 0.5);
+      const color = HEART_COLORS[i % HEART_COLORS.length];
+      q.identity();
+      for (const dx of [-0.5, 0.5]) {
+        m.compose(new THREE.Vector3(c.x + dx * s * 1.2, c.y + s * 0.5, c.z), q, new THREE.Vector3(s * 1.3, s * 1.3, s * 0.6));
+        this.poofMesh.push(m, color);
+      }
+      q.setFromAxisAngle(z, Math.PI / 4);
+      m.compose(new THREE.Vector3(c.x, c.y - s * 0.35, c.z), q, new THREE.Vector3(s * 1.5, s * 1.5, s * 0.6));
+      this.poofMesh.push(m, color);
     }
   }
 

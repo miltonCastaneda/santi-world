@@ -59,6 +59,9 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Carne, inventario y antorchas (incremento 9): la Espada sobre un animal de granja le hace "poof" (reaparece al amanecer) y deja una carne flotante (modelo de cajas que sube, baja y gira). Se recoge caminando a 1,5 bloques o menos o con un clic, 0,8 s después de caer, con el sonido `pickup` y destellos. No desaparece: se guarda con el mundo.
 - Mochila (`domain/rules/inventory`, `ui/kid/inventory`): botón 🎒 o tecla E, panel sin pausa con diamantes, carne y cerdos-gallina (íconos, número y de 1 a 5 puntos) y cierre ✕ de 64 px. El inventario es por mundo, se guarda y se sanea al abrir. Construir no gasta bloques.
 - La antorcha aparece en la barra de bloques con el ícono 🔥: ilumina con un tinte cálido y, con luz de bloque 8 o más, no aparecen zombis (E2E "Refugio iluminado").
+- Lobos y Collar (incremento 10): de 4 a 6 lobos viven en la montaña boscosa (spawn slots por semilla). Una vez por día del juego, a una hora al azar, salen de caza hacia la granja con un viaje por tramos de A* (14 bloques), acechan desde afuera y, si encuentran un hueco, atrapan un animal de granja (no a los patos) con un "poof" y vuelven a su guarida. Si la granja está bien cerrada no se pierde ningún animal; a los 2 min se rinden. Nunca lastiman al niño.
+- El Collar domestica a un lobo salvaje a 3 bloques o menos con un clic: corazones, campanitas (`tame`) y un collar rojo con medallita. El lobo amigo sigue al niño (como máximo 3; los demás cuidan la granja), se teletransporta a su lado si queda a más de 30 bloques y ahuyenta a los zombis que toca. La domesticación se guarda; los mundos guardados antes de los lobos los reciben una sola vez.
+- Golpes a un lobo salvaje: retrocede y parpadea; con 2 espadazos hace "poof" (sin carne) y reaparece al amanecer en su montaña. Cualquier herramienta sobre un lobo amigo solo le da corazones y un "guau-guau" (`woof`).
 
 ### Cambiado
 - "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.
@@ -77,6 +80,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - ADR-0005 y ADR-0006 pasan a "Aceptado".
 - Un golpe de la herramienta alcanza primero a la criatura apuntada si está más cerca que el bloque.
 - La tabla de daño agrega la columna del cerdo-gallina (cualquier herramienta lo "captura", efecto que llega en el incremento 12; nunca suelta carne) y la Espada sobre un animal pasa de "boing" a derrota con carne. Una criatura apuntada fuera de alcance muestra "muy lejos".
+- La tabla de daño agrega las columnas del lobo salvaje (Collar domestica, Espada en 2 golpes, Mano y Pico "boing") y del lobo amigo (nunca recibe daño). Las máquinas de estado suman las acciones `hunt`, `stalk` y `happy`.
 
 ## [1.0.0] - 2026-10-10
 

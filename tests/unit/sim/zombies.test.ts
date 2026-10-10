@@ -165,17 +165,21 @@ describe("[enemigos-nocturnos] Ataques y golpes", () => {
     expect(farm.entities.get(sheep.id)).toBeDefined();
   });
 
-  it("[experiencia-infantil] tabla de reglas de daño: zombi = 1 golpe de cerca; a los animales, rebotes salvo la Espada (carne)", () => {
+  it("[experiencia-infantil] tabla de reglas de daño: zombi = 1 golpe de cerca; lobo = 2 espadazos; a los animales, rebotes salvo la Espada (carne)", () => {
     expect(HITS_TO_DEFEAT.zombie).toBe(1);
+    expect(HITS_TO_DEFEAT.wolf).toBe(2);
     const table = Object.fromEntries(TOOL_IDS.map((t) => [t, Object.fromEntries(TARGET_KINDS.map((k) => [k, resolveHit(t, k).defeated ? "poof" : MELEE[t][k]]))]));
     expect(table).toEqual({
-      hand: { animal: "boing", zombie: "poof", pigChicken: "capture" },
-      pickaxe: { animal: "boing", zombie: "poof", pigChicken: "capture" },
-      sword: { animal: "poof", zombie: "poof", pigChicken: "capture" },
-      bow: { animal: "none", zombie: "none", pigChicken: "capture" },
-      collar: { animal: "boing", zombie: "none", pigChicken: "capture" },
+      hand: { animal: "boing", zombie: "poof", pigChicken: "capture", wolf: "boing", friendWolf: "happy" },
+      pickaxe: { animal: "boing", zombie: "poof", pigChicken: "capture", wolf: "boing", friendWolf: "happy" },
+      sword: { animal: "poof", zombie: "poof", pigChicken: "capture", wolf: "defeat", friendWolf: "happy" },
+      bow: { animal: "none", zombie: "none", pigChicken: "capture", wolf: "none", friendWolf: "none" },
+      collar: { animal: "boing", zombie: "none", pigChicken: "capture", wolf: "tame", friendWolf: "happy" },
     });
     // Nunca hace falta más de un golpe para un zombi, aunque haya recibido otros antes.
     expect(resolveHit("sword", "zombie", 3).defeated).toBe(true);
+    // El lobo salvaje: el primer espadazo lo hace retroceder; el segundo, "poof" (sin carne).
+    expect(resolveHit("sword", "wolf", 0)).toEqual({ outcome: "defeat", defeated: false, hits: 1, drop: null });
+    expect(resolveHit("sword", "wolf", 1)).toEqual({ outcome: "defeat", defeated: true, hits: 2, drop: null });
   });
 });

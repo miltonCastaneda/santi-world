@@ -223,13 +223,13 @@
 - **Depende de**: 9. **Paralelizable**: sí, con el incremento 11.
 - **Demo**: un lobo sale a cazar y se le cierra el paso con bloques; otro se domestica con el Collar y sigue a Santi.
 
-- [ ] 10.1 Poblar la montaña con 4 a 6 lobos con spawn slots y verificarlo con una prueba de integración "Lobos en su montaña"
-- [ ] 10.2 Definir la máquina de estados del lobo salvaje (Hunt una vez por día del juego, Stalk, ReturnDen, sin dañar al niño) y verificar con pruebas de integración "Granja abierta", "Granja bien cerrada", "El niño cierra el hueco a tiempo" y "Lobos y el niño"
-- [ ] 10.3 Implementar el Collar (un clic a 3 bloques o menos domestica; sobre otro animal hace "boing") y que la domesticación persista, y verificarlo con pruebas unitarias "Domesticar", "Collar sobre un animal que no es lobo" y "Lobo amigo persistente"
-- [ ] 10.4 Definir el lobo amigo (Follow de 2 a 5 bloques, como máximo 3 lo siguen, teletransporte a más de 30, Guard en la granja y ChaseZombie) y verificar con pruebas unitarias "Seguir al niño", "Cuarto lobo amigo" y "Proteger de zombis"
-- [ ] 10.5 Implementar los golpes a un lobo salvaje (retrocede; 2 espadazos provocan "poof" y reaparición al amanecer; el lobo amigo no sufre daño) y verificar con pruebas unitarias "Golpe con la espada", "Dos golpes" y "Golpe accidental a un lobo amigo"
-- [ ] 10.6 Crear el modelo del lobo, el collar visible, el efecto de corazones y los sonidos, y verificarlo con la checklist visual
-- [ ] 10.7 Actualizar `docs/guia-nino.md` (el collar y los lobos amigos) y agregar la entrada al CHANGELOG
+- [x] 10.1 Poblar la montaña con 4 a 6 lobos con spawn slots y verificarlo con una prueba de integración "Lobos en su montaña"
+- [x] 10.2 Definir la máquina de estados del lobo salvaje (Hunt una vez por día del juego, Stalk, ReturnDen, sin dañar al niño) y verificar con pruebas de integración "Granja abierta", "Granja bien cerrada", "El niño cierra el hueco a tiempo" y "Lobos y el niño"
+- [x] 10.3 Implementar el Collar (un clic a 3 bloques o menos domestica; sobre otro animal hace "boing") y que la domesticación persista, y verificarlo con pruebas unitarias "Domesticar", "Collar sobre un animal que no es lobo" y "Lobo amigo persistente"
+- [x] 10.4 Definir el lobo amigo (Follow de 2 a 5 bloques, como máximo 3 lo siguen, teletransporte a más de 30, Guard en la granja y ChaseZombie) y verificar con pruebas unitarias "Seguir al niño", "Cuarto lobo amigo" y "Proteger de zombis"
+- [x] 10.5 Implementar los golpes a un lobo salvaje (retrocede; 2 espadazos provocan "poof" y reaparición al amanecer; el lobo amigo no sufre daño) y verificar con pruebas unitarias "Golpe con la espada", "Dos golpes" y "Golpe accidental a un lobo amigo"
+- [x] 10.6 Crear el modelo del lobo, el collar visible, el efecto de corazones y los sonidos, y verificarlo con la checklist visual
+- [x] 10.7 Actualizar `docs/guia-nino.md` (el collar y los lobos amigos) y agregar la entrada al CHANGELOG
 
 ## 11. Montaña de rocas y diamantes
 

@@ -6,7 +6,8 @@ import { BLOCK_NUM, BLOCKS_BY_NUM, type BlockId } from "../domain/blocks";
 import { EntityStore, type Entity, type EntityKind } from "../domain/entities/entityStore";
 import { isItemId, ITEMS, PICKUP_DELAY_MS, type ItemId } from "../domain/entities/items";
 import { createSpawnSlots, homesOf, type Home, type SpawnSlot } from "../domain/entities/population";
-import { isSpeciesId, type HomeId } from "../domain/entities/species";
+import { isSpeciesId, type HomeId, type SpeciesId } from "../domain/entities/species";
+import { WOLF, type WolfRole } from "../domain/entities/wolf";
 import { ZOMBIE } from "../domain/entities/zombie";
 import type { EntitySnapshot } from "../domain/repository/model";
 import { bodyOverlapsCell, type CollisionQuery } from "../domain/physics/collide";
@@ -26,6 +27,7 @@ import { itemsInPickupRange } from "./systems/interaction";
 import type { PathWorld } from "./systems/pathfinding";
 import { respawnPending, type RespawnWorld } from "./systems/respawn";
 import { NightSpawner, type SpawnWorld } from "./systems/spawn";
+import { WolfSystem, type WolfContext } from "./systems/wolves";
 import { ZombieSystem, type ZombieContext } from "./systems/zombies";
 
 export type Selection = { tool: ToolId; block: BlockId };
@@ -63,6 +65,8 @@ export type GameEvents = {
   /** El niño le pegó a una criatura con una herramienta (rebote o "poof", nunca dolor). */
   entityHit: { id: string; species: EntityKind; pos: Vec3; outcome: HitOutcome; defeated: boolean };
   zombieSpawned: { id: string; pos: Vec3 };
+  /** El Collar domesticó a un lobo: corazones, collar visible y se vuelve amigo. */
+  wolfTamed: { id: string; pos: Vec3; role: WolfRole };
   /** Quedó un objeto flotando (la carne de un animal). */
   itemDropped: { id: string; item: ItemId; pos: Vec3 };
   /** El niño recogió un objeto (al pasar cerca o con un clic). */
@@ -94,6 +98,7 @@ export class Game {
   readonly player: Player;
   readonly entities = new EntityStore();
   readonly animals: AnimalSystem;
+  readonly wolves: WolfSystem;
   readonly zombies: ZombieSystem;
   readonly spawner: NightSpawner;
   readonly clock = new WorldClock();
@@ -121,6 +126,7 @@ export class Game {
     this.player = new Player(this.spawnPoint());
     this.lastHearts = this.player.hearts;
     this.animals = new AnimalSystem(this.world.seed);
+    this.wolves = new WolfSystem(this.world.seed, this.animals.paths);
     this.zombies = new ZombieSystem(this.world.seed, this.animals.paths);
     this.spawner = new NightSpawner(this.world.seed);
     this.prepareHomes();
@@ -165,6 +171,28 @@ export class Game {
     return { world: this.pathWorld, homes: this.homes };
   }
 
+  private get wolfContext(): WolfContext {
+    const c = this.clock;
+    return {
+      world: this.pathWorld,
+      surfaceY: (x, z) => this.world.store.surfaceY(x, z),
+      homes: this.homes,
+      player: this.player.body,
+      dayCount: c.dayCount,
+      isDay: c.phase === "day",
+      dayFraction: c.isNight ? 1 : c.timeOfCycleMs / c.durations.dayMs,
+      catchAnimal: (id) => this.removeEntity(id),
+      scareZombie: (id) => this.removeEntity(id),
+      onSound: ({ id, pos }) => this.events.emit("animalSound", { id, species: "wolf", sound: WOLF.sound, pos }),
+    };
+  }
+
+  /** Hace aparecer lo que corresponde a un slot: un animal de granja o un lobo. */
+  private spawnSlot(slot: SpawnSlot): Entity {
+    if (slot.species === "wolf") return this.wolves.spawn(this.entities, this.wolfContext, slot, this.timeMs);
+    return this.animals.spawn(this.entities, this.animalContext, slot as SpawnSlot & { species: SpeciesId }, this.timeMs, (x, z) => this.world.store.surfaceY(x, z));
+  }
+
   /** Slots de población del mundo (vacío en los mundos sin granja, como "Mi primer mundo"). */
   get spawnSlots(): readonly SpawnSlot[] {
     return this.slots;
@@ -176,9 +204,18 @@ export class Game {
     this.slots = layout ? createSpawnSlots(layout, this.world.seed) : [];
   }
 
-  /** Población inicial de un mundo nuevo: un animal por slot. */
+  /** Población inicial de un mundo nuevo: un animal (o un lobo) por slot. */
   spawnPopulation(): void {
-    for (const slot of this.slots) this.animals.spawn(this.entities, this.animalContext, slot, this.timeMs, (x, z) => this.world.store.surfaceY(x, z));
+    for (const slot of this.slots) this.spawnSlot(slot);
+  }
+
+  /** Mundos guardados antes de que hubiera lobos: aparecen los que no están vivos ni pendientes. */
+  spawnMissingWolves(): void {
+    const alive = new Set<string>();
+    for (const e of this.entities.all()) if (e.slotId) alive.add(e.slotId);
+    for (const slot of this.slots) {
+      if (slot.species === "wolf" && !alive.has(slot.id) && !this.pendingRespawns.includes(slot.id)) this.spawnSlot(slot);
+    }
   }
 
   /** Quita una entidad con un "poof". Un animal de un slot queda pendiente de reaparecer al amanecer. */
@@ -206,9 +243,7 @@ export class Game {
       isWater: (x, y, z) => store.get(x, y, z) === BLOCK_NUM.water,
       collision: this.collision,
     };
-    const { respawned, stillPending } = respawnPending(this.pendingRespawns, this.slots, this.entities, world, (slot) =>
-      this.animals.spawn(this.entities, this.animalContext, slot, this.timeMs, (x, z) => this.world.store.surfaceY(x, z)),
-    );
+    const { respawned, stillPending } = respawnPending(this.pendingRespawns, this.slots, this.entities, world, (slot) => this.spawnSlot(slot));
     this.pendingRespawns = stillPending;
     return respawned;
   }
@@ -317,6 +352,7 @@ export class Game {
     this.intents = [];
     this.entities.clear();
     this.animals.reset(world.seed);
+    this.wolves.reset(world.seed);
     this.zombies.reset(world.seed);
     this.spawner.reset(world.seed);
     this.pendingRespawns = [];
@@ -348,6 +384,7 @@ export class Game {
     this.stepPlayer(dtMs);
     for (const item of itemsInPickupRange(this.entities, this.player.body, this.timeMs)) this.collectItem(item.id);
     this.animals.step(this.entities, this.animalContext, this.tick, this.timeMs, dtMs, (s) => this.events.emit("animalSound", s));
+    this.wolves.step(this.entities, this.wolfContext, this.tick, this.timeMs, dtMs);
     this.zombies.step(this.entities, this.zombieContext, this.tick, this.timeMs, dtMs);
     this.stepNight();
     this.stepClock(dtMs);
@@ -519,14 +556,32 @@ export class Game {
   /** Golpe de cerca con la herramienta elegida, según la tabla de `domain/rules/damage`. */
   private hitEntity(e: Entity, tool: ToolId): void {
     const b = e.body;
-    const kind: TargetKind | null = e.species === "zombie" ? "zombie" : isSpeciesId(e.species) ? "animal" : null;
+    const kind = targetKind(e);
     if (!kind) return;
     const { outcome, defeated, hits, drop } = resolveHit(tool, kind, e.hits ?? 0);
     if (outcome === "none" || outcome === "capture") return;
+    if (outcome === "tame") {
+      // El Collar solo alcanza de cerca: más lejos, el aviso suave de "muy lejos".
+      if (this.gapTo(b) > WOLF.tameRange) {
+        this.events.emit("tooFar", { pos: { ...b.pos } });
+        return;
+      }
+      const role = this.wolves.tame(e, this.entities, this.timeMs);
+      this.events.emit("entityHit", { id: e.id, species: e.species, pos: { ...b.pos }, outcome, defeated: false });
+      this.events.emit("wolfTamed", { id: e.id, pos: { ...b.pos }, role });
+      return;
+    }
+    if (outcome === "happy") {
+      this.wolves.happy(e, this.timeMs);
+      this.events.emit("entityHit", { id: e.id, species: e.species, pos: { ...b.pos }, outcome, defeated: false });
+      return;
+    }
     e.hits = hits;
     this.events.emit("entityHit", { id: e.id, species: e.species, pos: { ...b.pos }, outcome, defeated });
     // Rebote cartoon: un saltito, sin daño.
     if (outcome === "boing" && b.onGround) b.vel.y = 4;
+    // El lobo salvaje retrocede con cada golpe que no lo hace "poof".
+    if (kind === "wolf" && !defeated) this.wolves.flee(e, this.player.pos, this.timeMs);
     if (!defeated) return;
     const at = { ...b.pos };
     this.removeEntity(e.id);
@@ -537,6 +592,12 @@ export class Game {
   private changed(pos: Vec3 | null): void {
     if (pos) this.events.emit("blockChanged", { pos });
   }
+}
+
+function targetKind(e: Entity): TargetKind | null {
+  if (e.species === "zombie") return "zombie";
+  if (e.species === "wolf") return e.tamed ? "friendWolf" : "wolf";
+  return isSpeciesId(e.species) ? "animal" : null;
 }
 
 /** Distancia del punto a la celda (0 si está dentro). */

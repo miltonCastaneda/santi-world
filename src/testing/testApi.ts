@@ -48,7 +48,7 @@ export type DayNightSnapshot = {
   quietNight: boolean;
 };
 
-export type EntitySnapshot = { id: string; species: string; pos: Vec3; state: string | null; anim: string | null; home: string | null };
+export type EntitySnapshot = { id: string; species: string; pos: Vec3; state: string | null; anim: string | null; home: string | null; tamed: boolean; role: string | null };
 
 export type SantiTestApi = {
   ready: true;
@@ -182,6 +182,8 @@ export function installTestApi(deps: {
         state: e.brain?.state ?? null,
         anim: e.anim ?? null,
         home: e.home ?? null,
+        tamed: e.tamed === true,
+        role: e.role ?? null,
       })),
     clearEntities: () => game.entities.clear(),
     poofEntity: (id) => game.removeEntity(id),

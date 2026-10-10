@@ -22,8 +22,11 @@ export function connectGameAudio(audio: AudioService, game: Game): void {
   });
   e.on("nightSoon", () => audio.play("chime", { volume: 0.7 }));
   // Golpes cartoon: rebote con "boing"; un zombi derrotado (o que se va al amanecer) hace destellos.
-  e.on("entityHit", ({ pos, outcome }) => {
-    if (outcome === "boing") audio.play("boing", { pos, volume: 0.8 });
+  e.on("entityHit", ({ pos, outcome, defeated }) => {
+    if (outcome === "boing" || (outcome === "defeat" && !defeated)) audio.play("boing", { pos, volume: 0.8 });
+    // Lobo domesticado (o un lobo amigo que salta contento): campanitas y un "guau" alegre.
+    if (outcome === "tame") audio.play("tame", { pos });
+    if (outcome === "happy") audio.play("woof", { pos, volume: 0.8 });
   });
   e.on("entityRemoved", ({ species, pos }) => audio.play(species === "zombie" ? "sparkle" : "poof", { pos, volume: 0.8 }));
   e.on("itemCollected", () => audio.play("pickup"));

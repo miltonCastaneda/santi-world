@@ -3,7 +3,7 @@
  * uno es una función pura de la frecuencia de muestreo, así que se pueden probar sin navegador.
  */
 export const ANIMAL_SOUNDS = ["baa", "moo", "meh", "cluck", "peep", "quack"] as const;
-export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS, "sparkle", "groan", "pickup"] as const;
+export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS, "sparkle", "groan", "pickup", "woof", "tame"] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];
 
@@ -129,6 +129,28 @@ export function synthesize(name: SoundName, rate: number): Float32Array<ArrayBuf
     case "groan": {
       const v = voice(rate, (t) => 210 - 50 * t + 8 * Math.sin(2 * Math.PI * 5 * t), [0.16, 0.08, 0.04]);
       return render(rate, 0.5, (t) => v(t) * Math.min(1, t / 0.12) * (0.8 + 0.2 * Math.sin(2 * Math.PI * 3 * t)), { attack: 0.05, decay: 0.3 });
+    }
+    // Lobo: un "guau-guau" corto y amistoso, de perrito (nada de aullidos ni gruñidos).
+    case "woof": {
+      const v = voice(rate, (t) => (t < 0.12 ? 420 - 600 * t : 400 - 600 * (t - 0.17)), [0.2, 0.12, 0.05]);
+      return render(rate, 0.32, (t) => (v(t) + 0.03 * rnd()) * Math.max(syllable(t, 0, 0.11), syllable(t, 0.17, 0.29) * 0.85), { attack: 0.005, decay: 0.25 });
+    }
+    // Domesticar: tres notas contentas que suben (do, mi, sol), con brillo de campanita.
+    case "tame": {
+      const notes = [784, 988, 1175];
+      return render(
+        rate,
+        0.45,
+        (t) => {
+          let v = 0;
+          notes.forEach((f, k) => {
+            const s = t - k * 0.09;
+            if (s > 0) v += (Math.sin(2 * Math.PI * f * s) + 0.25 * Math.sin(4 * Math.PI * f * s)) * Math.exp(-s / 0.15) * Math.min(1, s / 0.005);
+          });
+          return 0.13 * v;
+        },
+        { attack: 0.004, decay: 0.3 },
+      );
     }
   }
 }

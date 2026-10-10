@@ -9,10 +9,9 @@
 
 ## Lo que hoy puede hacer el niño
 
-- Poner bloques (botón "Poner", elegir un bloque de la paleta y tocar donde construir).
-- Quitar bloques (botón "Quitar" o clic derecho).
-- Deshacer la última acción.
-- Girar la cámara arrastrando con el mouse.
+- Moverse con su personaje (W A S D o flechas, Espacio para saltar) y girar la cámara arrastrando con el botón derecho.
+- Poner bloques con la Mano y romperlos con el Pico (clic izquierdo), y deshacer la última acción.
+- Cuidar a los animales de la granja, defenderse de los zombis de noche, juntar carne en la mochila y hacerse amigo de los lobos con el Collar.
 - Ver sus mundos en **"🌍 Mis Mundos"** y volver a cualquiera de ellos.
 - **"＋ Crear nuevo mundo"**: guarda el mundo actual y recién después crea uno nuevo. Ya no existe "Empezar de nuevo": desde la pantalla del niño no se puede borrar ningún mundo.
 
@@ -88,6 +87,13 @@ Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el
 - La carne se recoge caminando cerca (1,5 bloques) o con un clic. **No desaparece** con el tiempo: queda flotando, también al cerrar y reabrir el mundo.
 - La **mochila** (🎒 o la tecla E) muestra los diamantes, la carne y los cerdos-gallina con íconos, números y puntos, y **no pausa** el juego. Cada mundo tiene su propia mochila y se guarda con él. Construir **no gasta** nada: los bloques son ilimitados.
 - La **antorcha** está en la barra de bloques (🔥). Ilumina de noche y, a su alrededor (luz 8 o más, unos 6 bloques), no aparecen zombis.
+
+### Los lobos
+
+- En la montaña boscosa viven de **4 a 6 lobos** grises de caricatura. Su voz es un "guau-guau" amistoso. **Nunca lastiman al niño.**
+- **Una vez por día del juego**, a una hora al azar durante el día, cada lobo baja a la granja a buscar un animal (los patos del estanque no son presa). Si encuentra un hueco en la cerca, atrapa uno con un "poof" (el animal **reaparece al amanecer**) y vuelve a su montaña. Si la granja está **bien cerrada**, acecha desde afuera y se vuelve sin nada; como mucho insiste 2 minutos.
+- Un golpe con la mano o el pico hace que un lobo salvaje se aleje. Con **2 golpes de espada** hace "poof" (sin carne) y reaparece al amanecer en su montaña.
+- Con el **Collar**, un clic sobre un lobo salvaje a 3 bloques o menos lo **domestica para siempre** (se guarda con el mundo): salen corazones y se le pone un collar rojo. Hasta **3 lobos amigos siguen al niño** (si se aleja más de 30 bloques, aparecen a su lado); los demás **cuidan la granja**. Los lobos amigos **ahuyentan a los zombis** que tocan y nunca cazan ni reciben daño: cualquier golpe solo los hace saltar contentos.
 
 ### Exportar e importar (respaldo)
 

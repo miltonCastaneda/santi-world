@@ -3,8 +3,12 @@ import type { MachineDef, Transition } from "./fsm";
 export const SPECIES_IDS = ["sheep", "cow", "goat", "hen", "chick", "duck"] as const;
 export type SpeciesId = (typeof SPECIES_IDS)[number];
 
-/** Hogar de un animal: la granja (dentro del cercado) o el estanque. */
-export type HomeId = "farm" | "pond";
+/** Hogar de un animal: la granja (dentro del cercado), el estanque o la guarida de los lobos. */
+export type HomeId = "farm" | "pond" | "den";
+
+export function isHomeId(value: unknown): value is HomeId {
+  return value === "farm" || value === "pond" || value === "den";
+}
 
 export type SpeciesDef = {
   id: SpeciesId;

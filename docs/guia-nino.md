@@ -18,7 +18,8 @@ Tienes un **personaje** con una **"S"** en la camiseta. ¡Eres tú!
 - ✋ **La Mano** pone bloques. Elige un color abajo y haz clic donde quieras construir.
 - ⛏️ **El Pico** rompe bloques.
 - ⚔️ **La Espada**: con **un golpe** un zombi se va con destellos ✨. Si tocas a un animal de la granja con la espada, hace **poof** y deja un pedazo de **carne** 🍖 (el animal vuelve a la granja por la mañana). Con la Mano o el Pico, el animal solo da un saltito ("boing").
-- 🏹 **El Arco** y 📿 **el Collar** sirven para cosas que llegan pronto.
+- 📿 **El Collar** sirve para hacerte **amigo de un lobo**: acércate y haz clic sobre él.
+- 🏹 **El Arco** sirve para algo que llega pronto.
 - La herramienta que estás usando se pone **verde** y tu personaje la lleva en la mano.
 
 ## Tus bloques (abajo)
@@ -75,8 +76,22 @@ Tu primer mundo, el de antes, se llama **"Mi primer mundo"**. Si ves el dibujo *
 - ¡**Construye muros** alrededor de tus animales! Los zombis no pueden romper bloques ni saltar muros. Debajo de un **techo**, o cerca de una **antorcha** 🔥, no aparecen. ¡Una casita con techo y una antorcha adentro es un refugio perfecto!
 - Cuando sale el **sol**, todos los zombis se van.
 
+## Los lobos (en la montaña del bosque)
+
+- En la montaña con árboles viven unos **lobos** 🐺 grises que dicen "guau-guau".
+- **A ti nunca te lastiman.** Pero una vez al día, de día, bajan a la granja a buscar un animal. Si la **cerca está cerrada**, no pueden entrar y se vuelven a su casa. ¡Revisa que no haya huecos!
+- Si un lobo atrapa un animal, el animal hace **poof**... ¡y vuelve a la granja por la mañana!
+- Con la Mano o el Pico, un lobo salvaje da un saltito y se aleja. Con **dos golpes de espada** hace poof y vuelve a su montaña por la mañana.
+
+## Tus lobos amigos 🐺📿
+
+- Elige el **Collar** 📿, acércate a un lobo (¡bien cerquita!) y haz clic sobre él. Salen **corazones** 💕, suena una campanita y el lobo se pone un **collar rojo**. ¡Ya es tu amigo para siempre!
+- Tus lobos amigos **te siguen** a todos lados. Si te alejas mucho, aparecen de nuevo a tu lado.
+- Hasta **3 lobos** te siguen. Si tienes más, los otros se quedan **cuidando la granja**.
+- De noche, tus lobos **espantan a los zombis**: si tocan uno, el zombi se va con destellos ✨.
+- Si tocas a tu lobo amigo con cualquier herramienta, no le pasa nada: salta contento, salen corazones y dice "guau-guau".
+
 ## Pronto (Fase 2)
 
 - Llegará el **cerdo-gallina**, que vuela.
-- Con el **collar** puedes hacerte amigo de un lobo.
 - En la montaña de rocas hay **diamantes** para recoger con el pico.

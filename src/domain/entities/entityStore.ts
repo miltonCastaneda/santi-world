@@ -3,11 +3,12 @@ import type { Body } from "../physics/collide";
 import type { Brain } from "./fsm";
 import type { ItemId } from "./items";
 import type { HomeId, SpeciesId } from "./species";
+import type { WolfRole } from "./wolf";
 
 export type EntityAnim = "idle" | "walk" | "run" | "graze" | "rest" | "swim";
 
-/** Animales de granja, zombis, objetos para recoger y el marcador de amenaza de las pruebas. */
-export type EntityKind = SpeciesId | ItemId | "zombie" | "threat";
+/** Animales de granja, lobos, zombis, objetos para recoger y el marcador de amenaza de las pruebas. */
+export type EntityKind = SpeciesId | ItemId | "wolf" | "zombie" | "threat";
 
 /** Camino calculado por el pathfinding: puntos de pies (centro de celda) y versiones de los chunks que cruza. */
 export type Path = { points: Vec3[]; chunks: Map<string, number> };
@@ -49,6 +50,17 @@ export type Entity = {
   hits?: number;
   /** Desde cuándo un objeto se recoge al pasar (el recién caído se ve un momento). */
   readyAt?: number;
+  /** Lobo domesticado con el Collar (para siempre) y qué hace: seguir al niño o cuidar la granja. */
+  tamed?: boolean;
+  role?: WolfRole;
+  /** Lobo salvaje: último día del juego en que salió a cazar, momento del día en que sale y hasta cuándo dura. */
+  huntDay?: number;
+  huntFrac?: number;
+  huntUntil?: number;
+  /** Destino lejano al que viaja por tramos (el camino de cada tramo cabe en el presupuesto del A*). */
+  dest?: Vec3 | null;
+  /** Tramos seguidos sin camino: al llegar a varios, se da por vencido. */
+  hopFails?: number;
 };
 
 const CELL = 8;

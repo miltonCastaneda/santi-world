@@ -42,7 +42,7 @@ export class AnimalSystem {
   }
 
   /** Hace aparecer un animal en su slot (en el suelo o flotando si es un pato sobre el agua). */
-  spawn(store: EntityStore, ctx: AnimalContext, slot: SpawnSlot, now: number, surfaceY: (x: number, z: number) => number): Entity {
+  spawn(store: EntityStore, ctx: AnimalContext, slot: SpawnSlot & { species: SpeciesId }, now: number, surfaceY: (x: number, z: number) => number): Entity {
     const def = SPECIES[slot.species];
     const y0 = surfaceY(slot.x, slot.z) + 1;
     const y = standY(ctx.world, slot.x, slot.z, y0, agentOf(def)) ?? y0;

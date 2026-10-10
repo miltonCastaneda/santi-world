@@ -32,7 +32,7 @@ const OFFSETS: readonly { dx: number; dz: number }[] = (() => {
  * altura entera, sin agua salvo para los que nadan, y sin otro animal encima.
  */
 export function freeSpotNear(slot: SpawnSlot, world: RespawnWorld, store: EntityStore): { x: number; z: number } | null {
-  const swims = SPECIES[slot.species].swims;
+  const swims = slot.species !== "wolf" && SPECIES[slot.species].swims;
   for (const { dx, dz } of OFFSETS) {
     const x = slot.x + dx;
     const z = slot.z + dz;

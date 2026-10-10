@@ -1,7 +1,7 @@
 import type { Rng } from "../../core/rng";
 
 /** Lo que hace la entidad mientras está en un estado. Lo ejecuta el sistema de IA. */
-export type ActionKind = "idle" | "wander" | "graze" | "rest" | "flee" | "returnHome" | "follow" | "swim" | "seek" | "chase" | "bump";
+export type ActionKind = "idle" | "wander" | "graze" | "rest" | "flee" | "returnHome" | "follow" | "swim" | "seek" | "chase" | "bump" | "hunt" | "stalk" | "happy";
 
 /** Condiciones de una transición, como datos (ADR-0005). Todas las de una transición deben cumplirse. */
 export type Condition =
@@ -15,7 +15,11 @@ export type Condition =
   | { if: "inWater" }
   | { if: "onLand" }
   | { if: "hasTarget" }
-  | { if: "noTarget" };
+  | { if: "noTarget" }
+  | { if: "noLeader" }
+  | { if: "targetNear"; within: number }
+  | { if: "pathFailed" }
+  | { if: "huntDue" };
 
 export type Transition = { to: string; when: readonly Condition[] };
 
@@ -43,8 +47,14 @@ export type Perception = {
   inWater: boolean;
   /** Llegó a su destino o no hay camino. */
   arrived: boolean;
-  /** Tiene a quién perseguir (zombis). */
+  /** Tiene a quién perseguir (zombis y lobos). */
   hasTarget?: boolean;
+  /** Distancia al objetivo (Infinity si no tiene). */
+  targetDistance?: number;
+  /** No hay camino hasta el destino. */
+  pathFailed?: boolean;
+  /** Al lobo salvaje le toca salir a cazar (una vez por día del juego). */
+  huntDue?: boolean;
 };
 
 export type Brain = { state: string; enteredAt: number; until: number };
@@ -73,6 +83,14 @@ function holds(c: Condition, brain: Brain, p: Perception, now: number, rng: Rng)
       return p.hasTarget === true;
     case "noTarget":
       return p.hasTarget !== true;
+    case "noLeader":
+      return !Number.isFinite(p.leaderDistance);
+    case "targetNear":
+      return (p.targetDistance ?? Infinity) <= c.within;
+    case "pathFailed":
+      return p.pathFailed === true;
+    case "huntDue":
+      return p.huntDue === true;
   }
 }
 

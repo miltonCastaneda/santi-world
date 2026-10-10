@@ -7,8 +7,9 @@ test("[animales-y-granja] la granja tiene animales que se mueven y se dibujan co
   await openTestGame(page);
   const first = await page.evaluate(() => window.__santi!.entities());
   const count = (species: string) => first.filter((e) => e.species === species).length;
-  expect(first).toHaveLength(15);
+  expect(first.filter((e) => e.species !== "wolf")).toHaveLength(15);
   expect([count("sheep"), count("cow"), count("goat"), count("hen"), count("chick"), count("duck")]).toEqual([3, 2, 2, 3, 3, 2]);
+  expect(count("wolf")).toBeGreaterThanOrEqual(4);
 
   // Vista alta sobre la granja: todos los animales del cercado quedan a menos de 64 bloques.
   await page.evaluate(() => {

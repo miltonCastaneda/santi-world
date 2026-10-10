@@ -190,9 +190,15 @@ export class GameSession {
     this.game.pendingRespawns = [...state.pendingRespawns];
     // Cada mundo tiene su inventario (spec "Inventario independiente por mundo").
     this.game.setInventory(state.inventory);
-    // Un mundo nuevo (o guardado antes de que hubiera animales) recibe su población inicial.
-    if (state.animalsSpawned) this.game.restoreEntities(entities);
-    else this.game.spawnPopulation();
+    // Un mundo nuevo (o guardado antes de que hubiera animales) recibe su población inicial; uno
+    // guardado antes de que hubiera lobos los recibe una sola vez (los que faltan por un "poof"
+    // siguen pendientes del amanecer).
+    if (state.animalsSpawned) {
+      this.game.restoreEntities(entities);
+      this.game.spawnMissingWolves();
+    } else {
+      this.game.spawnPopulation();
+    }
     this.events.emit("worldOpened", { world, state });
     this.savedStateKey = this.stateKey();
     await repo.setMeta(LAST_WORLD_KEY, worldId);
@@ -236,9 +242,9 @@ export class GameSession {
     const cam = this.deps.camera?.();
     const r = (v: { x: number; y: number; z: number }) => `${v.x.toFixed(1)},${v.y.toFixed(1)},${v.z.toFixed(1)}`;
     const p = this.game.player;
-    // Los animales cuentan al bloque: moverse dentro de la misma celda no obliga a guardar.
+    // Los animales cuentan al bloque: moverse dentro de la misma celda no obliga a guardar. Domesticar un lobo sí.
     let animals = 0;
-    for (const e of this.game.entities.all()) animals = (animals * 31 + Math.floor(e.body.pos.x) * 7 + Math.floor(e.body.pos.z) * 13 + e.seq) | 0;
+    for (const e of this.game.entities.all()) animals = (animals * 31 + Math.floor(e.body.pos.x) * 7 + Math.floor(e.body.pos.z) * 13 + e.seq + (e.tamed ? 5 : 0)) | 0;
     // La hora cuenta cada 5 s (spec "Persistir la hora": ± 5 s).
     const clock = `${this.game.clock.dayCount}:${Math.floor(this.game.clock.timeOfCycleMs / 5000)}:${this.game.pendingRespawns.join(",")}`;
     const inv = this.game.inventory;

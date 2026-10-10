@@ -1,10 +1,12 @@
 import type { Vec3 } from "../../core/math";
 import { Rng } from "../../core/rng";
-import { inRect, type Rect, type WorldLayout } from "../worldgen/layout";
+import { BLOCK_NUM } from "../blocks";
+import { columnAt, inRect, type Rect, type WorldLayout } from "../worldgen/layout";
 import type { HomeId, SpeciesId } from "./species";
+import { WOLF } from "./wolf";
 
-/** Lugar de origen de un animal (design D10): especie, hogar y punto de aparición (celda X, Z). */
-export type SpawnSlot = { id: string; species: SpeciesId; home: HomeId; x: number; z: number };
+/** Lugar de origen de un animal o un lobo (design D10): especie, hogar y punto de aparición (celda X, Z). */
+export type SpawnSlot = { id: string; species: SpeciesId | "wolf"; home: HomeId; x: number; z: number };
 
 export type Home = { id: HomeId; center: Vec3; /** Cercado del hogar, si tiene. */ rect: Rect | null };
 
@@ -12,10 +14,11 @@ export type Home = { id: HomeId; center: Vec3; /** Cercado del hogar, si tiene. 
 export const INITIAL_POPULATION: Readonly<Record<SpeciesId, number>> = { sheep: 3, cow: 2, goat: 2, hen: 3, chick: 3, duck: 2 };
 
 export function homesOf(layout: WorldLayout): Record<HomeId, Home> {
-  const { farm, pond } = layout;
+  const { farm, pond, forestMountain: m } = layout;
   return {
     farm: { id: "farm", center: { x: (farm.x0 + farm.x1 + 1) / 2, y: 0, z: (farm.z0 + farm.z1 + 1) / 2 }, rect: farm },
     pond: { id: "pond", center: { x: pond.x + 0.5, y: 0, z: pond.z + 0.5 }, rect: null },
+    den: { id: "den", center: { x: m.x + 0.5, y: 0, z: m.z + 0.5 }, rect: null },
   };
 }
 
@@ -63,5 +66,28 @@ export function createSpawnSlots(layout: WorldLayout, seed: string): SpawnSlot[]
     const d = rng.range(1, pond.r - 3);
     add("duck", "pond", { x: Math.round(pond.x + Math.cos(a) * d), z: Math.round(pond.z + Math.sin(a) * d) });
   }
+  slots.push(...wolfSlots(layout, seed));
   return slots;
+}
+
+/**
+ * Entre 4 y 6 lobos en la montaña boscosa, a 12 bloques o menos de su centro (spec "Lobos en su
+ * montaña"), sobre pasto y lejos de los árboles (debajo de la copa quedarían sobre las hojas).
+ */
+function wolfSlots(layout: WorldLayout, seed: string): SpawnSlot[] {
+  const rng = new Rng(`${seed}:wolves`);
+  const m = layout.forestMountain;
+  const count = rng.int(WOLF.count[0], WOLF.count[1]);
+  const out: SpawnSlot[] = [];
+  for (let i = 0; i < 400 && out.length < count; i++) {
+    const a = rng.range(0, Math.PI * 2);
+    const d = rng.range(0, 12);
+    const x = Math.round(m.x + Math.cos(a) * d);
+    const z = Math.round(m.z + Math.sin(a) * d);
+    if (columnAt(layout, x, z).surface !== BLOCK_NUM.grass) continue;
+    if (layout.trees.some((t) => Math.abs(t.x - x) <= 3 && Math.abs(t.z - z) <= 3)) continue;
+    if (out.some((s) => Math.abs(s.x - x) < 2 && Math.abs(s.z - z) < 2)) continue;
+    out.push({ id: `wolf-${out.length}`, species: "wolf", home: "den", x, z });
+  }
+  return out;
 }
