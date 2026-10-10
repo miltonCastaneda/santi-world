@@ -82,6 +82,13 @@ Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el
 - Se derrotan con **un golpe** de la mano, el pico o la espada: desaparecen con destellos de colores, sin nada que asuste.
 - **Al amanecer** (o al activar la noche tranquila) se van todos con destellos, escalonados en 4 segundos. No se guardan: al reabrir un mundo de noche, vuelven a aparecer de a poco.
 
+### Carne, mochila y antorchas
+
+- Solo la **espada** sobre un animal de la granja lo hace "poof" y deja un pedazo de **carne** flotando (sin sangre ni nada que asuste). El animal **reaparece al amanecer**. La mano y el pico solo le dan un saltito. El cerdo-gallina (más adelante) nunca da carne.
+- La carne se recoge caminando cerca (1,5 bloques) o con un clic. **No desaparece** con el tiempo: queda flotando, también al cerrar y reabrir el mundo.
+- La **mochila** (🎒 o la tecla E) muestra los diamantes, la carne y los cerdos-gallina con íconos, números y puntos, y **no pausa** el juego. Cada mundo tiene su propia mochila y se guarda con él. Construir **no gasta** nada: los bloques son ilimitados.
+- La **antorcha** está en la barra de bloques (🔥). Ilumina de noche y, a su alrededor (luz 8 o más, unos 6 bloques), no aparecen zombis.
+
 ### Exportar e importar (respaldo)
 
 - **"Exportar"** descarga un archivo `Nombre.santi.json` con todo el mundo: guárdalo donde quieras como respaldo.

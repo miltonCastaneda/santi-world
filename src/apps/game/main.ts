@@ -22,6 +22,7 @@ import { MAX_ZOMBIES } from "../../sim/systems/spawn";
 import { setupDebugOverlay } from "../../ui/debugOverlay";
 import { setupHud } from "../../ui/hud";
 import { setupHudClock } from "../../ui/kid/hudClock";
+import { setupInventory } from "../../ui/kid/inventory";
 import { setupMisMundos } from "../../ui/kid/misMundos";
 import { setupSaveWarning } from "../../ui/kid/saveWarning";
 import { FrameStats, percentile } from "./frameStats";
@@ -92,6 +93,10 @@ const warning = setupSaveWarning();
 const logError = (context: string, error: unknown) => void recordError(repo, { at: wallClock.now(), context, message: errorMessage(error) });
 
 const hudClock = setupHudClock(document.getElementById("day-clock")!, () => game.clock);
+const inventoryPanel = setupInventory(() => game.enqueue({ type: "toggleInventory" }));
+inventoryPanel.update(game.inventory);
+game.events.on("inventoryToggled", ({ open }) => inventoryPanel.setOpen(open));
+game.events.on("inventoryChanged", ({ inventory }) => inventoryPanel.update(inventory));
 
 const audio = new AudioService(() => (typeof AudioContext === "undefined" ? null : (new AudioContext() as unknown as AudioContextLike)));
 audio.attachUnlock(window);

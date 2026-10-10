@@ -2,6 +2,7 @@ import type { Vec3 } from "../../core/math";
 import { Rng } from "../../core/rng";
 import type { Entity, EntityKind, EntityStore } from "../../domain/entities/entityStore";
 import { newBrain, think, type Perception } from "../../domain/entities/fsm";
+import { isItemId } from "../../domain/entities/items";
 import type { Home, SpawnSlot } from "../../domain/entities/population";
 import { isSpeciesId, SPECIES, THREAT_RADIUS, type HomeId, type SpeciesDef, type SpeciesId } from "../../domain/entities/species";
 import { GRAVITY, isStuck, JUMP_VELOCITY, moveBody } from "../../domain/physics/collide";
@@ -291,7 +292,7 @@ export class AnimalSystem {
   private separate(store: EntityStore, animals: Entity[]): void {
     for (const e of animals) {
       for (const n of store.near(e.body.pos, 1.2)) {
-        if (n === e) continue;
+        if (n === e || isItemId(n.species)) continue;
         const dx = e.body.pos.x - n.body.pos.x;
         const dz = e.body.pos.z - n.body.pos.z;
         const d = Math.hypot(dx, dz);

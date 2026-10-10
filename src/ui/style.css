@@ -251,6 +251,92 @@ body {
   background: #ffcf9e;
 }
 
+#bag-btn[aria-pressed="true"] {
+  background: #7ed957;
+}
+
+#bag-btn.got {
+  animation: hearts-bounce 0.4s ease-out;
+}
+
+/* Mochila: no tapa el centro (queda a la izquierda, bajo los corazones) y el juego sigue. */
+.inventory-panel {
+  position: fixed;
+  top: 96px;
+  left: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(255, 250, 240, 0.95);
+  border-radius: 24px;
+  box-shadow: 0 6px 0 #3d6b2e;
+  z-index: 4;
+}
+
+.inventory-panel[hidden] {
+  display: none;
+}
+
+body:has(.inventory-panel:not([hidden])) .controls-help {
+  visibility: hidden;
+}
+
+.inventory-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inventory-item {
+  display: grid;
+  grid-template-columns: 72px auto;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  align-items: center;
+  min-width: 180px;
+}
+
+.inventory-icon {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  font-size: 2.8rem;
+  background: #f4e9c7;
+  border: 4px solid #2c3e22;
+  border-radius: 18px;
+}
+
+.inventory-item.empty .inventory-icon {
+  filter: grayscale(1) opacity(0.45);
+}
+
+.inventory-count {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.inventory-dots {
+  min-height: 1.2rem;
+  font-size: 1.1rem;
+  letter-spacing: 3px;
+  color: #3d6b2e;
+}
+
+.inventory-close {
+  width: 64px;
+  height: 64px;
+  border: 4px solid #2c3e22;
+  border-radius: 50%;
+  background: #f4e9c7;
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .action-btn:disabled {
   opacity: 0.5;
   cursor: wait;

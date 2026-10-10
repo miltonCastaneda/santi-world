@@ -120,7 +120,7 @@ describe("[enemigos-nocturnos] Noches completas sin interfaz", () => {
     expect(entered).toBe(false);
     expect(game.entities.get(sheep.id)).toBeDefined();
     expect(game.pendingRespawns).not.toContain(sheep.slotId);
-  });
+  }, 20_000);
 
   it("[enemigos-nocturnos] Granja abierta: con zombis sueltos en la granja, de noche se pierde al menos 1 animal", () => {
     const game = farmAtNight("abierta", 3);

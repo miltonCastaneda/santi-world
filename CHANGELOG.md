@@ -56,6 +56,9 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Al amanecer, o al activar la noche tranquila, los zombis se van con destellos escalonados en 4 s. No se guardan con el mundo.
 - Modelo de zombi cartoon (piel verde, camisa celeste, ojos grandes, sonrisa y mejillas rosadas), destellos de colores, rebote con parpadeo al golpear un animal, y los sonidos `groan` (un "uuuh" bajito) y `sparkle`. Checklist "Revisión de efectos" en `docs/assets.md`.
 - `npm run perf -- --night`: la ruta de cámara de noche con 8 zombis.
+- Carne, inventario y antorchas (incremento 9): la Espada sobre un animal de granja le hace "poof" (reaparece al amanecer) y deja una carne flotante (modelo de cajas que sube, baja y gira). Se recoge caminando a 1,5 bloques o menos o con un clic, 0,8 s después de caer, con el sonido `pickup` y destellos. No desaparece: se guarda con el mundo.
+- Mochila (`domain/rules/inventory`, `ui/kid/inventory`): botón 🎒 o tecla E, panel sin pausa con diamantes, carne y cerdos-gallina (íconos, número y de 1 a 5 puntos) y cierre ✕ de 64 px. El inventario es por mundo, se guarda y se sanea al abrir. Construir no gasta bloques.
+- La antorcha aparece en la barra de bloques con el ícono 🔥: ilumina con un tinte cálido y, con luz de bloque 8 o más, no aparecen zombis (E2E "Refugio iluminado").
 
 ### Cambiado
 - "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.
@@ -73,6 +76,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - `SCHEMA_VERSION` pasa a 2 (migración de estado: `animalsSpawned`). No se puede poner un bloque donde hay un animal.
 - ADR-0005 y ADR-0006 pasan a "Aceptado".
 - Un golpe de la herramienta alcanza primero a la criatura apuntada si está más cerca que el bloque.
+- La tabla de daño agrega la columna del cerdo-gallina (cualquier herramienta lo "captura", efecto que llega en el incremento 12; nunca suelta carne) y la Espada sobre un animal pasa de "boing" a derrota con carne. Una criatura apuntada fuera de alcance muestra "muy lejos".
 
 ## [1.0.0] - 2026-10-10
 

@@ -1,4 +1,6 @@
+import type { Vec3 } from "../core/math";
 import type { Entity } from "../domain/entities/entityStore";
+import { isItemId, ITEMS, type ItemId } from "../domain/entities/items";
 import { isSpeciesId, SPECIES } from "../domain/entities/species";
 import type { EntitySnapshot } from "../domain/repository/model";
 
@@ -6,6 +8,10 @@ type AnimalData = { yaw: number; seq: number; untilIn: number; soundIn: number; 
 
 /** Entidad a guardar. Los tiempos se guardan relativos (el reloj de la simulación vuelve a 0 al abrir). */
 export function entityToSnapshot(e: Entity, worldId: string, now: number): EntitySnapshot | null {
+  // La carne sin recoger se conserva (spec "Carne no recogida").
+  if (isItemId(e.species)) {
+    return { id: e.id, worldId, kind: "item", species: e.species, pos: { ...e.body.pos }, vel: { x: 0, y: 0, z: 0 }, state: "", data: { seq: e.seq } };
+  }
   // Los zombis no se guardan: de noche vuelven a aparecer poco a poco.
   if (!isSpeciesId(e.species) || !e.brain) return null;
   const data: AnimalData = {
@@ -31,6 +37,7 @@ export function entityToSnapshot(e: Entity, worldId: string, now: number): Entit
 
 /** Entidad guardada a entidad viva. Devuelve null si la especie o el estado ya no existen. */
 export function entityFromSnapshot(s: EntitySnapshot, now: number): Entity | null {
+  if (s.kind === "item") return isItemId(s.species) ? { ...itemEntity(s.id, s.species, s.pos), seq: Number(s.data?.seq ?? 0) } : null;
   if (s.kind !== "animal" || !isSpeciesId(s.species)) return null;
   const def = SPECIES[s.species];
   if (!def.machine.states[s.state]) return null;
@@ -52,4 +59,10 @@ export function entityFromSnapshot(s: EntitySnapshot, now: number): Entity | nul
     anim: "idle",
     fleeDir: null,
   };
+}
+
+/** Objeto flotante quieto (no tiene física: queda donde cayó). */
+export function itemEntity(id: string, item: ItemId, pos: Vec3): Omit<Entity, "seq"> {
+  const def = ITEMS[item];
+  return { id, species: item, body: { pos: { ...pos }, vel: { x: 0, y: 0, z: 0 }, halfWidth: def.halfWidth, height: def.height, onGround: true }, yaw: 0 };
 }

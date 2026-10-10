@@ -2,9 +2,9 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 8)
+## Estado actual (Fase 2, incremento 9)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer. La Espada convierte a un animal de granja en carne flotante, que se recoge y se guarda en la mochila (inventario por mundo); las antorchas de la barra de bloques iluminan e impiden que aparezcan zombis.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
@@ -25,7 +25,9 @@ src/
                 repository/worldRepository.ts (puerto WorldRepository), settings.ts (clampSettings),
                 physics/collide.ts (moveBody: AABB con barrido Y, X, Z, gravedad, borde invisible),
                 rules/tools.ts (Mano, Pico, Espada, Arco y Collar; alcance de 6), rules/damage.ts
-                (tabla herramienta x objetivo: boing, derrota o nada; golpes para derrotar),
+                (tabla herramienta x objetivo: boing, derrota, captura o nada; golpes para derrotar;
+                qué suelta cada objetivo), rules/inventory.ts (recursos, inventario saneado, puntos
+                de 1 a 5), entities/items.ts (objetos sueltos: carne; radio y demora de recogida),
                 entities/fsm.ts (máquinas de estado por datos y su intérprete), entities/species.ts
                 (6 especies como datos), entities/zombie.ts (datos y máquina del zombi),
                 entities/entityStore.ts (entidades + índice espacial),
@@ -39,8 +41,9 @@ src/
                 chunk), systems/dayNight.ts (WorldClock: fases, eventos, duraciones en caliente),
                 systems/respawn.ts (reaparición por slots al amanecer), systems/spawn.ts
                 (NightSpawner: dónde y cuándo aparece un zombi), systems/zombies.ts (ZombieSystem:
-                objetivo, caminos, contacto, separación), entitySnapshots.ts (entidad <->
-                EntitySnapshot; solo animales)                                                    (puro)
+                objetivo, caminos, contacto, separación), systems/interaction.ts (objetos al
+                alcance de recogida), entitySnapshots.ts (entidad <-> EntitySnapshot; animales y
+                objetos sueltos)                                                                  (puro)
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
                 autosave.ts (AutosaveService), migrations.ts (migrations[n] puras), legacyImport.ts
                 (v1 a "Mi primer mundo"), exportFormat.ts, errorLog.ts, storage.ts (persist()),
@@ -50,8 +53,8 @@ src/
                 sin sombras, near 0,1 / far 250), followCamera.ts (brazo de resorte de 6 bloques a 20°,
                 se acorta con un DDA para no entrar en los bloques, giro con el botón derecho),
                 playerModel.ts (personaje de cajas con la "S" y animación procedural),
-                entityRenderer.ts (animales y zombis: InstancedMesh por especie y parte, sombra,
-                "poof" y destellos, parpadeo),
+                entityRenderer.ts (animales, zombis y objetos sueltos: InstancedMesh por especie y
+                parte, sombra, "poof" y destellos, parpadeo, la carne flota y gira),
                 chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
                 meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
                 tiles.ts y textures.ts (tiles procedurales de 16 px), blockMaterial.ts
@@ -62,8 +65,9 @@ src/
   audio/        audioService.ts (buses con tope 0,8, silencio, voces de animales, posicional, música
                 con cruce), synth.ts (efectos y música sintetizados CC0), gameAudio.ts (eventos del
                 juego a sonidos y a la pista de música)
-  ui/           hud.ts (corazones, herramientas, barra de bloques, deshacer, Mis Mundos, nuevo mundo,
-                silencio, pantalla completa, "muy lejos"), kid/misMundos.ts (tarjetas con miniatura,
+  ui/           hud.ts (corazones, herramientas, barra de bloques, mochila, deshacer, Mis Mundos, nuevo
+                mundo, silencio, pantalla completa, "muy lejos"), kid/inventory.ts (panel de la
+                mochila: íconos, números y puntos; no pausa el juego), kid/misMundos.ts (tarjetas con miniatura,
                 sin borrar), kid/saveWarning.ts (ícono si falla el guardado), kid/hudClock.ts (sol o
                 luna, arco, "Día N" y aviso de noche), debugOverlay.ts (F3), style.css,
                 parents/parentsView.ts (histórico, papelera, configuración, PIN, exportar/importar), parents.css
@@ -108,7 +112,15 @@ src/
 2. Cada 4 ticks el zombi elige el objetivo más cercano a 24 bloques o menos (el jugador o un animal) que no esté marcado como inalcanzable, y pide un camino a la `PathQueue` con prioridad 0, la más alta (los animales usan 1 y 2, y el paseo del zombi, 3). Un objetivo sin camino queda inalcanzable 5 s y el zombi pasea; al moverse el objetivo más de 2 bloques, o si el camino deja de ser válido porque cambió un chunk, lo vuelve a pedir (como mucho cada 0,5 s). Cerca del objetivo (2 bloques) va en línea recta.
 3. Al tocar al jugador, `Game.hitPlayer` le resta un corazón con empuje; al tocar a un animal, `Game.removeEntity` lo hace "poof" y su slot queda pendiente para el amanecer. En ambos casos el zombi pasa a `bump` (quieto un momento).
 4. `useTool` busca primero una criatura en el rayo (más cerca que el bloque apuntado y a 6 bloques o menos) y aplica `resolveHit` de `domain/rules/damage`: el zombi se derrota de 1 golpe con la mano, el pico o la espada; un animal solo rebota (`entityHit` con `boing`).
-5. Los zombis no se guardan (`entitySnapshots` solo toma animales). El render los dibuja como una especie más (`RENDER_KINDS`) y, al desaparecer, con destellos; el audio toca `groan`, `boing` y `sparkle`.
+5. Los zombis no se guardan (`entitySnapshots` solo toma animales y objetos sueltos). El render los dibuja como una especie más (`RENDER_KINDS`) y, al desaparecer, con destellos; el audio toca `groan`, `boing` y `sparkle`.
+
+### Carne, inventario y antorchas
+
+1. `resolveHit` también dice qué suelta el objetivo (`drop`): la Espada sobre un animal de granja lo derrota y suelta `meat`; la Mano y el Pico solo hacen "boing"; el cerdo-gallina nunca suelta carne (cualquier herramienta lo "captura", efecto que llega en el incremento 12). `Game.hitEntity` hace el "poof" con `removeEntity` (el slot queda pendiente para el amanecer) y `dropItem` crea la carne en ese lugar, con un id `meat-N` y `readyAt` 0,8 s después para que no se recoja en el mismo golpe.
+2. En cada paso, después del jugador, `itemsInPickupRange` (`sim/systems/interaction`) devuelve los objetos a 1,5 bloques o menos en horizontal (y menos de 2 en vertical) que ya están listos, y `Game.collectItem` los quita y suma el recurso al `inventory` (`itemCollected` e `inventoryChanged`). Un clic con cualquier herramienta sobre la carne a 6 bloques o menos también la recoge.
+3. La carne no desaparece con el tiempo: `entitySnapshots` la guarda como `kind: "item"` y `restoreEntities` la recrea (y adelanta el contador de ids). El `inventory` se guarda en el estado del mundo y `sanitizeInventory` lo limpia al abrir, así que cada mundo tiene su propia mochila. `replaceWorld` la vacía.
+4. La tecla E o el botón 🎒 envían `toggleInventory`; el panel `kid/inventory` muestra cada recurso con su ícono, el número y de 1 a 5 puntos, sin pausar el juego y sin tapar el centro. Construir no gasta nada.
+5. La antorcha es un bloque más de la barra (ícono 🔥, luz 14). El mesher la incluye en la luz de bloque por vértice (con un tinte cálido de noche) y `NightSpawner` no pone zombis donde `blockLightAt` es 8 o más.
 
 ### Guardado
 

@@ -147,6 +147,7 @@ export class GameSession {
         timeOfCycleMs: Math.round(clock.timeOfCycleMs),
         dayCount: clock.dayCount,
         pendingRespawns: [...this.game.pendingRespawns],
+        inventory: { ...this.game.inventory },
         animalsSpawned: true,
         player: {
           pos: { ...this.game.player.pos },
@@ -187,6 +188,8 @@ export class GameSession {
     this.game.configureTime(world.settings);
     this.game.clock.restore(state.timeOfCycleMs, state.dayCount);
     this.game.pendingRespawns = [...state.pendingRespawns];
+    // Cada mundo tiene su inventario (spec "Inventario independiente por mundo").
+    this.game.setInventory(state.inventory);
     // Un mundo nuevo (o guardado antes de que hubiera animales) recibe su población inicial.
     if (state.animalsSpawned) this.game.restoreEntities(entities);
     else this.game.spawnPopulation();
@@ -238,6 +241,8 @@ export class GameSession {
     for (const e of this.game.entities.all()) animals = (animals * 31 + Math.floor(e.body.pos.x) * 7 + Math.floor(e.body.pos.z) * 13 + e.seq) | 0;
     // La hora cuenta cada 5 s (spec "Persistir la hora": ± 5 s).
     const clock = `${this.game.clock.dayCount}:${Math.floor(this.game.clock.timeOfCycleMs / 5000)}:${this.game.pendingRespawns.join(",")}`;
-    return `${this.game.selection.tool}|${this.game.selection.block}|${r(p.pos)}|${p.hearts}|${animals}|${clock}|${cam ? `${r(cam.position)}|${r(cam.target)}` : ""}`;
+    const inv = this.game.inventory;
+    const inventory = `${inv.diamond},${inv.meat},${inv.pigChicken},${this.game.entities.size}`;
+    return `${this.game.selection.tool}|${this.game.selection.block}|${r(p.pos)}|${p.hearts}|${animals}|${clock}|${inventory}|${cam ? `${r(cam.position)}|${r(cam.target)}` : ""}`;
   }
 }

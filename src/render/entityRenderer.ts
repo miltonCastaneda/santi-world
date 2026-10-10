@@ -2,9 +2,10 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { Vec3 } from "../core/math";
 import type { EntityAnim } from "../domain/entities/entityStore";
+import { isItemId, ITEM_IDS, type ItemId } from "../domain/entities/items";
 import { SPECIES_IDS } from "../domain/entities/species";
 
-/** Lo que sabe dibujar: los animales de granja y los zombis. */
+/** Las criaturas que sabe dibujar: los animales de granja y los zombis. */
 const RENDER_KINDS = [...SPECIES_IDS, "zombie"] as const;
 type RenderKind = (typeof RENDER_KINDS)[number];
 const isRenderKind = (s: string): s is RenderKind => (RENDER_KINDS as readonly string[]).includes(s);
@@ -198,6 +199,19 @@ const MODELS: Record<RenderKind, ModelDef> = {
   },
 };
 
+/** Objetos flotantes: un muslo cartoon (carne con hueso), sin sangre. El pivote está en el centro. */
+const ITEM_MODELS: Record<ItemId, Box[]> = {
+  meat: [
+    { size: [0.34, 0.3, 0.32], at: [0, 0, 0.08], color: 0xc8643c },
+    { size: [0.28, 0.06, 0.26], at: [0, 0.16, 0.08], color: 0xe08a5c },
+    { size: [0.1, 0.1, 0.22], at: [0, 0, -0.17], color: 0xf7f1e3 },
+    { size: [0.2, 0.14, 0.1], at: [0, 0, -0.31], color: 0xf7f1e3 },
+  ],
+};
+/** Altura a la que flota sobre el suelo y cuánto sube y baja. */
+const ITEM_FLOAT = 0.45;
+const ITEM_BOB = 0.08;
+
 /** Une cajas en una geometría con color por vértice: una parte = una draw call para toda la especie. */
 function boxesGeometry(boxes: Box[]): THREE.BufferGeometry {
   const color = new THREE.Color();
@@ -285,9 +299,9 @@ class Instances {
 const scratch = new THREE.Matrix4();
 
 /** Estado visual de cada animal: posición suavizada y fase de las animaciones. */
-type Shown = { species: RenderKind; pos: THREE.Vector3; yaw: number; phase: number; swing: number; headPitch: number; lower: number; seenAt: number };
+type Shown = { species: RenderKind | ItemId; pos: THREE.Vector3; yaw: number; phase: number; swing: number; headPitch: number; lower: number; seenAt: number };
 
-/** `cloud`: nube blanca con estrellas (animales). `sparkle`: destellos de colores que suben (zombis). */
+/** `cloud`: nube blanca con estrellas (animales). `sparkle`: destellos de colores que suben (zombis y objetos recogidos). */
 export type PoofStyle = "cloud" | "sparkle";
 type Poof = { origin: THREE.Vector3; startedAt: number; style: PoofStyle };
 const POOF_PARTICLES = 10;
@@ -305,6 +319,7 @@ const SPARKLE_COLORS = [new THREE.Color(0xffe066), new THREE.Color(0x8ee8ff), ne
 export class EntityRenderer {
   readonly group = new THREE.Group();
   private readonly parts: Record<RenderKind, { body: Instances; head: Instances; legs: Instances }>;
+  private readonly items: Record<ItemId, Instances>;
   private readonly shadows: Instances;
   private readonly poofMesh: Instances;
   private readonly materials: THREE.Material[] = [];
@@ -331,6 +346,13 @@ export class EntityRenderer {
       };
     }
     this.parts = parts;
+    const items = {} as Record<ItemId, Instances>;
+    for (const id of ITEM_IDS) {
+      const geo = boxesGeometry(ITEM_MODELS[id]);
+      this.geometries.push(geo);
+      items[id] = new Instances(this.group, geo, lambert, 8);
+    }
+    this.items = items;
 
     const shadowGeo = new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2);
     const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
@@ -367,11 +389,19 @@ export class EntityRenderer {
       p.head.begin();
       p.legs.begin();
     }
+    for (const id of ITEM_IDS) this.items[id].begin();
     this.shadows.begin();
 
     let drawn = 0;
     const smooth = 1 - Math.exp(-dtSeconds * 15);
     for (const v of views) {
+      if (isItemId(v.species)) {
+        const shown = this.trackItem(v.id, v.species, v.pos);
+        if (shown.pos.distanceTo(camera) > ENTITY_DRAW_DISTANCE) continue;
+        this.drawItem(v.species, shown);
+        drawn++;
+        continue;
+      }
       if (!isRenderKind(v.species)) continue;
       const shown = this.track({ ...v, species: v.species }, dtSeconds, smooth);
       if (shown.pos.distanceTo(camera) > ENTITY_DRAW_DISTANCE) continue;
@@ -382,23 +412,29 @@ export class EntityRenderer {
     // Lo que dejó de existir hace "poof" (si estaba cerca: lo lejano ni se veía).
     for (const [id, s] of this.shown) {
       if (s.seenAt === this.frame) continue;
-      if (s.pos.distanceTo(camera) <= ENTITY_DRAW_DISTANCE) this.poof(s.pos, s.species === "zombie" ? "sparkle" : "cloud");
+      if (s.pos.distanceTo(camera) <= ENTITY_DRAW_DISTANCE) this.poof(s.pos, s.species === "zombie" || isItemId(s.species) ? "sparkle" : "cloud");
       this.shown.delete(id);
     }
     this.drawPoofs();
 
-    const all = [...RENDER_KINDS.flatMap((id) => [this.parts[id].body, this.parts[id].head, this.parts[id].legs]), this.shadows, this.poofMesh];
+    const all = [
+      ...RENDER_KINDS.flatMap((id) => [this.parts[id].body, this.parts[id].head, this.parts[id].legs]),
+      ...ITEM_IDS.map((id) => this.items[id]),
+      this.shadows,
+      this.poofMesh,
+    ];
     for (const inst of all) inst.end();
     // Una draw call por malla visible (un solo material por malla).
     const drawCalls = all.filter((inst) => inst.mesh.visible).length;
     this.lastStats = { drawCalls, drawn, poofs: this.poofs.length };
   }
 
-  private track(v: EntityView & { species: RenderKind }, dt: number, smooth: number): Shown {
-    let s = this.shown.get(v.id);
+  private track(v: EntityView & { species: RenderKind }, dt: number, smooth: number): Shown & { species: RenderKind } {
     const target = new THREE.Vector3(v.pos.x, v.pos.y, v.pos.z);
-    if (!s || s.species !== v.species) {
-      s = { species: v.species, pos: target, yaw: v.yaw, phase: 0, swing: 0, headPitch: 0, lower: 0, seenAt: this.frame };
+    const old = this.shown.get(v.id);
+    const fresh = !old || old.species !== v.species;
+    const s = (fresh ? { species: v.species, pos: target, yaw: v.yaw, phase: 0, swing: 0, headPitch: 0, lower: 0, seenAt: this.frame } : old) as Shown & { species: RenderKind };
+    if (fresh) {
       this.shown.set(v.id, s);
     } else if (s.pos.distanceTo(target) > 4) {
       s.pos.copy(target);
@@ -423,7 +459,32 @@ export class EntityRenderer {
     return s;
   }
 
-  private draw(s: Shown, anim: EntityAnim): void {
+  /** Los objetos no se mueven: solo se registran para saber cuándo desaparecen. */
+  private trackItem(id: string, item: ItemId, pos: Vec3): Shown {
+    let s = this.shown.get(id);
+    if (!s || s.species !== item) {
+      s = { species: item, pos: new THREE.Vector3(pos.x, pos.y, pos.z), yaw: 0, phase: (this.shown.size * 1.7) % (Math.PI * 2), swing: 0, headPitch: 0, lower: 0, seenAt: this.frame };
+      this.shown.set(id, s);
+    }
+    s.pos.set(pos.x, pos.y, pos.z);
+    s.seenAt = this.frame;
+    return s;
+  }
+
+  /** Flota sobre el suelo, sube y baja despacio y gira (se ve de lejos que se puede recoger). */
+  private drawItem(item: ItemId, s: Shown): void {
+    const y = s.pos.y + ITEM_FLOAT + Math.sin(this.time * 2.5 + s.phase) * ITEM_BOB;
+    scratch.compose(
+      new THREE.Vector3(s.pos.x, y, s.pos.z),
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.time * 1.5 + s.phase),
+      new THREE.Vector3(1, 1, 1),
+    );
+    this.items[item].push(scratch);
+    const local = new THREE.Matrix4().compose(new THREE.Vector3(s.pos.x, s.pos.y + 0.02, s.pos.z), new THREE.Quaternion(), new THREE.Vector3(0.25, 1, 0.25));
+    this.shadows.push(local);
+  }
+
+  private draw(s: Shown & { species: RenderKind }, anim: EntityAnim): void {
     const m = MODELS[s.species];
     const parts = this.parts[s.species];
     const bounce = anim === "walk" || anim === "run" ? Math.abs(Math.cos(s.phase)) * (anim === "run" ? 0.06 : 0.03) : 0;
@@ -496,6 +557,7 @@ export class EntityRenderer {
 
   dispose(): void {
     for (const id of RENDER_KINDS) for (const inst of Object.values(this.parts[id])) inst.dispose();
+    for (const id of ITEM_IDS) this.items[id].dispose();
     this.shadows.dispose();
     this.poofMesh.dispose();
     for (const g of this.geometries) g.dispose();

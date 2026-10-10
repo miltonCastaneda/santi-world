@@ -1,7 +1,9 @@
 import type { AudioService } from "../audio/audioService";
 import type { Vec3 } from "../core/math";
+import type { ItemId } from "../domain/entities/items";
 import type { World } from "../domain/repository/model";
 import type { WorldRepository } from "../domain/repository/worldRepository";
+import type { Inventory } from "../domain/rules/inventory";
 import type { ToolId } from "../domain/rules/tools";
 import type { AutosaveService } from "../persistence/autosave";
 import type { LegacyImportResult } from "../persistence/legacyImport";
@@ -9,6 +11,7 @@ import type { Game } from "../sim/game";
 import type { FixedStepLoop } from "../sim/loop";
 import type { PlayerAnim } from "../sim/player";
 import type { GameSession } from "../sim/session";
+import { canSpawnAt } from "../sim/systems/spawn";
 
 export type ViewControl = {
   /** Vista fija (la cámara deja de seguir al personaje hasta `followPlayer`). */
@@ -82,6 +85,15 @@ export type SantiTestApi = {
   poofEntity(id: string): boolean;
   /** Pone un zombi en `pos` (pies); devuelve su id. */
   spawnZombie(pos: Vec3): string;
+  /** Usa la herramienta elegida con un rayo desde los ojos del personaje hacia `target` (como un clic). */
+  useToolToward(target: Vec3): void;
+  /** Deja un objeto flotando en `pos`; devuelve su id. */
+  dropItem(item: ItemId, pos: Vec3): string;
+  inventory(): Inventory;
+  setInventory(inventory: Partial<Inventory>): void;
+  /** Ahí podría aparecer un zombi de noche (terreno natural, sin techo y lejos de las antorchas). */
+  canSpawnZombieAt(x: number, y: number, z: number): boolean;
+  blockLight(x: number, y: number, z: number): number;
   pendingRespawns(): string[];
   dayNight(): DayNightSnapshot;
   /** Adelanta (o atrasa) el reloj del mundo a ese punto del ciclo. */
@@ -174,6 +186,17 @@ export function installTestApi(deps: {
     clearEntities: () => game.entities.clear(),
     poofEntity: (id) => game.removeEntity(id),
     spawnZombie: (pos) => game.spawnZombie(pos).id,
+    useToolToward: (target) => {
+      const origin = game.player.eye();
+      const d = { x: target.x - origin.x, y: target.y - origin.y, z: target.z - origin.z };
+      const len = Math.hypot(d.x, d.y, d.z) || 1;
+      game.enqueue({ type: "useTool", ray: { origin, direction: { x: d.x / len, y: d.y / len, z: d.z / len } } });
+    },
+    dropItem: (item, pos) => game.dropItem(item, pos).id,
+    inventory: () => ({ ...game.inventory }),
+    setInventory: (inventory) => game.setInventory(inventory),
+    canSpawnZombieAt: (x, y, z) => canSpawnAt(game.spawnWorld, x, y, z),
+    blockLight: (x, y, z) => game.spawnWorld.blockLight(x, y, z),
     pendingRespawns: () => [...game.pendingRespawns],
     dayNight: () => {
       const c = game.clock;

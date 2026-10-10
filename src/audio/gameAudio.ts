@@ -26,6 +26,7 @@ export function connectGameAudio(audio: AudioService, game: Game): void {
     if (outcome === "boing") audio.play("boing", { pos, volume: 0.8 });
   });
   e.on("entityRemoved", ({ species, pos }) => audio.play(species === "zombie" ? "sparkle" : "poof", { pos, volume: 0.8 }));
+  e.on("itemCollected", () => audio.play("pickup"));
   // La música cambia al empezar el atardecer y el amanecer: el cruce acompaña a la luz.
   e.on("phaseChanged", () => audio.setMusic(musicFor(game.clock)));
 }

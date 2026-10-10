@@ -18,7 +18,7 @@ Si en el futuro se usan texturas de terceros, solo se aceptan CC0 o equivalentes
 
 | Recurso | Fuente | Licencia |
 |---|---|---|
-| 12 efectos (`SOUND_NAMES` en `src/audio/synth.ts`): `step`, `place`, `break`, `bump`, `click`, `jump`, `poof`, `boing`, `swish`, `far`, `chime` (aviso de que se acerca la noche) y `sparkle` (destellos: un arpegio de campanitas cuando se va un zombi) | Sintetizados por código en `src/audio/synth.ts` (`synthesize(name, sampleRate)`): tonos con envolvente y ruido determinista (sin `Math.random`); no hay archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+| 13 efectos (`SOUND_NAMES` en `src/audio/synth.ts`): `step`, `place`, `break`, `bump`, `click`, `jump`, `poof`, `boing`, `swish`, `far`, `chime` (aviso de que se acerca la noche), `sparkle` (destellos: un arpegio de campanitas cuando se va un zombi) y `pickup` ("tin-tin" de dos notas al recoger algo) | Sintetizados por código en `src/audio/synth.ts` (`synthesize(name, sampleRate)`): tonos con envolvente y ruido determinista (sin `Math.random`); no hay archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 | 6 voces de animales (`ANIMAL_SOUNDS`): `baa` (oveja), `moo` (vaca), `meh` (cabra), `cluck` (gallina), `peep` (pollito) y `quack` (pato) | Sintetizados por código en `src/audio/synth.ts`: una voz con armónicos y frecuencia variable (vibrato o caída), con sílabas en la gallina y el pollito; sin archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 | Voz del zombi: `groan`, un "uuuh" bajito y tonto, como un bostezo (sin gruñidos) | Sintetizado por código en `src/audio/synth.ts`, con la misma técnica que las voces de animales | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 | 2 pistas de música (`MUSIC` en `src/audio/synth.ts`): `day` (96 bpm, do mayor) y `night` (canción de cuna, 66 bpm, sol mayor) | Compuestas como datos (grados de la escala pentatónica, melodía en corcheas y un bajo por compás) y sintetizadas por código (`synthesizeMusic`) en un bucle de 10 y 14,5 s | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
@@ -45,20 +45,24 @@ Toda pista nueva la cumple antes de entrar (la prueba unitaria `música que no a
 
 Los modelos de los animales y del zombi se arman con cajas de colores planos en `src/render/entityRenderer.ts` (`MODELS`); no hay archivos de modelos ni texturas. El zombi es cartoon: piel verde clara, camisa celeste, ojos grandes con brillo, sonrisa y mejillas rosadas, y camina con los brazos estirados hacia adelante.
 
+Los objetos sueltos también son cajas (`ITEM_MODELS`): la carne es un muslito marrón con un hueso claro, más chico que un bloque, que flota a media altura, sube y baja suavemente y gira, con una sombra pequeña. En la mochila se muestran con emojis (💎, 🍖 y 🐷, en `RESOURCES` de `src/domain/rules/inventory.ts`) y la antorcha de la barra de bloques usa 🔥.
+
 ### Checklist "Revisión de efectos"
 
 Spec `experiencia-infantil`, escenario "Revisión de efectos": todo efecto de golpes y desapariciones pertenece al catálogo aprobado (rebote, parpadeo, poof, estrellas, destellos y sonidos suaves). Se revisa en cada PR que agregue una criatura, una herramienta o un efecto.
 
 | Momento | Efecto visual | Sonido | En el catálogo |
 |---|---|---|---|
-| Golpe a un animal (mano, pico, espada o collar) | Rebote: salta hacia arriba (`entityHit` con `boing`) y parpadea (aparece y desaparece) 0,4 s | `boing` | [x] |
+| Golpe a un animal con la mano, el pico o el collar | Rebote: salta hacia arriba (`entityHit` con `boing`) y parpadea (aparece y desaparece) 0,4 s | `boing` | [x] |
+| Espada sobre un animal de granja | Nube blanca con estrellas (`poof(pos, "cloud")`) y queda una carne flotando; el animal reaparece al amanecer | `poof` | [x] |
+| Recoger la carne (caminando cerca o con un clic) | Destellos donde estaba (`poof(pos, "sparkle")`) y la mochila da un saltito | `pickup` | [x] |
 | Zombi derrotado (1 golpe con mano, pico o espada) | Destellos de colores que suben, 0,9 s (`poof(pos, "sparkle")`) | `sparkle` | [x] |
 | Zombi que se va al amanecer o con la noche tranquila | Destellos, escalonados en 4 s | `sparkle` | [x] |
 | Animal que desaparece (atrapado por un zombi) | Nube blanca con estrellas (`poof(pos, "cloud")`); reaparece al amanecer | `poof` | [x] |
 | El jugador recibe un golpe | Empuje suave, parpadeo de invulnerabilidad y corazón gris en el HUD | `boing` (o `poof` si se queda sin corazones y reaparece) | [x] |
 | Zombi que choca con el jugador o un animal | Se queda quieto un momento (estado `bump`) | Ninguno | [x] |
 
-- [x] Sin sangre, heridas, cuerpos ni caídas: nada queda en el suelo.
+- [x] Sin sangre, heridas, cuerpos ni caídas: nada queda en el suelo (la carne es un ícono de comida que flota, no un cuerpo).
 - [x] Sin gritos, gruñidos ni sonidos de dolor: el zombi solo hace "uuuh".
 - [x] Ningún efecto dura más de 1 s ni cubre la pantalla.
 - [x] Los colores de los destellos son pasteles (`SPARKLE_COLORS`), sin rojo intenso.

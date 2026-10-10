@@ -21,6 +21,8 @@ export type Hud = {
 };
 
 const TOO_FAR_MS = 700;
+/** Bloques que no se reconocen solo por el color. */
+const BLOCK_ICONS: Partial<Record<BlockId, string>> = { torch: "🔥" };
 
 function button(className: string, label: string, icon: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement("button");
@@ -71,7 +73,7 @@ export function setupHud(game: Game, actions: HudActions): Hud {
 
   const blockButtons = new Map<BlockId, HTMLButtonElement>();
   BUILDABLE_IDS.forEach((id, i) => {
-    const b = button("block-btn", BLOCKS[id].name, "", withClick(() => pickBlock(id)));
+    const b = button("block-btn", BLOCKS[id].name, BLOCK_ICONS[id] ?? "", withClick(() => pickBlock(id)));
     b.style.background = `#${BLOCKS[id].color.toString(16).padStart(6, "0")}`;
     b.dataset.id = id;
     if (i < 9) {
@@ -122,6 +124,16 @@ export function setupHud(game: Game, actions: HudActions): Hud {
     tooFar.classList.add("show");
     if (tooFarTimer) clearTimeout(tooFarTimer);
     tooFarTimer = setTimeout(() => tooFar.classList.remove("show"), TOO_FAR_MS);
+  });
+
+  const bagBtn = el("bag-btn");
+  bagBtn.addEventListener("click", withClick(() => send({ type: "toggleInventory" })));
+  game.events.on("inventoryToggled", ({ open }) => bagBtn.setAttribute("aria-pressed", String(open)));
+  // La mochila da un saltito cada vez que se guarda algo en ella.
+  game.events.on("itemCollected", () => {
+    bagBtn.classList.remove("got");
+    void bagBtn.offsetWidth;
+    bagBtn.classList.add("got");
   });
 
   el("undo-btn").addEventListener("click", withClick(() => send({ type: "undo" })));

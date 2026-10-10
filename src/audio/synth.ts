@@ -3,7 +3,7 @@
  * uno es una función pura de la frecuencia de muestreo, así que se pueden probar sin navegador.
  */
 export const ANIMAL_SOUNDS = ["baa", "moo", "meh", "cluck", "peep", "quack"] as const;
-export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS, "sparkle", "groan"] as const;
+export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS, "sparkle", "groan", "pickup"] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];
 
@@ -122,6 +122,9 @@ export function synthesize(name: SoundName, rate: number): Float32Array<ArrayBuf
         { attack: 0.003, decay: 0.3 },
       );
     }
+    // Recoger un objeto: dos notas rápidas que suben (sol y do), como un "¡pop!" contento.
+    case "pickup":
+      return render(rate, 0.22, (t) => 0.3 * (t < 0.08 ? tone(784, 784, 0.08)(t) : tone(1047, 1047, 0.14)(t - 0.08) * Math.min(1, (t - 0.08) / 0.005)), { attack: 0.004, decay: 0.08 });
     // Zombi: un "uuuh" bajito y tonto, como un bostezo (nada de gruñidos).
     case "groan": {
       const v = voice(rate, (t) => 210 - 50 * t + 8 * Math.sin(2 * Math.PI * 5 * t), [0.16, 0.08, 0.04]);

@@ -1,5 +1,46 @@
 import type { Page } from "@playwright/test";
 
+/**
+ * Duración de un frame lento en esta máquina: el más largo de 10. Con WebGL por software un frame
+ * puede pasar de 50 ms y variar al doble de uno a otro.
+ */
+export async function frameMs(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let last = performance.now();
+        let slowest = 0;
+        let n = 0;
+        const tick = () => {
+          const now = performance.now();
+          slowest = Math.max(slowest, now - last);
+          last = now;
+          if (++n === 10) resolve(slowest);
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+  );
+}
+
+/** Ejecuta `action` en la página y mide cuánto tarda `done` en cumplirse, comprobando en cada frame. */
+export async function latencyMs(page: Page, action: string, done: string): Promise<number> {
+  return page.evaluate(
+    ([action, done]) =>
+      new Promise<number>((resolve, reject) => {
+        const t0 = performance.now();
+        new Function(action)();
+        const check = () => {
+          if (new Function(`return (${done})`)()) return resolve(performance.now() - t0);
+          if (performance.now() - t0 > 5000) return reject(new Error(`no se cumplió: ${done}`));
+          requestAnimationFrame(check);
+        };
+        check();
+      }),
+    [action, done] as const,
+  );
+}
+
 /** Junta los errores de consola y las excepciones no capturadas de la página. */
 export function collectErrors(page: Page): string[] {
   const errors: string[] = [];

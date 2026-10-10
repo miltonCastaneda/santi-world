@@ -4,6 +4,7 @@ import { rayAabb, type Ray, type Vec3 } from "../core/math";
 import { Rng } from "../core/rng";
 import { BLOCK_NUM, BLOCKS_BY_NUM, type BlockId } from "../domain/blocks";
 import { EntityStore, type Entity, type EntityKind } from "../domain/entities/entityStore";
+import { isItemId, ITEMS, PICKUP_DELAY_MS, type ItemId } from "../domain/entities/items";
 import { createSpawnSlots, homesOf, type Home, type SpawnSlot } from "../domain/entities/population";
 import { isSpeciesId, type HomeId } from "../domain/entities/species";
 import { ZOMBIE } from "../domain/entities/zombie";
@@ -11,15 +12,17 @@ import type { EntitySnapshot } from "../domain/repository/model";
 import { bodyOverlapsCell, type CollisionQuery } from "../domain/physics/collide";
 import { pickCell } from "../domain/picking";
 import { resolveHit, type HitOutcome, type TargetKind } from "../domain/rules/damage";
+import { emptyInventory, sanitizeInventory, type Inventory } from "../domain/rules/inventory";
 import { REACH, TOOLS, type ToolId } from "../domain/rules/tools";
 import { CHUNK_HEIGHT } from "../domain/world/chunk";
 import { blockLightAt } from "../domain/world/light";
 import { TerrainWorld } from "../domain/world/terrainWorld";
-import { entityFromSnapshot, entityToSnapshot } from "./entitySnapshots";
+import { entityFromSnapshot, entityToSnapshot, itemEntity } from "./entitySnapshots";
 import { FixedStepLoop, STEP_MS } from "./loop";
 import { Player, PLAYER_SPEED, type HitResult } from "./player";
 import { AnimalSystem, type AnimalContext, type AnimalSound } from "./systems/animals";
 import { durationsFrom, WorldClock, type Phase } from "./systems/dayNight";
+import { itemsInPickupRange } from "./systems/interaction";
 import type { PathWorld } from "./systems/pathfinding";
 import { respawnPending, type RespawnWorld } from "./systems/respawn";
 import { NightSpawner, type SpawnWorld } from "./systems/spawn";
@@ -60,6 +63,11 @@ export type GameEvents = {
   /** El niño le pegó a una criatura con una herramienta (rebote o "poof", nunca dolor). */
   entityHit: { id: string; species: EntityKind; pos: Vec3; outcome: HitOutcome; defeated: boolean };
   zombieSpawned: { id: string; pos: Vec3 };
+  /** Quedó un objeto flotando (la carne de un animal). */
+  itemDropped: { id: string; item: ItemId; pos: Vec3 };
+  /** El niño recogió un objeto (al pasar cerca o con un clic). */
+  itemCollected: { id: string; item: ItemId; pos: Vec3 };
+  inventoryChanged: { inventory: Inventory };
   phaseChanged: { phase: Phase; dayCount: number };
   /** Falta un minuto para la noche. */
   nightSoon: Record<string, never>;
@@ -94,6 +102,8 @@ export class Game {
   /** Slots cuyos animales desaparecieron y vuelven al próximo amanecer. */
   pendingRespawns: string[] = [];
   selection: Selection = { tool: "hand", block: "grass" };
+  /** Recursos del mundo abierto (los bloques de construcción son ilimitados y no cuentan). */
+  inventory: Inventory = emptyInventory();
   inventoryOpen = false;
   tick = 0;
   timeMs = 0;
@@ -102,6 +112,8 @@ export class Game {
   private lastHearts: number;
   private homes: Record<HomeId, Home> | null = null;
   private slots: SpawnSlot[] = [];
+  /** Numera los objetos que caen (los guardados se respetan al abrir). */
+  private itemCount = 0;
 
   constructor(options: { seed?: string; world?: TerrainWorld } = {}) {
     this.world = options.world ?? TerrainWorld.create(options.seed ?? "santi");
@@ -230,10 +242,37 @@ export class Game {
     if (spot) this.spawnZombie(spot);
   }
 
+  /** Deja un objeto flotando en `pos` (la carne de un animal). */
+  dropItem(item: ItemId, pos: Vec3): Entity {
+    const e = this.entities.add({ ...itemEntity(`${item}-${this.itemCount++}`, item, pos), readyAt: this.timeMs + PICKUP_DELAY_MS });
+    this.events.emit("itemDropped", { id: e.id, item, pos: { ...e.body.pos } });
+    return e;
+  }
+
+  /** El niño recoge un objeto: desaparece del mundo y suma 1 a su recurso. */
+  collectItem(id: string): boolean {
+    const e = this.entities.get(id);
+    if (!e || !isItemId(e.species)) return false;
+    this.entities.remove(id);
+    this.inventory[ITEMS[e.species].resource]++;
+    this.events.emit("itemCollected", { id, item: e.species, pos: { ...e.body.pos } });
+    this.events.emit("inventoryChanged", { inventory: { ...this.inventory } });
+    return true;
+  }
+
+  /** Inventario del mundo que se abre (o de una prueba). */
+  setInventory(inventory: Partial<Inventory>): void {
+    this.inventory = sanitizeInventory(inventory);
+    this.events.emit("inventoryChanged", { inventory: { ...this.inventory } });
+  }
+
   restoreEntities(snapshots: readonly EntitySnapshot[]): void {
     for (const s of snapshots) {
       const e = entityFromSnapshot(s, this.timeMs);
-      if (e && !this.entities.get(e.id)) this.entities.add(e);
+      if (!e || this.entities.get(e.id)) continue;
+      this.entities.add(e);
+      const n = isItemId(e.species) ? Number(e.id.slice(e.species.length + 1)) : NaN;
+      if (Number.isInteger(n)) this.itemCount = Math.max(this.itemCount, n + 1);
     }
   }
 
@@ -281,6 +320,8 @@ export class Game {
     this.zombies.reset(world.seed);
     this.spawner.reset(world.seed);
     this.pendingRespawns = [];
+    this.itemCount = 0;
+    this.setInventory(emptyInventory());
     this.clock.restore(0, 1);
     this.prepareHomes();
     this.player.setMove(0, 0);
@@ -305,6 +346,7 @@ export class Game {
     this.tick++;
     this.timeMs += dtMs;
     this.stepPlayer(dtMs);
+    for (const item of itemsInPickupRange(this.entities, this.player.body, this.timeMs)) this.collectItem(item.id);
     this.animals.step(this.entities, this.animalContext, this.tick, this.timeMs, dtMs, (s) => this.events.emit("animalSound", s));
     this.zombies.step(this.entities, this.zombieContext, this.tick, this.timeMs, dtMs);
     this.stepNight();
@@ -406,7 +448,10 @@ export class Game {
     // Una criatura delante del bloque apuntado recibe el golpe en su lugar.
     const creature = this.pickEntity(ray, target?.distance ?? PICK_DISTANCE);
     if (creature) {
-      this.hitEntity(creature, tool.id);
+      if (this.gapTo(creature.body) > REACH) this.events.emit("tooFar", { pos: { ...creature.body.pos } });
+      // Un clic sobre la carne la recoge, con cualquier herramienta.
+      else if (isItemId(creature.species)) this.collectItem(creature.id);
+      else this.hitEntity(creature, tool.id);
       return;
     }
     if (!target) return;
@@ -461,28 +506,32 @@ export class Game {
     return best;
   }
 
-  /** Golpe de cerca con la herramienta elegida, según la tabla de `domain/rules/damage`. */
-  private hitEntity(e: Entity, tool: ToolId): void {
-    const b = e.body;
+  /** Distancia de los ojos del personaje a la caja de un cuerpo (0 si están dentro). */
+  private gapTo(b: Entity["body"]): number {
     const eye = this.player.eye();
-    const gap = Math.hypot(
+    return Math.hypot(
       Math.max(b.pos.x - b.halfWidth - eye.x, 0, eye.x - (b.pos.x + b.halfWidth)),
       Math.max(b.pos.y - eye.y, 0, eye.y - (b.pos.y + b.height)),
       Math.max(b.pos.z - b.halfWidth - eye.z, 0, eye.z - (b.pos.z + b.halfWidth)),
     );
-    if (gap > REACH) {
-      this.events.emit("tooFar", { pos: { ...b.pos } });
-      return;
-    }
+  }
+
+  /** Golpe de cerca con la herramienta elegida, según la tabla de `domain/rules/damage`. */
+  private hitEntity(e: Entity, tool: ToolId): void {
+    const b = e.body;
     const kind: TargetKind | null = e.species === "zombie" ? "zombie" : isSpeciesId(e.species) ? "animal" : null;
     if (!kind) return;
-    const { outcome, defeated, hits } = resolveHit(tool, kind, e.hits ?? 0);
-    if (outcome === "none") return;
+    const { outcome, defeated, hits, drop } = resolveHit(tool, kind, e.hits ?? 0);
+    if (outcome === "none" || outcome === "capture") return;
     e.hits = hits;
     this.events.emit("entityHit", { id: e.id, species: e.species, pos: { ...b.pos }, outcome, defeated });
     // Rebote cartoon: un saltito, sin daño.
     if (outcome === "boing" && b.onGround) b.vel.y = 4;
-    if (defeated) this.removeEntity(e.id);
+    if (!defeated) return;
+    const at = { ...b.pos };
+    this.removeEntity(e.id);
+    // La carne queda en el lugar del animal (sin sangre: un ícono cartoon flotando).
+    if (drop) this.dropItem(drop, at);
   }
 
   private changed(pos: Vec3 | null): void {

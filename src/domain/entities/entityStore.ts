@@ -1,12 +1,13 @@
 import type { Vec3 } from "../../core/math";
 import type { Body } from "../physics/collide";
 import type { Brain } from "./fsm";
+import type { ItemId } from "./items";
 import type { HomeId, SpeciesId } from "./species";
 
 export type EntityAnim = "idle" | "walk" | "run" | "graze" | "rest" | "swim";
 
-/** Animales de granja, zombis y el marcador de amenaza de las pruebas. */
-export type EntityKind = SpeciesId | "zombie" | "threat";
+/** Animales de granja, zombis, objetos para recoger y el marcador de amenaza de las pruebas. */
+export type EntityKind = SpeciesId | ItemId | "zombie" | "threat";
 
 /** Camino calculado por el pathfinding: puntos de pies (centro de celda) y versiones de los chunks que cruza. */
 export type Path = { points: Vec3[]; chunks: Map<string, number> };
@@ -46,6 +47,8 @@ export type Entity = {
   despawnAt?: number | null;
   /** Golpes recibidos (para las criaturas que necesitan más de uno). */
   hits?: number;
+  /** Desde cuándo un objeto se recoge al pasar (el recién caído se ve un momento). */
+  readyAt?: number;
 };
 
 const CELL = 8;

@@ -17,7 +17,7 @@ Tienes un **personaje** con una **"S"** en la camiseta. ¡Eres tú!
 
 - ✋ **La Mano** pone bloques. Elige un color abajo y haz clic donde quieras construir.
 - ⛏️ **El Pico** rompe bloques.
-- ⚔️ **La Espada**: con **un golpe** un zombi se va con destellos ✨. Si tocas a un animal, solo da un saltito ("boing").
+- ⚔️ **La Espada**: con **un golpe** un zombi se va con destellos ✨. Si tocas a un animal de la granja con la espada, hace **poof** y deja un pedazo de **carne** 🍖 (el animal vuelve a la granja por la mañana). Con la Mano o el Pico, el animal solo da un saltito ("boing").
 - 🏹 **El Arco** y 📿 **el Collar** sirven para cosas que llegan pronto.
 - La herramienta que estás usando se pone **verde** y tu personaje la lleva en la mano.
 
@@ -25,6 +25,15 @@ Tienes un **personaje** con una **"S"** en la camiseta. ¡Eres tú!
 
 - Toca un color para elegirlo. También puedes usar los **números 1 a 9** o la **ruedita** del mouse.
 - Si el bloque está **muy lejos**, aparece ✋💨: acércate caminando.
+- Los bloques **nunca se acaban**: puedes construir todo lo que quieras.
+- La **antorcha** 🔥 es un bloque que da luz. De noche ilumina alrededor y **ahí no aparecen zombis**.
+
+## Tu mochila 🎒
+
+- Toca la **mochila** 🎒 (arriba a la derecha) o aprieta la tecla **E** para abrirla. Para cerrarla, toca la ✕ o vuelve a apretar E.
+- Ahí ves lo que juntaste: **diamantes** 💎, **carne** 🍖 y **cerdos-gallina** 🐷. Al lado de cada uno hay un **número** y unos **puntitos** ● (un puntito por cada cosa, hasta 5).
+- Para juntar la **carne** que flota, camina cerca de ella o tócala con un clic. Suena "tin-tin" y la mochila da un saltito.
+- Cada mundo tiene **su propia mochila**, y lo que juntas se guarda solo.
 
 ## Tus corazones (arriba a la izquierda)
 
@@ -63,7 +72,7 @@ Tu primer mundo, el de antes, se llama **"Mi primer mundo"**. Si ves el dibujo *
 - Si un zombi toca a un animal, el animal hace **poof**... ¡pero vuelve a la granja por la mañana!
 - Si un zombi te toca, pierdes un corazón y das un saltito. Los corazones vuelven solos.
 - Con **un golpe** (la mano, el pico o la espada) el zombi se va con **destellos** ✨.
-- ¡**Construye muros** alrededor de tus animales! Los zombis no pueden romper bloques ni saltar muros. Con un **techo** y una **antorcha** 🔥 cerca, no aparecen ahí.
+- ¡**Construye muros** alrededor de tus animales! Los zombis no pueden romper bloques ni saltar muros. Debajo de un **techo**, o cerca de una **antorcha** 🔥, no aparecen. ¡Una casita con techo y una antorcha adentro es un refugio perfecto!
 - Cuando sale el **sol**, todos los zombis se van.
 
 ## Pronto (Fase 2)

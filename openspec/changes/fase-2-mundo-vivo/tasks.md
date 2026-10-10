@@ -209,11 +209,11 @@
 - **Depende de**: 8. **Paralelizable**: no.
 - **Demo**: Espada sobre una vaca, que hace "poof" y deja carne; recogerla, abrir el inventario con E; colocar una antorcha y ver que de noche no aparecen zombis cerca.
 
-- [ ] 9.1 Implementar la Espada sobre un animal de granja ("poof", carne flotante y slot pendiente; el cerdo-gallina no da carne; Pico y Mano solo hacen "boing") y verificarlo con pruebas unitarias de la tabla de herramientas
-- [ ] 9.2 Implementar la recogida de la carne (a 1,5 bloques o menos, o con un clic) y su persistencia sin que desaparezca, y verificar con pruebas unitarias "Recoger carne" y "Carne no recogida"
-- [ ] 9.3 Crear el inventario visual (E o mochila, contadores con puntos de 1 a 5, por mundo y persistente) y verificar con un E2E "Abrir el inventario", "Persistencia del inventario" e "Inventario independiente por mundo"
-- [ ] 9.4 Implementar la antorcha como bloque de la hotbar (luz por vértice) y verificar con un E2E "Refugio iluminado"
-- [ ] 9.5 Actualizar `docs/guia-nino.md` (inventario y antorchas) y agregar la entrada al CHANGELOG
+- [x] 9.1 Implementar la Espada sobre un animal de granja ("poof", carne flotante y slot pendiente; el cerdo-gallina no da carne; Pico y Mano solo hacen "boing") y verificarlo con pruebas unitarias de la tabla de herramientas
+- [x] 9.2 Implementar la recogida de la carne (a 1,5 bloques o menos, o con un clic) y su persistencia sin que desaparezca, y verificar con pruebas unitarias "Recoger carne" y "Carne no recogida"
+- [x] 9.3 Crear el inventario visual (E o mochila, contadores con puntos de 1 a 5, por mundo y persistente) y verificar con un E2E "Abrir el inventario", "Persistencia del inventario" e "Inventario independiente por mundo"
+- [x] 9.4 Implementar la antorcha como bloque de la hotbar (luz por vértice) y verificar con un E2E "Refugio iluminado"
+- [x] 9.5 Actualizar `docs/guia-nino.md` (inventario y antorchas) y agregar la entrada al CHANGELOG
 
 ## 10. Lobos, su montaña y la domesticación con el Collar
 
