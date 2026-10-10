@@ -73,6 +73,16 @@ export class TerrainWorld {
     return this.record(this.store.set(x, y, z, 0, false, now));
   }
 
+  /**
+   * Cambia un bloque natural por otro natural (minar un diamante o que vuelva a crecer). No entra
+   * en el historial: deshacer no devuelve un diamante ya minado.
+   */
+  replaceNatural(x: number, y: number, z: number, id: BlockId, now = 0): Vec3 | null {
+    if (y <= 0 || this.store.get(x, y, z) === 0 || this.store.isPlaced(x, y, z)) return null;
+    const change = this.store.set(x, y, z, BLOCK_NUM[id], false, now);
+    return change ? { x, y, z } : null;
+  }
+
   undo(now = 0): Vec3 | null {
     const last = this.history.pop();
     if (!last) return null;

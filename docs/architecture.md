@@ -2,9 +2,9 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 10)
+## Estado actual (Fase 2, incremento 11)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer. La Espada convierte a un animal de granja en carne flotante, que se recoge y se guarda en la mochila (inventario por mundo); las antorchas de la barra de bloques iluminan e impiden que aparezcan zombis. En la montaña boscosa viven lobos que una vez por día salen a cazar un animal de granja (una granja bien cerrada los detiene); con el Collar se vuelven amigos que siguen al niño o cuidan la granja y ahuyentan zombis.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer. La Espada convierte a un animal de granja en carne flotante, que se recoge y se guarda en la mochila (inventario por mundo); las antorchas de la barra de bloques iluminan e impiden que aparezcan zombis. En la montaña boscosa viven lobos que una vez por día salen a cazar un animal de granja (una granja bien cerrada los detiene); con el Collar se vuelven amigos que siguen al niño o cuidan la granja y ahuyentan zombis. En la montaña de roca el Pico mina diamantes, que vuelven cada 3 días del juego.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
@@ -26,7 +26,8 @@ src/
                 physics/collide.ts (moveBody: AABB con barrido Y, X, Z, gravedad, borde invisible),
                 rules/tools.ts (Mano, Pico, Espada, Arco y Collar; alcance de 6), rules/damage.ts
                 (tabla herramienta x objetivo: boing, derrota, captura o nada; golpes para derrotar;
-                qué suelta cada objetivo), rules/inventory.ts (recursos, inventario saneado, puntos
+                qué suelta cada objetivo), rules/mining.ts (qué mina el Pico y cada cuántos días
+                vuelven los diamantes), rules/inventory.ts (recursos, inventario saneado, puntos
                 de 1 a 5), entities/items.ts (objetos sueltos: carne; radio y demora de recogida),
                 entities/fsm.ts (máquinas de estado por datos y su intérprete), entities/species.ts
                 (6 especies como datos), entities/zombie.ts (datos y máquina del zombi),
@@ -44,6 +45,7 @@ src/
                 (NightSpawner: dónde y cuándo aparece un zombi), systems/zombies.ts (ZombieSystem:
                 objetivo, caminos, contacto, separación), systems/wolves.ts (WolfSystem: caza con
                 viaje por tramos, acecho, guarida, domesticar, seguir, cuidar y ahuyentar zombis),
+                systems/regrowth.ts (diamantes que vuelven a sus vetas),
                 systems/interaction.ts (objetos al alcance de recogida), entitySnapshots.ts
                 (entidad <-> EntitySnapshot; animales, lobos y objetos sueltos)                    (puro)
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
@@ -132,6 +134,13 @@ src/
 4. El Collar a 3 bloques o menos (si no, `tooFar`) llama a `WolfSystem.tame`: `tamed`, hogar `farm`, cerebro `FRIEND_WOLF_MACHINE` y rol `follow` si hay menos de 3 seguidores (si no, `guard`). `Game` emite `entityHit` con `tame` y `wolfTamed`; el render muestra corazones y el modelo `wolfTame` (collar rojo), y el audio toca `tame`.
 5. El lobo amigo `follow` se acerca al niño cuando está a más de 5 bloques y se detiene a 3; a más de 30 se teletransporta a su lado. El `guard` pasea alrededor de la granja (radio 24). Con un zombi a 6 bloques o menos interrumpe y lo persigue (`chase`, prioridad 0); al tocarlo, `removeEntity` lo hace irse con destellos.
 6. `entitySnapshots` guarda los lobos como `kind: "wolf"` con `tamed`, rol, `huntDay`, `huntFrac` y golpes; al restaurar, una caza o un acecho en curso vuelve a `idle`.
+
+### Diamantes
+
+1. El generador pone hasta 16 vetas (`layout.ores`, con id) en la montaña de roca, en la superficie o a 2 bloques o menos debajo (bajo la nieve, siempre al menos 1). Una prueba de generación verifica 10 o más accesibles en 20 semillas.
+2. En `useTool`, antes de romper, `mineResult(tool, block)` de `domain/rules/mining` dice si el Pico mina el bloque: `TerrainWorld.replaceNatural` cambia el diamante por piedra natural (`placed=0`, fuera del historial de deshacer), el inventario suma 1 diamante y `Game` emite `blockMined`, `inventoryChanged` y `blockChanged`. El render muestra destellos en el bloque y el audio toca `break` y `gem`. La Espada, el Collar y el Arco no hacen nada sobre un bloque.
+3. Al amanecer de los días 4, 7, 10… (`regrowDue`), `regrowDiamonds` (`sim/systems/regrowth`) vuelve a poner diamante en cada veta donde hoy hay piedra natural, emite `blockChanged` por cada una y `diamondsRegrown`. Lo que el niño rompió (aire) o construyó (`placed=1`) no cambia.
+4. Los chunks con diamantes minados quedan modificados y se guardan como cualquier otro; el día del juego también se guarda, así que la reaparición sigue igual al reabrir.
 
 ### Guardado
 

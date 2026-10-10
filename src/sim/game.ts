@@ -13,7 +13,8 @@ import type { EntitySnapshot } from "../domain/repository/model";
 import { bodyOverlapsCell, type CollisionQuery } from "../domain/physics/collide";
 import { pickCell } from "../domain/picking";
 import { resolveHit, type HitOutcome, type TargetKind } from "../domain/rules/damage";
-import { emptyInventory, sanitizeInventory, type Inventory } from "../domain/rules/inventory";
+import { emptyInventory, sanitizeInventory, type Inventory, type ResourceId } from "../domain/rules/inventory";
+import { mineResult, regrowDue } from "../domain/rules/mining";
 import { REACH, TOOLS, type ToolId } from "../domain/rules/tools";
 import { CHUNK_HEIGHT } from "../domain/world/chunk";
 import { blockLightAt } from "../domain/world/light";
@@ -25,6 +26,7 @@ import { AnimalSystem, type AnimalContext, type AnimalSound } from "./systems/an
 import { durationsFrom, WorldClock, type Phase } from "./systems/dayNight";
 import { itemsInPickupRange } from "./systems/interaction";
 import type { PathWorld } from "./systems/pathfinding";
+import { regrowDiamonds } from "./systems/regrowth";
 import { respawnPending, type RespawnWorld } from "./systems/respawn";
 import { NightSpawner, type SpawnWorld } from "./systems/spawn";
 import { WolfSystem, type WolfContext } from "./systems/wolves";
@@ -45,6 +47,10 @@ export type GameEvents = {
   blockChanged: { pos: Vec3 };
   blockPlaced: { pos: Vec3; block: BlockId };
   blockBroken: { pos: Vec3; block: BlockId | null };
+  /** El Pico minó un mineral: el bloque se volvió piedra y sumó un recurso (con brillo). */
+  blockMined: { pos: Vec3; block: BlockId; resource: ResourceId };
+  /** Al amanecer volvieron diamantes a la montaña. */
+  diamondsRegrown: { positions: Vec3[] };
   /** La herramienta no pudo actuar (capa inferior): suena un "toc" suave. */
   bump: { pos: Vec3 };
   /** El clic cayó fuera del alcance: indicador suave de "muy lejos". */
@@ -248,6 +254,14 @@ export class Game {
     return respawned;
   }
 
+  /** Vuelven los diamantes minados (cada 3 días del juego, al amanecer). */
+  regrowDiamonds(): Vec3[] {
+    const positions = regrowDiamonds(this.world, this.timeMs);
+    for (const pos of positions) this.changed(pos);
+    if (positions.length > 0) this.events.emit("diamondsRegrown", { positions });
+    return positions;
+  }
+
   get zombieCount(): number {
     let n = 0;
     for (const e of this.entities.all()) if (e.species === "zombie") n++;
@@ -407,6 +421,7 @@ export class Game {
           // Si la hora saltó (padres o pruebas) y quedó algún zombi, se va antes de las reapariciones.
           for (const e of [...this.entities.all()]) if (e.species === "zombie") this.removeEntity(e.id);
           this.events.emit("dawn", { dayCount, respawned: this.dawn() });
+          if (regrowDue(dayCount)) this.regrowDiamonds();
           break;
       }
     }
@@ -512,6 +527,14 @@ export class Game {
     if (tool.onBlock === "break") {
       const { x, y, z } = target.block;
       const before = BLOCKS_BY_NUM[this.world.store.get(x, y, z)]?.id ?? null;
+      const mined = mineResult(tool.id, before);
+      if (mined && before && this.world.replaceNatural(x, y, z, mined.becomes, this.timeMs)) {
+        this.inventory[mined.resource]++;
+        this.events.emit("blockMined", { pos: { x, y, z }, block: before, resource: mined.resource });
+        this.events.emit("inventoryChanged", { inventory: { ...this.inventory } });
+        this.changed({ x, y, z });
+        return;
+      }
       const pos = this.world.remove(x, y, z, this.timeMs);
       if (!pos) {
         this.events.emit("bump", { pos: target.block });

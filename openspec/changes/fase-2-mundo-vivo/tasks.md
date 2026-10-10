@@ -239,10 +239,10 @@
 - **Depende de**: 9. **Paralelizable**: sí, con el incremento 10.
 - **Demo**: Santi va a la montaña de roca, mina 3 diamantes y los ve en el inventario.
 
-- [ ] 11.1 Implementar el Pico sobre un diamante (se vuelve piedra, +1 diamante y brillo; con la Espada no pasa nada) y verificarlo con pruebas unitarias "Minar un diamante" y "Diamante con otra herramienta"
-- [ ] 11.2 Implementar la reaparición de diamantes cada 3 días del juego, solo en piedra natural (`placed=0`), y verificarlo con una prueba unitaria "Diamantes que vuelven"
-- [ ] 11.3 Verificar con una prueba de generación que hay al menos 10 diamantes accesibles (visibles o a 2 bloques o menos de la superficie) en varias semillas
-- [ ] 11.4 Actualizar `docs/guia-nino.md` (diamantes) y agregar la entrada al CHANGELOG
+- [x] 11.1 Implementar el Pico sobre un diamante (se vuelve piedra, +1 diamante y brillo; con la Espada no pasa nada) y verificarlo con pruebas unitarias "Minar un diamante" y "Diamante con otra herramienta"
+- [x] 11.2 Implementar la reaparición de diamantes cada 3 días del juego, solo en piedra natural (`placed=0`), y verificarlo con una prueba unitaria "Diamantes que vuelven"
+- [x] 11.3 Verificar con una prueba de generación que hay al menos 10 diamantes accesibles (visibles o a 2 bloques o menos de la superficie) en varias semillas
+- [x] 11.4 Actualizar `docs/guia-nino.md` (diamantes) y agregar la entrada al CHANGELOG
 
 ## 12. Cerdo-gallina volador
 

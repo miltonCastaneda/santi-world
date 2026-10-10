@@ -3,7 +3,7 @@
  * uno es una función pura de la frecuencia de muestreo, así que se pueden probar sin navegador.
  */
 export const ANIMAL_SOUNDS = ["baa", "moo", "meh", "cluck", "peep", "quack"] as const;
-export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS, "sparkle", "groan", "pickup", "woof", "tame"] as const;
+export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS, "sparkle", "groan", "pickup", "woof", "tame", "gem"] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];
 
@@ -150,6 +150,23 @@ export function synthesize(name: SoundName, rate: number): Float32Array<ArrayBuf
           return 0.13 * v;
         },
         { attack: 0.004, decay: 0.3 },
+      );
+    }
+    // Minar un diamante: un "tiling" de cristal, tres notas muy agudas y rápidas que titilan.
+    case "gem": {
+      const notes = [1568, 2349, 3136];
+      return render(
+        rate,
+        0.4,
+        (t) => {
+          let v = 0;
+          notes.forEach((f, k) => {
+            const s = t - k * 0.045;
+            if (s > 0) v += Math.sin(2 * Math.PI * f * s) * (0.85 + 0.15 * Math.sin(2 * Math.PI * 18 * s)) * Math.exp(-s / 0.1) * Math.min(1, s / 0.003);
+          });
+          return 0.12 * v;
+        },
+        { attack: 0.003, decay: 0.25 },
       );
     }
   }

@@ -10,6 +10,10 @@ export function connectGameAudio(audio: AudioService, game: Game): void {
   e.on("jumped", ({ pos }) => audio.play("jump", { pos, volume: 0.6 }));
   e.on("blockPlaced", ({ pos }) => audio.play("place", { pos }));
   e.on("blockBroken", ({ pos }) => audio.play("break", { pos }));
+  e.on("blockMined", ({ pos }) => {
+    audio.play("break", { pos, volume: 0.6 });
+    audio.play("gem", { pos });
+  });
   e.on("bump", ({ pos }) => audio.play("bump", { pos }));
   e.on("tooFar", () => audio.play("far"));
   e.on("toolUsed", ({ tool }) => {

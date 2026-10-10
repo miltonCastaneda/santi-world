@@ -88,6 +88,12 @@ Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el
 - La **mochila** (🎒 o la tecla E) muestra los diamantes, la carne y los cerdos-gallina con íconos, números y puntos, y **no pausa** el juego. Cada mundo tiene su propia mochila y se guarda con él. Construir **no gasta** nada: los bloques son ilimitados.
 - La **antorcha** está en la barra de bloques (🔥). Ilumina de noche y, a su alrededor (luz 8 o más, unos 6 bloques), no aparecen zombis.
 
+### Los diamantes
+
+- En la montaña de roca hay al menos 10 diamantes a la vista o a 2 bloques o menos de la superficie (algunos, bajo la nieve). Un clic con el **Pico** convierte el diamante en piedra y suma 1 a la mochila, con un brillo. Las otras herramientas no hacen nada sobre él.
+- **Deshacer** no devuelve un diamante ya minado (así no se pueden multiplicar).
+- **Cada 3 días del juego**, al amanecer, los diamantes vuelven a aparecer en sus lugares, siempre que ahí siga la piedra natural. Lo que el niño construyó o rompió en la montaña se respeta.
+
 ### Los lobos
 
 - En la montaña boscosa viven de **4 a 6 lobos** grises de caricatura. Su voz es un "guau-guau" amistoso. **Nunca lastiman al niño.**

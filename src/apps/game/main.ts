@@ -80,6 +80,8 @@ const view = new RenderApp(canvas, game.world.store, game.world.gen, game.world.
 });
 
 game.events.on("blockChanged", ({ pos }) => view.chunks.invalidateBlock(pos.x, pos.z));
+// Brillo del diamante minado: destellos que salen del bloque, que ya es piedra.
+game.events.on("blockMined", ({ pos }) => view.entities?.poof({ x: pos.x + 0.5, y: pos.y, z: pos.z + 0.5 }, "sparkle"));
 game.events.on("entityHit", ({ id, pos, outcome, defeated }) => {
   // Rebote o golpe que no hace "poof" (el lobo salvaje retrocede): parpadeo cartoon.
   if (outcome === "boing" || (outcome === "defeat" && !defeated)) blinkUntil.set(id, performance.now() + BLINK_MS);

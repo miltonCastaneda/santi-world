@@ -38,6 +38,14 @@ describe("[mundos-y-persistencia] generador del mundo", () => {
     expect(actual).toEqual(GOLDEN);
   });
 
+  it("[recursos-e-inventario] Diamantes en la montaña de rocas: 10 o más accesibles en 20 semillas", () => {
+    for (let i = 0; i < 20; i++) {
+      const { store, generator } = createWorldStore(`diamantes-${i}`);
+      const accessible = generator.layout!.ores.filter((o) => store.get(o.x, o.y, o.z) === BLOCK_NUM.diamond_ore && store.surfaceY(o.x, o.z) - o.y <= 2);
+      expect(accessible.length, `semilla diamantes-${i}`).toBeGreaterThanOrEqual(10);
+    }
+  });
+
   describe.each(["santi", "perf-001", "abc", "12345"])("[mundos-y-persistencia] Zonas presentes (semilla %s)", (seed) => {
     const { store, generator } = createWorldStore(seed);
     const layout = generator.layout!;

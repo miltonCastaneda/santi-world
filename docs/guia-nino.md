@@ -16,7 +16,7 @@ Tienes un **personaje** con una **"S"** en la camiseta. ¡Eres tú!
 ## Tus herramientas (a la derecha)
 
 - ✋ **La Mano** pone bloques. Elige un color abajo y haz clic donde quieras construir.
-- ⛏️ **El Pico** rompe bloques.
+- ⛏️ **El Pico** rompe bloques. Si tocas un **diamante** 💎 con el Pico, ¡brilla y el diamante va a tu mochila!
 - ⚔️ **La Espada**: con **un golpe** un zombi se va con destellos ✨. Si tocas a un animal de la granja con la espada, hace **poof** y deja un pedazo de **carne** 🍖 (el animal vuelve a la granja por la mañana). Con la Mano o el Pico, el animal solo da un saltito ("boing").
 - 📿 **El Collar** sirve para hacerte **amigo de un lobo**: acércate y haz clic sobre él.
 - 🏹 **El Arco** sirve para algo que llega pronto.
@@ -91,7 +91,14 @@ Tu primer mundo, el de antes, se llama **"Mi primer mundo"**. Si ves el dibujo *
 - De noche, tus lobos **espantan a los zombis**: si tocan uno, el zombi se va con destellos ✨.
 - Si tocas a tu lobo amigo con cualquier herramienta, no le pasa nada: salta contento, salen corazones y dice "guau-guau".
 
+## Los diamantes (en la montaña de rocas) 💎
+
+- En la **montaña de rocas**, la gris con nieve arriba, hay bloques **celestes con puntitos**: ¡son diamantes!
+- Elige el **Pico** ⛏️ y haz clic sobre un diamante. Sale un **brillo** ✨, suena "tiling" y el diamante va a tu **mochila** 🎒. Donde estaba queda una piedra gris.
+- Algunos diamantes están **escondidos** debajo de la nieve o de una piedra: rompe un poquito con el Pico y ¡ahí están!
+- Con la Espada o el Collar los diamantes no se rompen: necesitas el Pico.
+- Si juntas **todos**, no te preocupes: **cada 3 días** vuelven a aparecer en la montaña.
+
 ## Pronto (Fase 2)
 
 - Llegará el **cerdo-gallina**, que vuela.
-- En la montaña de rocas hay **diamantes** para recoger con el pico.
