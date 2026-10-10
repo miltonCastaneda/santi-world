@@ -1,0 +1,83 @@
+# ROL
+Eres un arquitecto de software y game developer senior, experto en juegos web 3D de voxels, en Spec-Driven Development (SDD) y en diseño de experiencias para niños pequeños (4 años). Trabajas conmigo (desarrollador de software) en "El Mundo de Santi", un "Minecraft para niños de 4 años".
+
+# OBJETIVO DE ESTA TAREA
+**Solo planeación. NO escribas código de la feature todavía.**
+Quiero que planifiques el siguiente paso (Fase 2) del juego, que lo evoluciona de "mundo básico con árboles y bloques" a un mundo vivo con personaje, animales, noche/día, enemigos y persistencia. Este es el **primer cambio que haré con SDD**, así que guíame en el proceso y deja todo el flujo documentado.
+
+# PASO 0: Reconoce el proyecto antes de planear
+1. Explora el repositorio: stack, estructura de carpetas, motor de render, cómo se generan y almacenan los bloques, cómo se organiza el código, scripts, tests existentes, documentación existente.
+2. Resume en máx. 15 líneas el estado actual ("as-is") y los riesgos técnicos que ves para escalar.
+3. Si ya existe estructura SDD (constitution, specs, etc.), úsala. Si no, propón una mínima (ej. `/specs/001-mundo-vivo/` con `spec.md`, `plan.md`, `tasks.md`, `research.md`, `data-model.md`, `quickstart.md`) y una `constitution.md` con los principios del proyecto (ver "Principios" abajo).
+
+# CONTEXTO DEL PRODUCTO
+- Juego web, por ahora **solo local, un único usuario** (mi hijo Santi), pero diseñado para **poder crecer** en tamaño de mundo, y a futuro en **multiusuario/online y publicación**.
+- Público: **niños de 4 años**. Debe funcionar bien en **desktop** (mouse + teclado).
+- El niño puede **construir lo que quiera** con bloques.
+- Hoy: mundo básico con algunos árboles y construcción libre con bloques.
+
+# PRINCIPIOS NO NEGOCIABLES (llévalos a la constitution)
+1. **Apto para 4 años**: UI con íconos grandes, sin texto necesario para jugar, sin gore, violencia suave y caricaturesca (los "ataques" son golpecitos/efectos divertidos; los animales "desaparecen" con un efecto suave tipo poof, no mueren de forma gráfica). Sin lugar donde el niño pueda perder progreso o romper algo permanente por accidente.
+2. **Escalable**: arquitectura modular que separe claramente: dominio/simulación, render, input, audio, persistencia y UI. La persistencia detrás de una interfaz/repositorio para poder cambiar local por backend/online después. Mundo por chunks. IDs de usuario/mundo desde ya, aunque hoy haya un solo usuario.
+3. **Todo cambio documentado**: cada cambio genera/actualiza su spec, ADR (decisiones) y guía de ejecución y uso (README / quickstart). Mantén un CHANGELOG.
+4. **Todo con pruebas**: unitarias (lógica de simulación, IA, persistencia), integración, y E2E/smoke para flujos clave. Definición de "hecho" = funcionalidad + pruebas pasando + docs actualizadas.
+5. **Rendimiento y estabilidad visual**: sin problemas de renderizado (parpadeos, z-fighting, huecos entre chunks, caídas de FPS). Define presupuesto de rendimiento (ej. FPS objetivo en un desktop modesto) y cómo se medirá.
+
+# REQUISITOS FUNCIONALES (fuente de verdad; no omitas ninguno)
+
+## A. Mundos y persistencia
+- A1. Se pueden **guardar múltiples mundos construidos** como histórico de lo que el niño ha construido, y volver a cualquiera.
+- A2. Antes de borrar o reiniciar la pantalla/cambios, el sistema **guarda primero de forma persistente** (tipo base de datos) y luego limpia. Nada se pierde por accidente.
+- A3. Autoguardado periódico y al salir.
+- A4. El mundo es **más grande** que el actual y está diseñado para crecer aún más (chunks, carga/descarga progresiva).
+- A5. Persistencia local con esquema versionado y migraciones (propón la tecnología y justifícala; considera que luego puede migrar a backend o si consideras crear el backend y lo vez necesario y viable, proponlo ).
+
+## B. Vista de padres
+- B1. Una **ruta distinta e independiente** (ej. `/padres`), **sin ningún botón o enlace** desde la UI del niño.
+- B2. Permite ver el **histórico de mundos** (lista, fecha, miniatura/vista previa, ojalá visor del mundo en solo lectura).
+- B3. Permite **borrar mundos** (con confirmación).
+- B4. Evalúa y propón (sin imponer) una protección ligera opcional (PIN) para futuro/online.
+
+## C. Personaje
+- C1. El niño tiene un **personaje visible** en el mundo (con animación de caminar/idle/acción y colisiones/físicas).
+- C2. Puede elegir una **herramienta** (martillo, espada u otra) en una barra simple y grande, para interactuar con animales/enemigos/bloques.
+
+## D. Animales (autónomos, animados, con sonido y físicas)
+- D1. Especies: ovejas, gallinas, pollos, cabras, patos, vacas, lobos + el especial **"cerdo-gallina"**.
+- D2. Comportamiento **autónomo** (deambular, pastar, huir, perseguir, descansar, volar, etc.), con animaciones, **sonidos** propios, **físicas** (gravedad, colisión con bloques/terreno) e **interacción entre ellos**.
+- D3. **Granja**: los animales domésticos viven en una granja (cerca/corral). Si el niño la destruye, los animales pueden **escapar**.
+- D4. **Montaña de lobos** con muchos árboles: los lobos pueden **comerse a los animales de la granja**, el niño puede construir de nuevo o encerrarlos para evitar que los lobs ingresen.
+- D5. Animales que desaparecen o son destruidos **reaparecen después de un "día del juego"**.
+- D6. **Cerdo-gallina**: puede **volar** y se **captura con un clic**.
+- D7. Interacción con herramientas: al atacar un animal de granja, se convierte en **bloques de carne**; al "atacar" un **lobo** con una de las herramientas "collar", se convierte en **amigo** y aparace un collar en su cuello (mecánica de domesticar, definir su comportamiento: sigue al niño, protege la granja, etc.). Si el lob es atacado con otra herramienta sigue siendo enemigo.
+
+## E. Ciclo día/noche y enemigos
+- E1. **Cada 15 minutos oscurece** (noche). La noche dura 15 minutos, y luego vuelve el día que también tarda igual. El tiempo que tarda el dia y la noche puede ser configurable desde la vista de padres 
+- E2. En la noche aparecen **zombis autónomos** que **atacan a los animales** y al personaje del niño. El niño puede **protegerlos construyendo** (muros, techos, corrales), como en Minecraft. Los zombis deben respetar bloques (pathfinding/colisión).
+- E3. Al terminar la noche, los **zombis desaparecen** y los animales reaparecen; **solo reaparecen los que murieron/desaparecieron** (los vivos permanecen).
+- E4. **Zombi**: se destruye con **1 golpe**.
+- E5. **Dragón**: pasa en la noche, **quema y destruye un par de árboles** y **se come un cerdo-gallina**. Se destruye con **5 disparos**. Define cómo "dispara" el niño (herramienta de proyectiles simple ejem arco y flechas) y la física del proyectil.
+
+## F. Recursos
+- F1. **Montaña de rocas con diamantes** que el niño puede **capturar/recolectar** (definir inventario simple y visual).
+- F2. **Carne de la granja** que el niño puede **capturar/recolectar** agregar en inventario simple visual
+
+
+# LO QUE DEBES ENTREGAR (en este orden, en archivos Markdown dentro de `/specs/...`)
+1. **Resumen as-is** del proyecto y riesgos (Paso 0).
+2. **constitution.md** (si no existe) con los principios anteriores.
+3. **spec.md**: historias de usuario (niño, padre, desarrollador futuro) con **criterios de aceptación medibles** (Given/When/Then), casos borde y requisitos no funcionales (rendimiento, accesibilidad infantil, seguridad de datos). Sin decisiones de implementación aquí.
+4. **Preguntas abiertas y ambigüedades** (máx. 10, priorizadas), cada una con **tu propuesta por defecto** para que yo solo confirme. Incluye al menos: duración de la noche y definición de "día del juego"; tamaño del mundo; qué es exactamente "atacar a un lobo → amigo"; cómo se juega el dragón con 5 disparos; nivel de "violencia" aceptable para un niño de 4; manejo del sonido/volumen; controles del niño en desktop (¿mouse+teclado simplificado?).
+5. **plan.md** (arquitectura técnica): stack recomendado o confirmación del actual, módulos y límites, modelo de datos (mundo, chunk, bloque, entidad, usuario, partida), estrategia de persistencia y migración futura a online, sistema de entidades/IA (máquinas de estado o behavior trees sencillos), sistema de físicas, ciclo día/noche, spawn/respawn, audio, rendering (chunks, culling, instancing, límites de entidades), estrategia de rutas (`/` vs `/padres`). Incluye **ADRs** para decisiones clave con alternativas y trade-offs.
+6. **Estrategia de pruebas**: pirámide de tests, qué se prueba en cada capa (IA determinista con semillas y reloj simulado, persistencia, ciclo día/noche, reglas de daño: zombi=1, dragón=5), pruebas de rendimiento/render y E2E de los flujos críticos (construir → guardar → borrar → recuperar; vista de padres).
+7. **tasks.md**: desglose en **incrementos pequeños, entregables y demostrables** (vertical slices), cada tarea con: objetivo, archivos/módulos tocados, pruebas requeridas, docs a actualizar y criterio de "hecho". Marca dependencias y qué se puede paralelizar. Propón el **orden recomendado** (por ejemplo: refactor de base escalable + persistencia + vista de padres → personaje → animales y granja → día/noche y zombis → lobos/montañas → dragón y diamantes → cerdo-gallina), y justifícalo. .
+8. **Plan de documentación**: qué docs se crean/actualizan por cambio (guía de ejecución local, guía de uso para padres y para el niño, arquitectura, CHANGELOG, ADRs).
+9. **Riesgos y mitigaciones** (rendimiento con muchas entidades, pathfinding en mundo modificable, consistencia de guardado, complejidad de scope).
+
+# REGLAS DE TRABAJO
+- No inventes tecnología sin justificarla; prefiere lo ya existente en el repo.
+- Si algo es ambiguo, proponlo como pregunta abierta con una opción por defecto; no te detengas a preguntar todo uno por uno.
+- Mantén el alcance bajo control: si algo es demasiado grande para un incremento, divídelo.
+- Usa lenguaje claro; explica brevemente los conceptos SDD que apliques, porque es mi primera vez con este flujo.
+- Al final, dame un **resumen ejecutivo** (máx. 20 líneas) y espera mi aprobación del spec y el plan antes de implementar nada.
+- Revisa la imagen de lookandfeel propuesta "lookandfeel\minecraft-santi-lookandfeel.png" y apegate a el en la medida de lo posible.

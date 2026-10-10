@@ -1,32 +1,36 @@
 schema: spec-driven
 
-# Project context (optional)
-# Add only constraints that should guide OpenSpec artifacts and workflows.
-# Include constraints an agent cannot infer by reading the code.
-# Keep general project documentation and discoverable codebase facts out.
-# Example:
-#   context: |
-#     Designs and tasks must cover Windows, macOS, and Linux
-#     Write all artifacts in Spanish
+context: |
+  Proyecto "El Mundo de Santi": un sandbox de vóxeles 3D (estilo Minecraft) para un niño de 4 años.
+  Hoy es web, local y de un solo usuario, en desktop con mouse y teclado. Está pensado para crecer
+  más adelante hacia mundos más grandes, multiusuario, online y publicación.
+  Escribe todos los artefactos en español. El código (identificadores) va en inglés.
+  La constitution completa está en docs/constitution.md y prevalece sobre cualquier artefacto. Resumen:
+  1. Apto para 4 años: íconos grandes y nada de texto necesario para jugar; violencia solo cartoon
+     (golpecitos, "poof" de desaparición, sin sangre); el niño nunca pierde progreso ni rompe algo
+     permanente por accidente; la UI del niño no tiene enlaces a la vista de padres.
+  2. Escalable: los módulos domain y sim son puros (sin DOM ni Three.js) y están separados de render,
+     input, audio, persistence y ui; la persistencia va detrás de WorldRepository; el mundo se
+     organiza por chunks; IDs UUID de usuario y de mundo; esquema versionado con migraciones.
+  3. Todo cambio documentado: spec, ADR en docs/adr/, README y guías, y CHANGELOG.
+  4. Todo con pruebas: unitarias (Vitest), integración y E2E (Playwright). Lógica determinista con
+     RNG con semilla y reloj inyectable. DoD = funcionalidad + pruebas pasando + docs actualizados.
+  5. Rendimiento: 60 FPS con p95 de 20 ms o menos en GPU integrada (UHD 620) a 1080p; menos de 300 draw calls;
+     60 entidades activas o menos; sin z-fighting, huecos entre chunks ni parpadeos.
+  Stack existente: Vite 6, TypeScript estricto y Three.js 0.170. Toda dependencia nueva necesita un ADR.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
-
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+rules:
+  proposal:
+    - Incluir siempre una sección "Fuera de alcance".
+    - Referenciar los principios de la constitution que el change afecta.
+  specs:
+    - Los escenarios usan GIVEN/WHEN/THEN con valores medibles (tiempos, cantidades, límites).
+    - No incluir decisiones de implementación (librerías, clases, estructuras de datos).
+    - Cubrir los casos borde relevantes para un niño de 4 años (clics repetidos, cerrar la pestaña, perder el foco).
+  design:
+    - Cada decisión relevante enlaza un ADR en docs/adr/ con alternativas y trade-offs.
+    - Respetar la regla de dependencias entre módulos definida en docs/architecture.md.
+  tasks:
+    - Agrupar en incrementos verticales que se puedan demostrar.
+    - Cada incremento declara objetivo, módulos, pruebas, docs, DoD, dependencias y si se puede paralelizar.
+    - Cada incremento incluye tareas explícitas de pruebas y de actualización de docs y CHANGELOG.
