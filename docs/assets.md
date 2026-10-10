@@ -18,10 +18,12 @@ Si en el futuro se usan texturas de terceros, solo se aceptan CC0 o equivalentes
 
 | Recurso | Fuente | Licencia |
 |---|---|---|
-| 15 efectos (`SOUND_NAMES` en `src/audio/synth.ts`): `step`, `place`, `break`, `bump`, `click`, `jump`, `poof`, `boing`, `swish`, `far`, `chime` (aviso de que se acerca la noche), `sparkle` (destellos: un arpegio de campanitas cuando se va un zombi), `pickup` ("tin-tin" de dos notas al recoger algo), `tame` (tres campanitas que suben cuando un lobo se hace amigo) y `gem` (un "tiling" de cristal, muy agudo y corto, al minar un diamante) | Sintetizados por código en `src/audio/synth.ts` (`synthesize(name, sampleRate)`): tonos con envolvente y ruido determinista (sin `Math.random`); no hay archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+| Efectos (`SOUND_NAMES` en `src/audio/synth.ts`): `step`, `place`, `break`, `bump`, `click`, `jump`, `poof`, `boing`, `swish`, `far`, `chime` (aviso de que se acerca la noche), `sparkle` (destellos: un arpegio de campanitas cuando se va un zombi), `pickup` ("tin-tin" de dos notas al recoger algo), `tame` (tres campanitas que suben cuando un lobo se hace amigo), `gem` (un "tiling" de cristal, muy agudo y corto, al minar un diamante), `capture` (un "¡pop!" que sube al atrapar un cerdo-gallina), `release` (un aleteo corto y una nota que baja al soltarlo), `shoot` (la cuerda del Arco, "tuing"), `thunk` (un "toc" de madera cuando la flecha se clava), `fire` (un "fffuu" de aire tibio, sin crepitar) y `ding` (una campanita cuando una flecha le da al dragón). En total, 21 efectos | Sintetizados por código en `src/audio/synth.ts` (`synthesize(name, sampleRate)`): tonos con envolvente y ruido determinista (sin `Math.random`); no hay archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 | 6 voces de animales (`ANIMAL_SOUNDS`): `baa` (oveja), `moo` (vaca), `meh` (cabra), `cluck` (gallina), `peep` (pollito) y `quack` (pato) | Sintetizados por código en `src/audio/synth.ts`: una voz con armónicos y frecuencia variable (vibrato o caída), con sílabas en la gallina y el pollito; sin archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 | Voz del zombi: `groan`, un "uuuh" bajito y tonto, como un bostezo (sin gruñidos) | Sintetizado por código en `src/audio/synth.ts`, con la misma técnica que las voces de animales | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 | Voz del lobo: `woof`, un "guau-guau" amistoso de dos sílabas, agudo y corto (sin aullidos ni gruñidos) | Sintetizado por código en `src/audio/synth.ts`, con la misma técnica que las voces de animales | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+| Voz del cerdo-gallina: `oink`, un "oink" chiquito seguido de un "cloc" de gallina | Sintetizado por código en `src/audio/synth.ts`, con la misma técnica que las voces de animales | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+| Voz del dragón: `rawr`, un "ruar" de dragoncito de dibujo animado, agudo y corto (nunca un rugido grave) | Sintetizado por código en `src/audio/synth.ts`, con la misma técnica que las voces de animales | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 | 2 pistas de música (`MUSIC` en `src/audio/synth.ts`): `day` (96 bpm, do mayor) y `night` (canción de cuna, 66 bpm, sol mayor) | Compuestas como datos (grados de la escala pentatónica, melodía en corcheas y un bajo por compás) y sintetizadas por código (`synthesizeMusic`) en un bucle de 10 y 14,5 s | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 
 - Los animales, los lobos y los zombis suenan en el bus `ambient`, posicionales: se atenúan con la distancia y no se oyen a 24 bloques o más. Como máximo suenan 3 a la vez, y tienen prioridad los más cercanos. Cada especie emite su voz cada cierto tiempo (`soundEveryMs` en `src/domain/entities/species.ts` y `src/domain/entities/zombie.ts`).
@@ -48,6 +50,8 @@ Los modelos de los animales y del zombi se arman con cajas de colores planos en 
 
 El lobo es un perrito gris de caricatura: panza y hocico claros, nariz negra, orejas paradas con el interior rosado y una cola que sube en diagonal. El lobo amigo usa el mismo modelo con un collar rojo y una medallita dorada (`wolfTame`), así que de un vistazo se distingue del salvaje.
 
+El cerdo-gallina sigue la referencia visual: un cerdito rosado con hocico de fosas oscuras, orejitas, cresta roja de gallina, colita enrulada y dos patas naranjas de gallina. Sus alas blancas son una parte aparte del modelo (`wings`): en el suelo quedan pegadas al cuerpo y en el aire aletean rápido, con las patas recogidas.
+
 Los objetos sueltos también son cajas (`ITEM_MODELS`): la carne es un muslito marrón con un hueso claro, más chico que un bloque, que flota a media altura, sube y baja suavemente y gira, con una sombra pequeña. En la mochila se muestran con emojis (💎, 🍖 y 🐷, en `RESOURCES` de `src/domain/rules/inventory.ts`) y la antorcha de la barra de bloques usa 🔥.
 
 ### Checklist "Revisión de efectos"
@@ -69,6 +73,9 @@ Spec `experiencia-infantil`, escenario "Revisión de efectos": todo efecto de go
 | Cualquier herramienta sobre un lobo amigo | Corazones (`poof(pos, "hearts")`) y un saltito de contento; nunca le hace daño | `woof` | [x] |
 | Lobo amigo que toca un zombi | El zombi se va con destellos (`poof(pos, "sparkle")`) | `sparkle` | [x] |
 | Lobo salvaje que atrapa un animal de granja | Nube blanca con estrellas (`poof(pos, "cloud")`); el animal reaparece al amanecer | `poof` | [x] |
+| Clic sobre un cerdo-gallina a 4 bloques o menos (en el suelo o volando) | Nube blanca con estrellas (`poof(pos, "cloud")`) y va a la mochila | `poof` y `capture` | [x] |
+| Soltar un cerdo-gallina de la mochila | Nube blanca donde aparece (`poof(pos, "cloud")`) | `release` | [x] |
+| Soltar con 3 libres | Nada aparece; queda en la mochila | `bump` | [x] |
 | El jugador recibe un golpe | Empuje suave, parpadeo de invulnerabilidad y corazón gris en el HUD | `boing` (o `poof` si se queda sin corazones y reaparece) | [x] |
 | Zombi que choca con el jugador o un animal | Se queda quieto un momento (estado `bump`) | Ninguno | [x] |
 

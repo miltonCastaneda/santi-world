@@ -1,6 +1,6 @@
 import type { EntityStore } from "../../domain/entities/entityStore";
 import type { SpawnSlot } from "../../domain/entities/population";
-import { SPECIES } from "../../domain/entities/species";
+import { isSpeciesId, SPECIES } from "../../domain/entities/species";
 
 /** Si el punto original está ocupado, se busca el libre más cercano a esta distancia o menos (design D10). */
 export const RESPAWN_RADIUS = 8;
@@ -32,7 +32,7 @@ const OFFSETS: readonly { dx: number; dz: number }[] = (() => {
  * altura entera, sin agua salvo para los que nadan, y sin otro animal encima.
  */
 export function freeSpotNear(slot: SpawnSlot, world: RespawnWorld, store: EntityStore): { x: number; z: number } | null {
-  const swims = slot.species !== "wolf" && SPECIES[slot.species].swims;
+  const swims = isSpeciesId(slot.species) && SPECIES[slot.species].swims;
   for (const { dx, dz } of OFFSETS) {
     const x = slot.x + dx;
     const z = slot.z + dz;

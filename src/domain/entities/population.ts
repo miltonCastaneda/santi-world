@@ -2,11 +2,12 @@ import type { Vec3 } from "../../core/math";
 import { Rng } from "../../core/rng";
 import { BLOCK_NUM } from "../blocks";
 import { columnAt, inRect, type Rect, type WorldLayout } from "../worldgen/layout";
+import { PIG_CHICKEN } from "./pigChicken";
 import type { HomeId, SpeciesId } from "./species";
 import { WOLF } from "./wolf";
 
 /** Lugar de origen de un animal o un lobo (design D10): especie, hogar y punto de aparición (celda X, Z). */
-export type SpawnSlot = { id: string; species: SpeciesId | "wolf"; home: HomeId; x: number; z: number };
+export type SpawnSlot = { id: string; species: SpeciesId | "wolf" | "pigChicken"; home: HomeId; x: number; z: number };
 
 export type Home = { id: HomeId; center: Vec3; /** Cercado del hogar, si tiene. */ rect: Rect | null };
 
@@ -67,6 +68,19 @@ export function createSpawnSlots(layout: WorldLayout, seed: string): SpawnSlot[]
     add("duck", "pond", { x: Math.round(pond.x + Math.cos(a) * d), z: Math.round(pond.z + Math.sin(a) * d) });
   }
   slots.push(...wolfSlots(layout, seed));
+  // Con su propio RNG: los slots de antes no cambian (los mundos guardados los reconocen).
+  const pigRng = new Rng(`${seed}:pig-chicken-slots`);
+  for (let n = 0; n < PIG_CHICKEN.maxFree; n++) {
+    let at = { x: farm.x0 + 3 + n * 2, z: farm.z1 - 3 };
+    for (let i = 0; i < 200; i++) {
+      const x = pigRng.int(farm.x0 + 3, farm.x1 - 3);
+      const z = pigRng.int(farm.z0 + 3, farm.z1 - 3);
+      if (inRect(barnZone, x, z) || (Math.abs(x - cx) < 3 && Math.abs(z - cz) < 3) || taken(x, z)) continue;
+      at = { x, z };
+      break;
+    }
+    slots.push({ id: `pigChicken-${n}`, species: "pigChicken", home: "farm", x: at.x, z: at.z });
+  }
   return slots;
 }
 

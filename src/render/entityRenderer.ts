@@ -5,8 +5,8 @@ import type { EntityAnim } from "../domain/entities/entityStore";
 import { isItemId, ITEM_IDS, type ItemId } from "../domain/entities/items";
 import { SPECIES_IDS } from "../domain/entities/species";
 
-/** Las criaturas que sabe dibujar: los animales de granja, los lobos (salvaje y amigo, con collar) y los zombis. */
-const RENDER_KINDS = [...SPECIES_IDS, "zombie", "wolf", "wolfTame"] as const;
+/** Las criaturas que sabe dibujar: los animales de granja, el cerdo-gallina, los lobos (salvaje y amigo, con collar) y los zombis. */
+const RENDER_KINDS = [...SPECIES_IDS, "pigChicken", "zombie", "wolf", "wolfTame"] as const;
 type RenderKind = (typeof RENDER_KINDS)[number];
 const isRenderKind = (s: string): s is RenderKind => (RENDER_KINDS as readonly string[]).includes(s);
 
@@ -33,6 +33,8 @@ type ModelDef = {
   body: Box[];
   head: { pivot: V3; boxes: Box[] };
   legs: { hips: V3[]; boxes: Box[]; height: number };
+  /** Alas que aletean: cajas del ala derecha (hacia +x desde el hombro); la izquierda es la misma girada. */
+  wings?: { shoulders: V3[]; boxes: Box[]; rest: number; flap: number; speed: number };
   /** Radio de la sombra plana. */
   shadow: number;
 };
@@ -84,8 +86,59 @@ const WOLF_TAME_MODEL: ModelDef = {
   body: [...WOLF_MODEL.body, { size: [0.52, 0.1, 0.2], at: [0, 0.76, 0.34], color: 0xe0433a }, { size: [0.1, 0.1, 0.04], at: [0, 0.68, 0.45], color: 0xffd23f }],
 };
 
+const PIG_PINK = 0xf5a3b5;
+const PIG_DARK = 0xe07f98;
+/**
+ * Cerdo-gallina (referencia visual): cuerpo de cerdito rosado, hocico con fosas, cresta roja de
+ * gallina, colita enrulada, patas de gallina y alas blancas que aletean al volar.
+ */
+const PIG_CHICKEN_MODEL: ModelDef = {
+  body: [
+    { size: [0.5, 0.42, 0.62], at: [0, 0.46, 0], color: PIG_PINK },
+    { size: [0.4, 0.06, 0.5], at: [0, 0.24, 0], color: PIG_DARK },
+    { size: [0.08, 0.08, 0.08], at: [0, 0.6, -0.34], color: PIG_DARK },
+    { size: [0.06, 0.12, 0.06], at: [0.05, 0.67, -0.36], color: PIG_DARK },
+  ],
+  head: {
+    pivot: [0, 0.58, 0.3],
+    boxes: [
+      { size: [0.4, 0.38, 0.34], at: [0, 0.06, 0.12], color: PIG_PINK },
+      { size: [0.2, 0.14, 0.06], at: [0, 0, 0.31], color: PIG_DARK },
+      { size: [0.04, 0.05, 0.02], at: [-0.05, 0, 0.345], color: 0x8a3b52 },
+      { size: [0.04, 0.05, 0.02], at: [0.05, 0, 0.345], color: 0x8a3b52 },
+      // Cresta roja de gallina, de adelante hacia atrás.
+      { size: [0.07, 0.1, 0.08], at: [0, 0.3, 0.2], color: 0xe03030 },
+      { size: [0.07, 0.14, 0.08], at: [0, 0.32, 0.12], color: 0xe03030 },
+      { size: [0.07, 0.1, 0.08], at: [0, 0.3, 0.04], color: 0xe03030 },
+      { size: [0.1, 0.08, 0.04], at: [-0.15, 0.25, 0.06], color: PIG_DARK },
+      { size: [0.1, 0.08, 0.04], at: [0.15, 0.25, 0.06], color: PIG_DARK },
+      ...eyes(0.1, 0.12, 0.295, 0.06),
+    ],
+  },
+  legs: {
+    hips: [
+      [-0.12, 0.25, 0],
+      [0.12, 0.25, 0],
+    ],
+    boxes: leg(0.07, 0.25, ORANGE),
+    height: 0.25,
+  },
+  wings: {
+    shoulders: [[0.25, 0.56, 0.02]],
+    boxes: [
+      { size: [0.34, 0.05, 0.36], at: [0.17, 0, 0], color: 0xfafafa },
+      { size: [0.16, 0.04, 0.2], at: [0.4, 0, -0.04], color: 0xeef2f6 },
+    ],
+    rest: -1.25,
+    flap: 0.85,
+    speed: 18,
+  },
+  shadow: 0.38,
+};
+
 /** Animales de cajas, estilo del personaje (ADR-0010). El frente es +z. */
 const MODELS: Record<RenderKind, ModelDef> = {
+  pigChicken: PIG_CHICKEN_MODEL,
   wolf: WOLF_MODEL,
   wolfTame: WOLF_TAME_MODEL,
   // Zombi cartoon (preguntas abiertas, punto 6): verde claro, ojos grandes con brillo y una sonrisa;
@@ -333,6 +386,9 @@ class Instances {
 
 const scratch = new THREE.Matrix4();
 
+type Parts = { body: Instances; head: Instances; legs: Instances; wings: Instances | null };
+const partList = (p: Parts): Instances[] => (p.wings ? [p.body, p.head, p.legs, p.wings] : [p.body, p.head, p.legs]);
+
 /** Estado visual de cada animal: posición suavizada y fase de las animaciones. */
 type Shown = { species: RenderKind | ItemId; pos: THREE.Vector3; yaw: number; phase: number; swing: number; headPitch: number; lower: number; seenAt: number };
 
@@ -360,7 +416,7 @@ const SPARKLE_COLORS = [new THREE.Color(0xffe066), new THREE.Color(0x8ee8ff), ne
  */
 export class EntityRenderer {
   readonly group = new THREE.Group();
-  private readonly parts: Record<RenderKind, { body: Instances; head: Instances; legs: Instances }>;
+  private readonly parts: Record<RenderKind, Parts>;
   private readonly items: Record<ItemId, Instances>;
   private readonly shadows: Instances;
   private readonly poofMesh: Instances;
@@ -376,15 +432,18 @@ export class EntityRenderer {
     this.group.name = "entities";
     const lambert = new THREE.MeshLambertMaterial({ vertexColors: true });
     this.materials.push(lambert);
-    const parts = {} as Record<RenderKind, { body: Instances; head: Instances; legs: Instances }>;
+    const parts = {} as Record<RenderKind, Parts>;
     for (const id of RENDER_KINDS) {
       const m = MODELS[id];
       const geos = [boxesGeometry(m.body), boxesGeometry(m.head.boxes), boxesGeometry(m.legs.boxes)];
+      const wingGeo = m.wings ? boxesGeometry(m.wings.boxes) : null;
       this.geometries.push(...geos);
+      if (wingGeo) this.geometries.push(wingGeo);
       parts[id] = {
         body: new Instances(this.group, geos[0], lambert, 16),
         head: new Instances(this.group, geos[1], lambert, 16),
         legs: new Instances(this.group, geos[2], lambert, 16 * m.legs.hips.length),
+        wings: wingGeo && m.wings ? new Instances(this.group, wingGeo, lambert, 16 * m.wings.shoulders.length * 2) : null,
       };
     }
     this.parts = parts;
@@ -425,12 +484,7 @@ export class EntityRenderer {
   update(dtSeconds: number, views: Iterable<EntityView>, camera: THREE.Vector3): void {
     this.time += dtSeconds;
     this.frame++;
-    for (const id of RENDER_KINDS) {
-      const p = this.parts[id];
-      p.body.begin();
-      p.head.begin();
-      p.legs.begin();
-    }
+    for (const id of RENDER_KINDS) for (const inst of partList(this.parts[id])) inst.begin();
     for (const id of ITEM_IDS) this.items[id].begin();
     this.shadows.begin();
 
@@ -460,7 +514,7 @@ export class EntityRenderer {
     this.drawPoofs();
 
     const all = [
-      ...RENDER_KINDS.flatMap((id) => [this.parts[id].body, this.parts[id].head, this.parts[id].legs]),
+      ...RENDER_KINDS.flatMap((id) => partList(this.parts[id])),
       ...ITEM_IDS.map((id) => this.items[id]),
       this.shadows,
       this.poofMesh,
@@ -543,13 +597,28 @@ export class EntityRenderer {
     local.makeTranslation(...m.head.pivot).multiply(rot.makeRotationX(s.headPitch));
     parts.head.push(scratch.multiplyMatrices(root, local));
 
-    // Patas en pares diagonales; nadando o echado se recogen.
-    const fold = anim === "swim" ? 0 : 1 - s.lower / m.legs.height;
+    // Patas en pares diagonales; nadando, echado o volando se recogen.
+    const fold = anim === "swim" ? 0 : anim === "fly" ? 0.45 : 1 - s.lower / m.legs.height;
     m.legs.hips.forEach((hip, i) => {
       const angle = Math.sin(s.phase + (i % 2 === 0 ? 0 : Math.PI)) * s.swing;
       local.makeTranslation(...hip).multiply(rot.makeRotationX(angle)).multiply(new THREE.Matrix4().makeScale(1, Math.max(0.05, fold), 1));
       parts.legs.push(scratch.multiplyMatrices(root, local));
     });
+
+    // Alas: pegadas al cuerpo en el suelo y aleteando en el aire (la izquierda es la derecha girada media vuelta).
+    if (m.wings && parts.wings) {
+      const w = m.wings;
+      const angle = anim === "fly" ? Math.sin(this.time * w.speed + s.phase) * w.flap : w.rest + (anim === "walk" ? Math.sin(this.time * 10) * 0.08 : 0);
+      for (const [x, y, z] of w.shoulders) {
+        for (const side of [1, -1]) {
+          local
+            .makeTranslation(x * side, y, z)
+            .multiply(rot.makeRotationY(side === 1 ? 0 : Math.PI))
+            .multiply(new THREE.Matrix4().makeRotationZ(angle));
+          parts.wings.push(scratch.multiplyMatrices(root, local));
+        }
+      }
+    }
 
     const r = m.shadow;
     local.compose(new THREE.Vector3(s.pos.x, s.pos.y + 0.02, s.pos.z), new THREE.Quaternion(), new THREE.Vector3(r, 1, r));
@@ -626,7 +695,7 @@ export class EntityRenderer {
   }
 
   dispose(): void {
-    for (const id of RENDER_KINDS) for (const inst of Object.values(this.parts[id])) inst.dispose();
+    for (const id of RENDER_KINDS) for (const inst of partList(this.parts[id])) inst.dispose();
     for (const id of ITEM_IDS) this.items[id].dispose();
     this.shadows.dispose();
     this.poofMesh.dispose();

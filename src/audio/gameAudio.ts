@@ -34,6 +34,10 @@ export function connectGameAudio(audio: AudioService, game: Game): void {
   });
   e.on("entityRemoved", ({ species, pos }) => audio.play(species === "zombie" ? "sparkle" : "poof", { pos, volume: 0.8 }));
   e.on("itemCollected", () => audio.play("pickup"));
+  e.on("pigChickenCaptured", ({ pos }) => audio.play("capture", { pos }));
+  e.on("pigChickenReleased", ({ pos }) => audio.play("release", { pos }));
+  e.on("releaseBlocked", ({ pos }) => audio.play("bump", { pos }));
+  e.on("releaseArmed", ({ armed }) => armed && audio.play("click"));
   // La música cambia al empezar el atardecer y el amanecer: el cruce acompaña a la luz.
   e.on("phaseChanged", () => audio.setMusic(musicFor(game.clock)));
 }

@@ -252,11 +252,11 @@
 - **Depende de**: 10 y 11 (por orden de integración; técnicamente solo necesita el 9). **Paralelizable**: no.
 - **Demo**: atrapar un cerdo-gallina en vuelo y soltarlo en la granja.
 
-- [ ] 12.1 Definir la máquina de estados del cerdo-gallina (Walk, Fly en arcos de hasta 8 bloques, Land y Flee) y verificar con pruebas unitarias que nunca supera los 8 bloques de altura ni atraviesa bloques
-- [ ] 12.2 Implementar la captura con un clic a 4 bloques o menos con cualquier herramienta, en el suelo o en vuelo, y verificar con pruebas unitarias "Captura con un clic" y "Captura en vuelo"
-- [ ] 12.3 Implementar soltarlo y el límite de 3 libres, con la reaparición al amanecer de los que faltan, y verificar con pruebas unitarias "Soltar un cerdo-gallina" y "Límite de libres"
-- [ ] 12.4 Crear el modelo (cerdo rosado con alas y cresta, como en la referencia), las animaciones y los sonidos, y verificarlo con la checklist visual
-- [ ] 12.5 Actualizar `docs/guia-nino.md` (el cerdo-gallina) y agregar la entrada al CHANGELOG
+- [x] 12.1 Definir la máquina de estados del cerdo-gallina (Walk, Fly en arcos de hasta 8 bloques, Land y Flee) y verificar con pruebas unitarias que nunca supera los 8 bloques de altura ni atraviesa bloques
+- [x] 12.2 Implementar la captura con un clic a 4 bloques o menos con cualquier herramienta, en el suelo o en vuelo, y verificar con pruebas unitarias "Captura con un clic" y "Captura en vuelo"
+- [x] 12.3 Implementar soltarlo y el límite de 3 libres, con la reaparición al amanecer de los que faltan, y verificar con pruebas unitarias "Soltar un cerdo-gallina" y "Límite de libres"
+- [x] 12.4 Crear el modelo (cerdo rosado con alas y cresta, como en la referencia), las animaciones y los sonidos, y verificarlo con la checklist visual
+- [x] 12.5 Actualizar `docs/guia-nino.md` (el cerdo-gallina) y agregar la entrada al CHANGELOG
 
 ## 13. Arco, proyectiles y dragón
 

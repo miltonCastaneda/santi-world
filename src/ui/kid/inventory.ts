@@ -4,13 +4,16 @@ export type InventoryPanel = {
   readonly isOpen: boolean;
   setOpen(open: boolean): void;
   update(inventory: Inventory): void;
+  /** El cerdo-gallina está elegido: el próximo clic en el suelo lo suelta. */
+  setReleaseArmed(armed: boolean): void;
 };
 
 /**
  * Mochila del niño (spec "Inventario visual"): un ícono grande por recurso con su número y, de 1 a
- * 5, un punto por unidad. No es modal: el juego sigue y se cierra con E, la mochila o la ✕.
+ * 5, un punto por unidad. No es modal: el juego sigue y se cierra con E, la mochila o la ✕. El
+ * ícono del cerdo-gallina es un botón: al tocarlo queda elegido para soltarlo en el suelo.
  */
-export function setupInventory(close: () => void): InventoryPanel {
+export function setupInventory(close: () => void, toggleRelease?: () => void): InventoryPanel {
   const panel = document.createElement("div");
   panel.className = "inventory-panel";
   panel.setAttribute("role", "dialog");
@@ -28,10 +31,16 @@ export function setupInventory(close: () => void): InventoryPanel {
     const row = document.createElement("div");
     row.className = "inventory-item";
     row.dataset.resource = id;
-    row.innerHTML = `<span class="inventory-icon" aria-hidden="true">${RESOURCES[id].icon}</span><span class="inventory-count"></span><span class="inventory-dots" aria-hidden="true"></span>`;
+    const icon =
+      id === "pigChicken" && toggleRelease
+        ? `<button type="button" class="inventory-icon inventory-release" aria-label="Soltar un ${RESOURCES[id].name.toLowerCase()}" aria-pressed="false">${RESOURCES[id].icon}</button>`
+        : `<span class="inventory-icon" aria-hidden="true">${RESOURCES[id].icon}</span>`;
+    row.innerHTML = `${icon}<span class="inventory-count"></span><span class="inventory-dots" aria-hidden="true"></span>`;
     list.append(row);
     rows.set(id, { row, count: row.querySelector(".inventory-count")!, dots: row.querySelector(".inventory-dots")! });
   }
+  const releaseBtn = panel.querySelector<HTMLButtonElement>(".inventory-release");
+  releaseBtn?.addEventListener("click", () => toggleRelease?.());
 
   return {
     get isOpen() {
@@ -49,6 +58,12 @@ export function setupInventory(close: () => void): InventoryPanel {
         r.row.classList.toggle("empty", n === 0);
         r.row.setAttribute("aria-label", `${RESOURCES[id].name}: ${n}`);
       }
+      if (releaseBtn) releaseBtn.disabled = inventory.pigChicken === 0;
+    },
+    setReleaseArmed(armed) {
+      if (!releaseBtn) return;
+      releaseBtn.classList.toggle("armed", armed);
+      releaseBtn.setAttribute("aria-pressed", String(armed));
     },
   };
 }

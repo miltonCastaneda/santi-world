@@ -83,6 +83,8 @@ export type SantiTestApi = {
   clearEntities(): void;
   /** "Poof" de una entidad: si es de un slot, queda pendiente de reaparecer al amanecer. */
   poofEntity(id: string): boolean;
+  /** Lleva una entidad a `pos` (pies), quieta (para preparar escenas). */
+  moveEntity(id: string, pos: Vec3): boolean;
   /** Pone un zombi en `pos` (pies); devuelve su id. */
   spawnZombie(pos: Vec3): string;
   /** Usa la herramienta elegida con un rayo desde los ojos del personaje hacia `target` (como un clic). */
@@ -187,6 +189,14 @@ export function installTestApi(deps: {
       })),
     clearEntities: () => game.entities.clear(),
     poofEntity: (id) => game.removeEntity(id),
+    moveEntity: (id, pos) => {
+      const e = game.entities.get(id);
+      if (!e) return false;
+      e.body.pos = { ...pos };
+      e.body.vel = { x: 0, y: 0, z: 0 };
+      game.entities.reindex();
+      return true;
+    },
     spawnZombie: (pos) => game.spawnZombie(pos).id,
     useToolToward: (target) => {
       const origin = game.player.eye();

@@ -63,6 +63,9 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - El Collar domestica a un lobo salvaje a 3 bloques o menos con un clic: corazones, campanitas (`tame`) y un collar rojo con medallita. El lobo amigo sigue al niño (como máximo 3; los demás cuidan la granja), se teletransporta a su lado si queda a más de 30 bloques y ahuyenta a los zombis que toca. La domesticación se guarda; los mundos guardados antes de los lobos los reciben una sola vez.
 - Golpes a un lobo salvaje: retrocede y parpadea; con 2 espadazos hace "poof" (sin carne) y reaparece al amanecer en su montaña. Cualquier herramienta sobre un lobo amigo solo le da corazones y un "guau-guau" (`woof`).
 - Diamantes (incremento 11): el Pico sobre un mineral de diamante lo vuelve piedra natural y suma 1 diamante a la mochila, con destellos y el sonido `gem` (`domain/rules/mining`). Con otra herramienta no pasa nada, y deshacer no devuelve un diamante minado. Cada 3 días del juego (al amanecer de los días 4, 7, 10…) los diamantes vuelven a sus vetas si ahí hay piedra natural (`sim/systems/regrowth`); lo que el niño rompió o construyó no cambia. Prueba de generación: 10 o más diamantes accesibles en 20 semillas.
+- Cerdo-gallina volador (incremento 12): 3 viven en la granja (slots `pigChicken-N` con su propio RNG). Su máquina de estados (`walk`, `peck`, `fly`, `land` y `flee`) vuela en arcos de 4 a 10 bloques, con la cima a 3 a 7,5 bloques y nunca más de 8 sobre el suelo, por encima de la cerca y de los obstáculos con la misma física AABB (`sim/systems/pigChickens`).
+- Captura con un clic a 4 bloques o menos con cualquier herramienta, en el suelo o en vuelo: "poof", sonido `capture` y +1 en la mochila (nunca carne). Para soltarlo, el ícono 🐷 de la mochila se elige (se pone amarillo) y un clic en el suelo lo suelta ahí (`release`), ocupando el slot de uno capturado. Con 3 libres no se suelta y suena un "toc" suave. Los capturados reaparecen al amanecer. Se guardan con el mundo (uno que volaba vuelve aterrizando).
+- Modelo de cajas del cerdo-gallina (cerdito rosado con hocico, cresta roja, patas de gallina y alas blancas que aletean al volar) y voz `oink` ("oink-cloc"). El `EntityRenderer` admite alas como una parte instanciada más.
 
 ### Cambiado
 - "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.
@@ -82,6 +85,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Un golpe de la herramienta alcanza primero a la criatura apuntada si está más cerca que el bloque.
 - La tabla de daño agrega la columna del cerdo-gallina (cualquier herramienta lo "captura", efecto que llega en el incremento 12; nunca suelta carne) y la Espada sobre un animal pasa de "boing" a derrota con carne. Una criatura apuntada fuera de alcance muestra "muy lejos".
 - La tabla de daño agrega las columnas del lobo salvaje (Collar domestica, Espada en 2 golpes, Mano y Pico "boing") y del lobo amigo (nunca recibe daño). Las máquinas de estado suman las acciones `hunt`, `stalk` y `happy`.
+- `Game.spawnMissingWolves` pasa a `spawnMissing`: los mundos guardados antes de los lobos o de los cerdos-gallina los reciben una sola vez. Las máquinas de estado suman las acciones `fly` y `land`.
 
 ## [1.0.0] - 2026-10-10
 

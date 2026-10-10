@@ -11,7 +11,7 @@
 
 - Moverse con su personaje (W A S D o flechas, Espacio para saltar) y girar la cámara arrastrando con el botón derecho.
 - Poner bloques con la Mano y romperlos con el Pico (clic izquierdo), y deshacer la última acción.
-- Cuidar a los animales de la granja, defenderse de los zombis de noche, juntar carne en la mochila y hacerse amigo de los lobos con el Collar.
+- Cuidar a los animales de la granja, defenderse de los zombis de noche, juntar carne y diamantes en la mochila, atrapar y soltar cerdos-gallina y hacerse amigo de los lobos con el Collar.
 - Ver sus mundos en **"🌍 Mis Mundos"** y volver a cualquiera de ellos.
 - **"＋ Crear nuevo mundo"**: guarda el mundo actual y recién después crea uno nuevo. Ya no existe "Empezar de nuevo": desde la pantalla del niño no se puede borrar ningún mundo.
 
@@ -83,7 +83,7 @@ Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el
 
 ### Carne, mochila y antorchas
 
-- Solo la **espada** sobre un animal de la granja lo hace "poof" y deja un pedazo de **carne** flotando (sin sangre ni nada que asuste). El animal **reaparece al amanecer**. La mano y el pico solo le dan un saltito. El cerdo-gallina (más adelante) nunca da carne.
+- Solo la **espada** sobre un animal de la granja lo hace "poof" y deja un pedazo de **carne** flotando (sin sangre ni nada que asuste). El animal **reaparece al amanecer**. La mano y el pico solo le dan un saltito. El cerdo-gallina nunca da carne.
 - La carne se recoge caminando cerca (1,5 bloques) o con un clic. **No desaparece** con el tiempo: queda flotando, también al cerrar y reabrir el mundo.
 - La **mochila** (🎒 o la tecla E) muestra los diamantes, la carne y los cerdos-gallina con íconos, números y puntos, y **no pausa** el juego. Cada mundo tiene su propia mochila y se guarda con él. Construir **no gasta** nada: los bloques son ilimitados.
 - La **antorcha** está en la barra de bloques (🔥). Ilumina de noche y, a su alrededor (luz 8 o más, unos 6 bloques), no aparecen zombis.
@@ -100,6 +100,12 @@ Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el
 - **Una vez por día del juego**, a una hora al azar durante el día, cada lobo baja a la granja a buscar un animal (los patos del estanque no son presa). Si encuentra un hueco en la cerca, atrapa uno con un "poof" (el animal **reaparece al amanecer**) y vuelve a su montaña. Si la granja está **bien cerrada**, acecha desde afuera y se vuelve sin nada; como mucho insiste 2 minutos.
 - Un golpe con la mano o el pico hace que un lobo salvaje se aleje. Con **2 golpes de espada** hace "poof" (sin carne) y reaparece al amanecer en su montaña.
 - Con el **Collar**, un clic sobre un lobo salvaje a 3 bloques o menos lo **domestica para siempre** (se guarda con el mundo): salen corazones y se le pone un collar rojo. Hasta **3 lobos amigos siguen al niño** (si se aleja más de 30 bloques, aparecen a su lado); los demás **cuidan la granja**. Los lobos amigos **ahuyentan a los zombis** que tocan y nunca cazan ni reciben daño: cualquier golpe solo los hace saltar contentos.
+
+### El cerdo-gallina
+
+- En la granja viven **3 cerdos-gallina** (cerditos rosados con alas y cresta). Caminan, picotean y vuelan en arcos cortos: nunca a más de 8 bloques del suelo, y pueden pasar por encima de la cerca (se quedan cerca de la granja). Si algo los asusta, huyen volando.
+- Un clic con **cualquier herramienta** a 4 bloques o menos lo **captura** (también en el aire) y va a la mochila. Nunca da carne. Los zombis y los lobos no lo persiguen.
+- Para soltarlo, el niño toca el 🐷 de la mochila (se resalta) y hace clic en el suelo. Nunca hay más de **3 libres**: si ya hay 3, suena un "toc" suave y no se suelta. Los capturados reaparecen en la granja al amanecer, así que la mochila puede juntar varios.
 
 ### Exportar e importar (respaldo)
 

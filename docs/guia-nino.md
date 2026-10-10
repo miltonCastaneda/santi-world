@@ -99,6 +99,15 @@ Tu primer mundo, el de antes, se llama **"Mi primer mundo"**. Si ves el dibujo *
 - Con la Espada o el Collar los diamantes no se rompen: necesitas el Pico.
 - Si juntas **todos**, no te preocupes: **cada 3 días** vuelven a aparecer en la montaña.
 
+## El cerdo-gallina 🐷🐔
+
+- En la granja viven **3 cerdos-gallina**: son cerditos **rosados** con **alas blancas** y una **cresta roja** de gallina. Dicen "oink-cloc".
+- Caminan, picotean el pasto y, de repente, ¡**vuelan**! Dan saltos por el aire, pasan por encima de la cerca y vuelven a bajar.
+- Para **atraparlo**: acércate (bien cerquita) y haz **clic** sobre él con cualquier herramienta, aunque esté volando. Hace **poof**, suena "¡pop!" y va a tu **mochila** 🎒.
+- Para **soltarlo**: abre la mochila, toca el **cerdo-gallina** 🐷 (se pone amarillo) y después haz clic en el **suelo**. ¡Ahí aparece!
+- Nunca hay más de **3 libres**. Si ya hay 3 y quieres soltar otro, suena un "toc" suave y se queda en la mochila.
+- Los que atrapaste vuelven a aparecer en la granja **por la mañana**, así siempre hay cerdos-gallina para jugar.
+
 ## Pronto (Fase 2)
 
-- Llegará el **cerdo-gallina**, que vuela.
+- El **Arco** 🏹 y una sorpresa que llega de noche.

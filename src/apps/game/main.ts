@@ -98,10 +98,15 @@ const warning = setupSaveWarning();
 const logError = (context: string, error: unknown) => void recordError(repo, { at: wallClock.now(), context, message: errorMessage(error) });
 
 const hudClock = setupHudClock(document.getElementById("day-clock")!, () => game.clock);
-const inventoryPanel = setupInventory(() => game.enqueue({ type: "toggleInventory" }));
+const inventoryPanel = setupInventory(
+  () => game.enqueue({ type: "toggleInventory" }),
+  () => game.enqueue({ type: "toggleRelease" }),
+);
 inventoryPanel.update(game.inventory);
 game.events.on("inventoryToggled", ({ open }) => inventoryPanel.setOpen(open));
 game.events.on("inventoryChanged", ({ inventory }) => inventoryPanel.update(inventory));
+game.events.on("releaseArmed", ({ armed }) => inventoryPanel.setReleaseArmed(armed));
+game.events.on("pigChickenReleased", ({ pos }) => view.entities?.poof(pos, "cloud"));
 
 const audio = new AudioService(() => (typeof AudioContext === "undefined" ? null : (new AudioContext() as unknown as AudioContextLike)));
 audio.attachUnlock(window);

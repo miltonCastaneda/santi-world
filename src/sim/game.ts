@@ -6,6 +6,7 @@ import { BLOCK_NUM, BLOCKS_BY_NUM, type BlockId } from "../domain/blocks";
 import { EntityStore, type Entity, type EntityKind } from "../domain/entities/entityStore";
 import { isItemId, ITEMS, PICKUP_DELAY_MS, type ItemId } from "../domain/entities/items";
 import { createSpawnSlots, homesOf, type Home, type SpawnSlot } from "../domain/entities/population";
+import { PIG_CHICKEN } from "../domain/entities/pigChicken";
 import { isSpeciesId, type HomeId, type SpeciesId } from "../domain/entities/species";
 import { WOLF, type WolfRole } from "../domain/entities/wolf";
 import { ZOMBIE } from "../domain/entities/zombie";
@@ -28,6 +29,7 @@ import { itemsInPickupRange } from "./systems/interaction";
 import type { PathWorld } from "./systems/pathfinding";
 import { regrowDiamonds } from "./systems/regrowth";
 import { respawnPending, type RespawnWorld } from "./systems/respawn";
+import { PigChickenSystem, type PigChickenContext } from "./systems/pigChickens";
 import { NightSpawner, type SpawnWorld } from "./systems/spawn";
 import { WolfSystem, type WolfContext } from "./systems/wolves";
 import { ZombieSystem, type ZombieContext } from "./systems/zombies";
@@ -41,6 +43,8 @@ export type Intent =
   | { type: "selectTool"; tool: ToolId }
   | { type: "selectBlock"; block: BlockId }
   | { type: "toggleInventory" }
+  /** Elegir (o dejar de elegir) un cerdo-gallina de la mochila: el próximo clic en el suelo lo suelta. */
+  | { type: "toggleRelease" }
   | { type: "undo" };
 
 export type GameEvents = {
@@ -78,6 +82,14 @@ export type GameEvents = {
   /** El niño recogió un objeto (al pasar cerca o con un clic). */
   itemCollected: { id: string; item: ItemId; pos: Vec3 };
   inventoryChanged: { inventory: Inventory };
+  /** Un clic capturó a un cerdo-gallina: "poof" y a la mochila. */
+  pigChickenCaptured: { id: string; pos: Vec3 };
+  /** El niño soltó un cerdo-gallina de la mochila en el suelo. */
+  pigChickenReleased: { id: string; pos: Vec3 };
+  /** Ya hay 3 libres (o el lugar no sirve): no se suelta y suena un aviso suave. */
+  releaseBlocked: { pos: Vec3 };
+  /** Hay un cerdo-gallina elegido para soltar. */
+  releaseArmed: { armed: boolean };
   phaseChanged: { phase: Phase; dayCount: number };
   /** Falta un minuto para la noche. */
   nightSoon: Record<string, never>;
@@ -105,6 +117,7 @@ export class Game {
   readonly entities = new EntityStore();
   readonly animals: AnimalSystem;
   readonly wolves: WolfSystem;
+  readonly pigChickens: PigChickenSystem;
   readonly zombies: ZombieSystem;
   readonly spawner: NightSpawner;
   readonly clock = new WorldClock();
@@ -116,6 +129,8 @@ export class Game {
   /** Recursos del mundo abierto (los bloques de construcción son ilimitados y no cuentan). */
   inventory: Inventory = emptyInventory();
   inventoryOpen = false;
+  /** El próximo clic suelta un cerdo-gallina de la mochila. */
+  releaseArmed = false;
   tick = 0;
   timeMs = 0;
   private intents: Intent[] = [];
@@ -133,6 +148,7 @@ export class Game {
     this.lastHearts = this.player.hearts;
     this.animals = new AnimalSystem(this.world.seed);
     this.wolves = new WolfSystem(this.world.seed, this.animals.paths);
+    this.pigChickens = new PigChickenSystem(this.world.seed);
     this.zombies = new ZombieSystem(this.world.seed, this.animals.paths);
     this.spawner = new NightSpawner(this.world.seed);
     this.prepareHomes();
@@ -193,9 +209,20 @@ export class Game {
     };
   }
 
-  /** Hace aparecer lo que corresponde a un slot: un animal de granja o un lobo. */
+  private get pigChickenContext(): PigChickenContext {
+    return {
+      collision: this.collision,
+      surfaceY: (x, z) => this.world.store.surfaceY(x, z),
+      isWater: (x, y, z) => this.world.store.get(x, y, z) === BLOCK_NUM.water,
+      homes: this.homes,
+      onSound: ({ id, pos }) => this.events.emit("animalSound", { id, species: "pigChicken", sound: PIG_CHICKEN.sound, pos }),
+    };
+  }
+
+  /** Hace aparecer lo que corresponde a un slot: un animal de granja, un cerdo-gallina o un lobo. */
   private spawnSlot(slot: SpawnSlot): Entity {
     if (slot.species === "wolf") return this.wolves.spawn(this.entities, this.wolfContext, slot, this.timeMs);
+    if (slot.species === "pigChicken") return this.pigChickens.spawn(this.entities, this.pigChickenContext, slot, this.timeMs, slot.id);
     return this.animals.spawn(this.entities, this.animalContext, slot as SpawnSlot & { species: SpeciesId }, this.timeMs, (x, z) => this.world.store.surfaceY(x, z));
   }
 
@@ -215,13 +242,71 @@ export class Game {
     for (const slot of this.slots) this.spawnSlot(slot);
   }
 
-  /** Mundos guardados antes de que hubiera lobos: aparecen los que no están vivos ni pendientes. */
-  spawnMissingWolves(): void {
+  /**
+   * Mundos guardados antes de que hubiera lobos o cerdo-gallinas: aparecen los de esos slots que
+   * no están vivos ni pendientes del amanecer.
+   */
+  spawnMissing(): void {
     const alive = new Set<string>();
     for (const e of this.entities.all()) if (e.slotId) alive.add(e.slotId);
     for (const slot of this.slots) {
-      if (slot.species === "wolf" && !alive.has(slot.id) && !this.pendingRespawns.includes(slot.id)) this.spawnSlot(slot);
+      if (isSpeciesId(slot.species) || alive.has(slot.id) || this.pendingRespawns.includes(slot.id)) continue;
+      this.spawnSlot(slot);
     }
+  }
+
+  /** Cerdo-gallinas libres en el mundo (nunca más de 3). */
+  get freePigChickens(): number {
+    let n = 0;
+    for (const e of this.entities.all()) if (e.species === "pigChicken") n++;
+    return n;
+  }
+
+  /** Captura: "poof", a la mochila y su slot queda pendiente (al amanecer aparece otro). */
+  capturePigChicken(id: string): boolean {
+    const e = this.entities.get(id);
+    if (!e || e.species !== "pigChicken") return false;
+    const pos = { ...e.body.pos };
+    this.removeEntity(id);
+    this.inventory.pigChicken++;
+    this.events.emit("pigChickenCaptured", { id, pos });
+    this.events.emit("inventoryChanged", { inventory: { ...this.inventory } });
+    return true;
+  }
+
+  private armRelease(armed: boolean): void {
+    if (this.releaseArmed === armed) return;
+    this.releaseArmed = armed;
+    this.events.emit("releaseArmed", { armed });
+  }
+
+  /** Suelta el cerdo-gallina elegido en el suelo apuntado (ocupa el lugar de uno capturado). */
+  private release(ray: Ray): void {
+    this.armRelease(false);
+    const target = pickCell(ray, PICK_DISTANCE, (x, y, z) => this.world.isPickable(x, y, z));
+    if (!target) return;
+    if (distanceToCell(this.player.eye(), target.block) > REACH) {
+      this.events.emit("tooFar", { pos: target.block });
+      return;
+    }
+    const { x, y, z } = target.adjacent;
+    const blocked =
+      this.inventory.pigChicken <= 0 ||
+      this.freePigChickens >= PIG_CHICKEN.maxFree ||
+      !this.world.canPlaceAt(x, y, z) ||
+      this.collision(x, y, z) > 0 ||
+      bodyOverlapsCell(this.player.body, x, y, z);
+    if (blocked) {
+      this.events.emit("releaseBlocked", { pos: { x, y, z } });
+      return;
+    }
+    const slot = this.slots.find((s) => s.species === "pigChicken" && this.pendingRespawns.includes(s.id));
+    if (slot) this.pendingRespawns = this.pendingRespawns.filter((id) => id !== slot.id);
+    const e = this.pigChickens.spawn(this.entities, this.pigChickenContext, { x, y, z }, this.timeMs, slot?.id);
+    this.entities.reindex();
+    this.inventory.pigChicken--;
+    this.events.emit("pigChickenReleased", { id: e.id, pos: { ...e.body.pos } });
+    this.events.emit("inventoryChanged", { inventory: { ...this.inventory } });
   }
 
   /** Quita una entidad con un "poof". Un animal de un slot queda pendiente de reaparecer al amanecer. */
@@ -367,9 +452,11 @@ export class Game {
     this.entities.clear();
     this.animals.reset(world.seed);
     this.wolves.reset(world.seed);
+    this.pigChickens.reset(world.seed);
     this.zombies.reset(world.seed);
     this.spawner.reset(world.seed);
     this.pendingRespawns = [];
+    this.armRelease(false);
     this.itemCount = 0;
     this.setInventory(emptyInventory());
     this.clock.restore(0, 1);
@@ -399,6 +486,7 @@ export class Game {
     for (const item of itemsInPickupRange(this.entities, this.player.body, this.timeMs)) this.collectItem(item.id);
     this.animals.step(this.entities, this.animalContext, this.tick, this.timeMs, dtMs, (s) => this.events.emit("animalSound", s));
     this.wolves.step(this.entities, this.wolfContext, this.tick, this.timeMs, dtMs);
+    this.pigChickens.step(this.entities, this.pigChickenContext, this.tick, this.timeMs, dtMs);
     this.zombies.step(this.entities, this.zombieContext, this.tick, this.timeMs, dtMs);
     this.stepNight();
     this.stepClock(dtMs);
@@ -483,16 +571,24 @@ export class Game {
         this.inventoryOpen = !this.inventoryOpen;
         this.events.emit("inventoryToggled", { open: this.inventoryOpen });
         break;
+      case "toggleRelease":
+        this.armRelease(!this.releaseArmed && this.inventory.pigChicken > 0);
+        break;
     }
   }
 
   private select(selection: Selection): void {
+    this.armRelease(false);
     this.selection = selection;
     this.player.tool = selection.tool;
     this.events.emit("selectionChanged", selection);
   }
 
   private useTool(ray: Ray): void {
+    if (this.releaseArmed) {
+      this.release(ray);
+      return;
+    }
     const tool = TOOLS[this.player.tool];
     this.player.act(tool.swing, this.timeMs);
     this.events.emit("toolUsed", { tool: tool.id });
@@ -582,7 +678,12 @@ export class Game {
     const kind = targetKind(e);
     if (!kind) return;
     const { outcome, defeated, hits, drop } = resolveHit(tool, kind, e.hits ?? 0);
-    if (outcome === "none" || outcome === "capture") return;
+    if (outcome === "none") return;
+    if (outcome === "capture") {
+      if (this.gapTo(b) > PIG_CHICKEN.captureRange) this.events.emit("tooFar", { pos: { ...b.pos } });
+      else this.capturePigChicken(e.id);
+      return;
+    }
     if (outcome === "tame") {
       // El Collar solo alcanza de cerca: más lejos, el aviso suave de "muy lejos".
       if (this.gapTo(b) > WOLF.tameRange) {
@@ -620,6 +721,7 @@ export class Game {
 function targetKind(e: Entity): TargetKind | null {
   if (e.species === "zombie") return "zombie";
   if (e.species === "wolf") return e.tamed ? "friendWolf" : "wolf";
+  if (e.species === "pigChicken") return "pigChicken";
   return isSpeciesId(e.species) ? "animal" : null;
 }
 

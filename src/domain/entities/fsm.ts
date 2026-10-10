@@ -1,7 +1,7 @@
 import type { Rng } from "../../core/rng";
 
 /** Lo que hace la entidad mientras está en un estado. Lo ejecuta el sistema de IA. */
-export type ActionKind = "idle" | "wander" | "graze" | "rest" | "flee" | "returnHome" | "follow" | "swim" | "seek" | "chase" | "bump" | "hunt" | "stalk" | "happy";
+export type ActionKind = "idle" | "wander" | "graze" | "rest" | "flee" | "returnHome" | "follow" | "swim" | "seek" | "chase" | "bump" | "hunt" | "stalk" | "happy" | "fly" | "land";
 
 /** Condiciones de una transición, como datos (ADR-0005). Todas las de una transición deben cumplirse. */
 export type Condition =

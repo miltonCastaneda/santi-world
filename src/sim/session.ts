@@ -195,7 +195,7 @@ export class GameSession {
     // siguen pendientes del amanecer).
     if (state.animalsSpawned) {
       this.game.restoreEntities(entities);
-      this.game.spawnMissingWolves();
+      this.game.spawnMissing();
     } else {
       this.game.spawnPopulation();
     }

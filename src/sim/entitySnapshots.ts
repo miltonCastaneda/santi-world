@@ -1,6 +1,7 @@
 import type { Vec3 } from "../core/math";
 import type { Entity } from "../domain/entities/entityStore";
 import { isItemId, ITEMS, type ItemId } from "../domain/entities/items";
+import { PIG_CHICKEN, PIG_CHICKEN_MACHINE } from "../domain/entities/pigChicken";
 import { isHomeId, isSpeciesId, SPECIES } from "../domain/entities/species";
 import { FRIEND_WOLF_MACHINE, WILD_WOLF_MACHINE, WOLF } from "../domain/entities/wolf";
 import type { EntitySnapshot } from "../domain/repository/model";
@@ -25,7 +26,10 @@ export function entityToSnapshot(e: Entity, worldId: string, now: number): Entit
     };
     return { id: e.id, worldId, kind: "wolf", species: "wolf", pos: { ...e.body.pos }, vel: { ...e.body.vel }, state: e.brain.state, slotId: e.slotId, homeId: e.home, tamed: e.tamed === true, data };
   }
-  // Los zombis no se guardan: de noche vuelven a aparecer poco a poco.
+  if (e.species === "pigChicken" && e.brain) {
+    return { id: e.id, worldId, kind: "pigChicken", species: "pigChicken", pos: { ...e.body.pos }, vel: { ...e.body.vel }, state: e.brain.state, slotId: e.slotId, homeId: e.home, data: timing(e, now) };
+  }
+  // Los zombis y el dragón no se guardan: de noche vuelven a aparecer.
   if (!isSpeciesId(e.species) || !e.brain) return null;
   const data: AnimalData = timing(e, now);
   return {
@@ -86,10 +90,33 @@ function wolfFromSnapshot(s: EntitySnapshot, now: number): Entity {
   };
 }
 
+/** Uno que estaba volando (o huyendo) vuelve aterrizando: el arco no se guarda. */
+function pigChickenFromSnapshot(s: EntitySnapshot, now: number): Entity {
+  const d = (s.data ?? {}) as Partial<AnimalData>;
+  const airborne = s.state === "fly" || s.state === "flee" || s.state === "land";
+  const state = airborne ? "land" : PIG_CHICKEN_MACHINE.states[s.state] ? s.state : "idle";
+  return {
+    id: s.id,
+    seq: d.seq ?? 0,
+    species: "pigChicken",
+    body: { pos: { ...s.pos }, vel: { x: 0, y: 0, z: 0 }, halfWidth: PIG_CHICKEN.halfWidth, height: PIG_CHICKEN.height, onGround: false },
+    yaw: d.yaw ?? 0,
+    brain: airborne ? { state, enteredAt: now, until: now + PIG_CHICKEN_MACHINE.states.land.ms[0] } : { state, enteredAt: now - (d.enteredAgo ?? 0), until: now + (d.untilIn ?? 0) },
+    slotId: s.slotId,
+    home: "farm",
+    goal: null,
+    flight: null,
+    nextSoundAt: now + (d.soundIn ?? 0),
+    anim: "idle",
+    fleeDir: null,
+  };
+}
+
 /** Entidad guardada a entidad viva. Devuelve null si la especie o el estado ya no existen. */
 export function entityFromSnapshot(s: EntitySnapshot, now: number): Entity | null {
   if (s.kind === "item") return isItemId(s.species) ? { ...itemEntity(s.id, s.species, s.pos), seq: Number(s.data?.seq ?? 0) } : null;
   if (s.kind === "wolf") return s.species === "wolf" ? wolfFromSnapshot(s, now) : null;
+  if (s.kind === "pigChicken") return s.species === "pigChicken" ? pigChickenFromSnapshot(s, now) : null;
   if (s.kind !== "animal" || !isSpeciesId(s.species)) return null;
   const def = SPECIES[s.species];
   if (!def.machine.states[s.state]) return null;

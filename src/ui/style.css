@@ -313,6 +313,19 @@ body:has(.inventory-panel:not([hidden])) .controls-help {
   filter: grayscale(1) opacity(0.45);
 }
 
+button.inventory-icon {
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 2.8rem;
+}
+
+button.inventory-icon.armed {
+  background: #ffd23f;
+  border-color: #c0392b;
+  transform: scale(1.08);
+}
+
 .inventory-count {
   font-size: 2rem;
   font-weight: 700;

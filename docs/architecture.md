@@ -2,9 +2,9 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 11)
+## Estado actual (Fase 2, incremento 12)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer. La Espada convierte a un animal de granja en carne flotante, que se recoge y se guarda en la mochila (inventario por mundo); las antorchas de la barra de bloques iluminan e impiden que aparezcan zombis. En la montaña boscosa viven lobos que una vez por día salen a cazar un animal de granja (una granja bien cerrada los detiene); con el Collar se vuelven amigos que siguen al niño o cuidan la granja y ahuyentan zombis. En la montaña de roca el Pico mina diamantes, que vuelven cada 3 días del juego.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer. La Espada convierte a un animal de granja en carne flotante, que se recoge y se guarda en la mochila (inventario por mundo); las antorchas de la barra de bloques iluminan e impiden que aparezcan zombis. En la montaña boscosa viven lobos que una vez por día salen a cazar un animal de granja (una granja bien cerrada los detiene); con el Collar se vuelven amigos que siguen al niño o cuidan la granja y ahuyentan zombis. En la montaña de roca el Pico mina diamantes, que vuelven cada 3 días del juego. En la granja viven 3 cerdos-gallina que vuelan en arcos; se capturan con un clic y se sueltan desde la mochila.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
@@ -32,6 +32,7 @@ src/
                 entities/fsm.ts (máquinas de estado por datos y su intérprete), entities/species.ts
                 (6 especies como datos), entities/zombie.ts (datos y máquina del zombi),
                 entities/wolf.ts (datos del lobo y sus máquinas: salvaje y amigo),
+                entities/pigChicken.ts (datos y máquina del cerdo-gallina),
                 entities/entityStore.ts (entidades + índice espacial),
                 entities/population.ts (población inicial y spawn slots con semilla)             (puro)
   sim/          loop.ts (FixedStepLoop, 20 Hz), game.ts (intents, eventos, replaceWorld, colisión,
@@ -45,9 +46,10 @@ src/
                 (NightSpawner: dónde y cuándo aparece un zombi), systems/zombies.ts (ZombieSystem:
                 objetivo, caminos, contacto, separación), systems/wolves.ts (WolfSystem: caza con
                 viaje por tramos, acecho, guarida, domesticar, seguir, cuidar y ahuyentar zombis),
-                systems/regrowth.ts (diamantes que vuelven a sus vetas),
+                systems/regrowth.ts (diamantes que vuelven a sus vetas), systems/pigChickens.ts
+                (PigChickenSystem: caminar, vuelo en arcos, aterrizar y huir),
                 systems/interaction.ts (objetos al alcance de recogida), entitySnapshots.ts
-                (entidad <-> EntitySnapshot; animales, lobos y objetos sueltos)                    (puro)
+                (entidad <-> EntitySnapshot; animales, cerdos-gallina, lobos y objetos sueltos)    (puro)
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
                 autosave.ts (AutosaveService), migrations.ts (migrations[n] puras), legacyImport.ts
                 (v1 a "Mi primer mundo"), exportFormat.ts, errorLog.ts, storage.ts (persist()),
@@ -57,8 +59,9 @@ src/
                 sin sombras, near 0,1 / far 250), followCamera.ts (brazo de resorte de 6 bloques a 20°,
                 se acorta con un DDA para no entrar en los bloques, giro con el botón derecho),
                 playerModel.ts (personaje de cajas con la "S" y animación procedural),
-                entityRenderer.ts (animales, lobos, zombis y objetos sueltos: InstancedMesh por
-                especie y parte, sombra, "poof", destellos y corazones, parpadeo, la carne flota y gira),
+                entityRenderer.ts (animales, cerdos-gallina, lobos, zombis y objetos sueltos:
+                InstancedMesh por especie y parte, alas que aletean, sombra, "poof", destellos y
+                corazones, parpadeo, la carne flota y gira),
                 chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
                 meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
                 tiles.ts y textures.ts (tiles procedurales de 16 px), blockMaterial.ts
@@ -71,7 +74,8 @@ src/
                 juego a sonidos y a la pista de música)
   ui/           hud.ts (corazones, herramientas, barra de bloques, mochila, deshacer, Mis Mundos, nuevo
                 mundo, silencio, pantalla completa, "muy lejos"), kid/inventory.ts (panel de la
-                mochila: íconos, números y puntos; no pausa el juego), kid/misMundos.ts (tarjetas con miniatura,
+                mochila: íconos, números y puntos; el cerdo-gallina se elige para soltarlo; no pausa
+                el juego), kid/misMundos.ts (tarjetas con miniatura,
                 sin borrar), kid/saveWarning.ts (ícono si falla el guardado), kid/hudClock.ts (sol o
                 luna, arco, "Día N" y aviso de noche), debugOverlay.ts (F3), style.css,
                 parents/parentsView.ts (histórico, papelera, configuración, PIN, exportar/importar), parents.css
@@ -128,7 +132,7 @@ src/
 
 ### Lobos
 
-1. `createSpawnSlots` agrega de 4 a 6 slots de lobo (`wolf-N`, hogar `den`) en pasto a 12 bloques o menos del centro de la montaña boscosa, lejos de los troncos, con un `Rng` propio (`${seed}:wolves`). `Game.spawnSlot` reparte cada slot a `AnimalSystem` o a `WolfSystem`; un mundo guardado antes de los lobos los recibe con `spawnMissingWolves` (los que no están vivos ni pendientes del amanecer), sin migración de esquema.
+1. `createSpawnSlots` agrega de 4 a 6 slots de lobo (`wolf-N`, hogar `den`) en pasto a 12 bloques o menos del centro de la montaña boscosa, lejos de los troncos, con un `Rng` propio (`${seed}:wolves`). `Game.spawnSlot` reparte cada slot a `AnimalSystem`, `WolfSystem` o `PigChickenSystem`; un mundo guardado antes de los lobos (o de los cerdos-gallina) los recibe con `spawnMissing` (los que no están vivos ni pendientes del amanecer), sin migración de esquema.
 2. En cada paso, después de los animales y antes de los zombis, `WolfSystem.step` piensa cada 4 ticks con `WILD_WOLF_MACHINE` o `FRIEND_WOLF_MACHINE` (`fsm.ts`) y comparte la `PathQueue` de los animales. El lobo salvaje pasea y descansa cerca de su guarida; una vez por día del juego (`huntDay`), cuando la fracción del día llega a su `huntFrac` al azar (entre 0,1 y 0,75, solo de día), entra en `hunt`: elige el animal de granja más cercano (los patos no son presa), viaja por tramos de A* de 14 bloques (el presupuesto de 2000 nodos no alcanza para los ~95 bloques hasta la granja; cada tramo prueba 5 ángulos y a los 6 tramos fallidos desiste) y a 16 bloques pasa a `stalk`, que pide el camino directo cada 2 s. Sin camino (granja cerrada), sin presa o a los 2 min vuelve a la guarida (`returnDen`). Al tocar a la presa la hace "poof" con `removeEntity`.
 3. Un lobo salvaje nunca daña al niño. `resolveHit` tiene las columnas `wolf` (Collar domestica, Espada derrota en 2 golpes, Mano y Pico "boing") y `friendWolf` ("happy" con todo, nunca daño). Cada golpe que no lo derrota lo hace huir (`flee`); derrotado, `removeEntity` deja su slot pendiente y reaparece al amanecer en la montaña, sin carne.
 4. El Collar a 3 bloques o menos (si no, `tooFar`) llama a `WolfSystem.tame`: `tamed`, hogar `farm`, cerebro `FRIEND_WOLF_MACHINE` y rol `follow` si hay menos de 3 seguidores (si no, `guard`). `Game` emite `entityHit` con `tame` y `wolfTamed`; el render muestra corazones y el modelo `wolfTame` (collar rojo), y el audio toca `tame`.
@@ -141,6 +145,14 @@ src/
 2. En `useTool`, antes de romper, `mineResult(tool, block)` de `domain/rules/mining` dice si el Pico mina el bloque: `TerrainWorld.replaceNatural` cambia el diamante por piedra natural (`placed=0`, fuera del historial de deshacer), el inventario suma 1 diamante y `Game` emite `blockMined`, `inventoryChanged` y `blockChanged`. El render muestra destellos en el bloque y el audio toca `break` y `gem`. La Espada, el Collar y el Arco no hacen nada sobre un bloque.
 3. Al amanecer de los días 4, 7, 10… (`regrowDue`), `regrowDiamonds` (`sim/systems/regrowth`) vuelve a poner diamante en cada veta donde hoy hay piedra natural, emite `blockChanged` por cada una y `diamondsRegrown`. Lo que el niño rompió (aire) o construyó (`placed=1`) no cambia.
 4. Los chunks con diamantes minados quedan modificados y se guardan como cualquier otro; el día del juego también se guarda, así que la reaparición sigue igual al reabrir.
+
+### Cerdos-gallina
+
+1. `createSpawnSlots` agrega al final 3 slots `pigChicken-N` dentro de la granja, con un `Rng` propio (`${seed}:pig-chicken-slots`), así los slots anteriores no cambian. Invariante: libres + slots pendientes = 3.
+2. En cada paso, después de los lobos, `PigChickenSystem.step` piensa cada 4 ticks con `PIG_CHICKEN_MACHINE` (`idle`, `walk`, `peck`, `fly`, `land` y `flee` ante una amenaza a 6 bloques o menos). No usa el A*: `fly` y `flee` guardan un arco (`Entity.flight`: desde, hasta y altura de la cima) y en cada paso la velocidad vertical apunta a `suelo + cima · sin(πt)`, mirando el suelo un poco adelante, con `moveBody` (la misma física AABB: no atraviesa bloques). Un tope corta la altura en 8 bloques sobre el suelo de debajo. Los destinos quedan a 22 bloques o menos del centro de la granja y evitan el agua.
+3. `useTool` con cualquier herramienta sobre un cerdo-gallina da `capture` (`resolveHit`): a más de 4 bloques, `tooFar`; si no, `capturePigChicken` lo quita con `removeEntity` (el slot queda pendiente), suma 1 al inventario y emite `pigChickenCaptured`. Nunca suelta carne.
+4. El intent `toggleRelease` (el ícono 🐷 de la mochila) arma la suelta si hay alguno en la mochila (`releaseArmed`); elegir otra herramienta o bloque la desarma. Armado, el siguiente `useTool` llama a `release`: en la celda vacía junto al bloque apuntado (a 6 bloques o menos), si hay menos de 3 libres, crea uno que ocupa un slot pendiente, resta 1 al inventario y emite `pigChickenReleased`; si no, `releaseBlocked` (sonido `bump`). Al amanecer, `respawnPending` rellena los slots que quedaron pendientes.
+5. `entitySnapshots` los guarda como `kind: "pigChicken"`; uno guardado en vuelo o huyendo vuelve en `land`. El render usa una parte `wings` del modelo que aletea con `anim: "fly"`.
 
 ### Guardado
 

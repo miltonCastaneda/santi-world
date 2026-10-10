@@ -5,10 +5,13 @@ import type { ItemId } from "./items";
 import type { HomeId, SpeciesId } from "./species";
 import type { WolfRole } from "./wolf";
 
-export type EntityAnim = "idle" | "walk" | "run" | "graze" | "rest" | "swim";
+export type EntityAnim = "idle" | "walk" | "run" | "graze" | "rest" | "swim" | "fly";
 
-/** Animales de granja, lobos, zombis, objetos para recoger y el marcador de amenaza de las pruebas. */
-export type EntityKind = SpeciesId | ItemId | "wolf" | "zombie" | "threat";
+/** Animales de granja, cerdo-gallinas, lobos, zombis, el dragón, objetos para recoger y el marcador de amenaza de las pruebas. */
+export type EntityKind = SpeciesId | ItemId | "pigChicken" | "wolf" | "zombie" | "dragon" | "threat";
+
+/** Vuelo en arco del cerdo-gallina: de dónde sale, adónde va (en XZ) y la altura de la cima. */
+export type Flight = { from: Vec3; to: Vec3; peak: number };
 
 /** Camino calculado por el pathfinding: puntos de pies (centro de celda) y versiones de los chunks que cruza. */
 export type Path = { points: Vec3[]; chunks: Map<string, number> };
@@ -61,6 +64,7 @@ export type Entity = {
   dest?: Vec3 | null;
   /** Tramos seguidos sin camino: al llegar a varios, se da por vencido. */
   hopFails?: number;
+  flight?: Flight | null;
 };
 
 const CELL = 8;

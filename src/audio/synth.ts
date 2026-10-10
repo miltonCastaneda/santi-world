@@ -3,7 +3,7 @@
  * uno es una función pura de la frecuencia de muestreo, así que se pueden probar sin navegador.
  */
 export const ANIMAL_SOUNDS = ["baa", "moo", "meh", "cluck", "peep", "quack"] as const;
-export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS, "sparkle", "groan", "pickup", "woof", "tame", "gem"] as const;
+export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS, "sparkle", "groan", "pickup", "woof", "tame", "gem", "oink", "capture", "release", "shoot", "thunk", "fire", "rawr", "ding"] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];
 
@@ -169,6 +169,45 @@ export function synthesize(name: SoundName, rate: number): Float32Array<ArrayBuf
         { attack: 0.003, decay: 0.25 },
       );
     }
+    // Cerdo-gallina: un "oink" chiquito seguido de un "cloc" (mitad cerdito, mitad gallina).
+    case "oink": {
+      const pig = voice(rate, (t) => 260 + 120 * Math.sin(Math.PI * Math.min(1, t / 0.14)), [0.2, 0.14, 0.08, 0.04]);
+      const hen = voice(rate, () => 560, [0.22, 0.1, 0.04]);
+      return render(rate, 0.38, (t) => (pig(t) + 0.04 * rnd()) * syllable(t, 0, 0.15) + hen(t) * syllable(t, 0.22, 0.3) * 0.8, { attack: 0.005, decay: 0.3 });
+    }
+    // Capturar: un "pop" que sube, como algo que entra en la mochila.
+    case "capture":
+      return render(rate, 0.25, (t) => 0.3 * tone(500, 1300, 0.25)(t) + 0.04 * rnd() * Math.exp(-t / 0.02), { attack: 0.003, decay: 0.09 });
+    // Soltar: un aleteo corto (ruido suave a golpecitos) y una nota que baja.
+    case "release":
+      return render(rate, 0.35, (t) => 0.18 * rnd() * Math.max(0, Math.sin(2 * Math.PI * 22 * t)) + 0.2 * tone(900, 600, 0.35)(t), { attack: 0.01, decay: 0.14 });
+    // Arco: la cuerda que vibra ("tuing") y el aire.
+    case "shoot":
+      return render(rate, 0.22, (t) => 0.28 * Math.sin(2 * Math.PI * 330 * t) * (1 + 0.3 * Math.sin(2 * Math.PI * 40 * t)) + 0.08 * rnd() * Math.exp(-t / 0.03), { attack: 0.002, decay: 0.07 });
+    // Flecha que se clava: un "toc" de madera, corto.
+    case "thunk":
+      return render(rate, 0.12, (t) => 0.3 * tone(240, 160, 0.12)(t) + 0.1 * rnd() * Math.exp(-t / 0.01), { attack: 0.001, decay: 0.03 });
+    // Fuego del dragón: un "fffuu" suave de aire tibio, sin crepitar fuerte.
+    case "fire": {
+      let low = 0;
+      return render(
+        rate,
+        0.5,
+        (t) => {
+          low += (rnd() - low) * 0.08;
+          return 0.45 * low * Math.sin(Math.PI * Math.min(1, t / 0.5));
+        },
+        { attack: 0.06, decay: 0.25 },
+      );
+    }
+    // Dragón: un "ruar" de dragoncito de dibujo animado (agudo y corto, nunca un rugido grave).
+    case "rawr": {
+      const v = voice(rate, (t) => 340 + 160 * Math.sin(Math.PI * Math.min(1, t / 0.3)), [0.18, 0.12, 0.07, 0.04]);
+      return render(rate, 0.42, (t) => v(t) * (0.85 + 0.15 * Math.sin(2 * Math.PI * 28 * t)), { attack: 0.03, decay: 0.22 });
+    }
+    // Flecha que le da al dragón: una campanita (cuenta hacia los 5).
+    case "ding":
+      return render(rate, 0.35, (t) => 0.22 * (Math.sin(2 * Math.PI * 1319 * t) + 0.3 * Math.sin(2 * Math.PI * 2638 * t)), { attack: 0.002, decay: 0.12 });
   }
 }
 
