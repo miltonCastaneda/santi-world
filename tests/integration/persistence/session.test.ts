@@ -156,3 +156,60 @@ describe("[mundos-y-persistencia] crear y cambiar de mundo", () => {
     expect(game.selection.block).toBe("planks");
   });
 });
+
+describe("[vista-de-padres] borrado y configuración desde la vista de padres", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  it("[vista-de-padres] Borrar el mundo que el niño está usando: el próximo arranque abre el más reciente que quede", async () => {
+    const first = await setupSession();
+    const a = await first.session.openInitial();
+    first.clock.advance(1000);
+    await first.session.createWorld();
+    const b = first.session.world!;
+    expect(await first.repo.getMeta("lastWorldId")).toBe(b.id);
+    await first.repo.softDelete(b.id);
+
+    const next = await setupSession({ repo: first.repo, clock: first.clock });
+    expect((await next.session.openInitial()).id).toBe(a.id);
+  });
+
+  it("[vista-de-padres] Borrar el mundo que el niño está usando: si no queda ninguno, se crea uno nuevo", async () => {
+    const first = await setupSession();
+    const a = await first.session.openInitial();
+    await first.repo.softDelete(a.id);
+    const next = await setupSession({ repo: first.repo, clock: first.clock });
+    const opened = await next.session.openInitial();
+    expect(opened.id).not.toBe(a.id);
+    expect(opened.deletedAt).toBeUndefined();
+  });
+
+  it("[vista-de-padres] Restaurar desde la papelera (10 días) y eliminación definitiva tras 30 días", async () => {
+    const { session, repo, clock, game, user } = await setupSession();
+    const a = await session.openInitial();
+    placeRow(game, 3, "blue");
+    await session.createWorld();
+    const b = session.world!;
+    await repo.softDelete(a.id);
+    await repo.softDelete(b.id);
+    clock.advance(10 * DAY);
+    await repo.restore(a.id);
+    expect((await repo.listChunks(a.id)).length).toBeGreaterThan(0);
+    clock.advance(21 * DAY);
+    expect(await repo.purgeExpired(clock.now(), 30 * DAY)).toBe(1);
+    expect((await repo.listWorlds(user.id, { includeDeleted: true })).map((w) => w.id)).toEqual([a.id]);
+  });
+
+  it("[vista-de-padres] Configuración: se aplica en caliente si el mundo está abierto", async () => {
+    const { session, repo } = await setupSession();
+    const a = await session.openInitial();
+    const seen: number[] = [];
+    session.events.on("settingsChanged", ({ world }) => seen.push(world.settings.nightMinutes));
+    await repo.updateSettings(a.id, { ...a.settings, nightMinutes: 5 });
+    expect(await session.reloadSettings("otro")).toBe(false);
+    expect(await session.reloadSettings(a.id)).toBe(true);
+    expect(seen).toEqual([5]);
+    expect(session.world?.settings.nightMinutes).toBe(5);
+    await repo.saveSnapshot(session.collect()!.snapshot);
+    expect((await repo.loadWorld(a.id)).world.settings.nightMinutes).toBe(5);
+  });
+});

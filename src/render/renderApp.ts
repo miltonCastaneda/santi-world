@@ -63,7 +63,18 @@ export class RenderApp {
     this.chunks = new ChunkRenderer(store, gen, this.materials, { viewRadius, workers: options.workers ?? 1 });
     this.scene.add(this.chunks.group);
 
-    window.addEventListener("resize", () => this.resize());
+    window.addEventListener("resize", this.onResize);
+  }
+
+  private readonly onResize = () => this.resize();
+
+  /** Libera GPU y workers (el visor de padres se abre y se cierra varias veces). */
+  dispose(): void {
+    window.removeEventListener("resize", this.onResize);
+    this.controls.dispose();
+    this.chunks.dispose();
+    this.materials.dispose();
+    this.renderer.dispose();
   }
 
   resize(): void {

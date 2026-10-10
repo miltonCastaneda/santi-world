@@ -8,6 +8,9 @@ export const SCHEMA_VERSION = 1;
 
 export type User = { id: string; name: string; createdAt: number };
 
+/** Tiempo que un mundo borrado se puede restaurar antes de eliminarse definitivamente. */
+export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
 export type WorldSettings = {
   dayMinutes: number;
   nightMinutes: number;

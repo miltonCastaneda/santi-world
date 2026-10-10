@@ -10,6 +10,7 @@ import {
   type SaveSnapshot,
   type User,
   type World,
+  type WorldSettings,
 } from "../domain/repository/model";
 import type { LoadedWorld, WorldRepository } from "../domain/repository/worldRepository";
 import { decodeExport, encodeExport } from "./exportFormat";
@@ -82,12 +83,19 @@ export class InMemoryWorldRepository implements WorldRepository {
 
   async saveSnapshot(s: SaveSnapshot): Promise<void> {
     if (this.failSaves) throw this.failSaves;
-    this.worlds.set(s.world.id, clone(s.world));
+    this.worlds.set(s.world.id, keepParentFields(clone(s.world), this.worlds.get(s.world.id)));
     this.states.set(s.world.id, clone(s.state));
     this.entities.set(s.world.id, clone(s.entities));
     for (const c of s.dirtyChunks) this.chunks.set(chunkId(c.worldId, c.cx, c.cz), cloneChunk(c));
     if (s.thumbnail) this.thumbnails.set(s.world.id, s.thumbnail);
     this.saveCount++;
+  }
+
+  async updateSettings(worldId: string, settings: WorldSettings): Promise<World> {
+    const w = this.worlds.get(worldId);
+    if (!w) throw new Error(`No existe el mundo ${worldId}`);
+    w.settings = clone(settings);
+    return clone(w);
   }
 
   async getThumbnail(worldId: string): Promise<Blob | null> {
@@ -162,6 +170,15 @@ export function newWorldRecord(id: string, input: NewWorld, now: number): World 
     dayCount: 1,
     settings: structuredClone(DEFAULT_SETTINGS),
   };
+}
+
+/** Los campos que solo cambian los padres se conservan al guardar desde el juego. */
+export function keepParentFields(next: World, stored: World | undefined): World {
+  if (!stored) return next;
+  const out: World = { ...next, settings: stored.settings };
+  if (stored.deletedAt !== undefined) out.deletedAt = stored.deletedAt;
+  else delete out.deletedAt;
+  return out;
 }
 
 export function chunkId(worldId: string, cx: number, cz: number): string {

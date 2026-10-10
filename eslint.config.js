@@ -12,6 +12,8 @@ import tseslint from "typescript-eslint";
 const layer = (name) => ({ group: [`**/${name}`, `**/${name}/**`], message: `La capa actual no puede depender de "${name}" (ver docs/architecture.md).` });
 const pkg = (name) => ({ group: [name, `${name}/**`], message: `La capa actual no puede depender de "${name}" (ver docs/architecture.md).` });
 
+const kidOnly = { group: ["**/parents", "**/parents/**"], message: "El juego del niño no puede depender de la vista de padres (ADR-0008)." };
+
 const restrictImports = (...patterns) => ({
   "no-restricted-imports": "off",
   "@typescript-eslint/no-restricted-imports": ["error", { patterns: patterns.map((p) => ({ ...p, allowTypeImports: false })) }],
@@ -83,5 +85,14 @@ export default tseslint.config(
   {
     files: ["src/testing/**"],
     rules: restrictImports(layer("apps"), pkg("dexie")),
+  },
+  // El bundle del niño no conoce la vista de padres (ADR-0008).
+  {
+    files: ["src/apps/game/**"],
+    rules: restrictImports(kidOnly),
+  },
+  {
+    files: ["src/ui/kid/**", "src/ui/hud.ts"],
+    rules: restrictImports(layer("apps"), layer("testing"), pkg("dexie"), kidOnly),
   },
 );

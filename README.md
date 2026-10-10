@@ -18,6 +18,8 @@ Abre `http://localhost:5173`. Como el servidor escucha en la red local (`host: t
 
 Los mundos se guardan en IndexedDB del navegador (local, sin servidor) y el juego tiene autoguardado. Para saber dónde están, cómo respaldarlos y cómo se importó el mundo de la versión 1, ver la [guía para padres](docs/guia-padres.md#dónde-se-guardan-los-mundos).
 
+La **vista de padres** está en `http://localhost:5173/padres/` (no hay enlaces a ella desde el juego): histórico, visor de solo lectura, papelera, configuración por mundo, exportar e importar y PIN opcional. Ver la [guía para padres](docs/guia-padres.md#vista-de-padres). Al publicar el build en un hosting estático, configura que `/padres` redirija a `/padres/` (en `vite` y `vite preview` ya lo hace `vite.config.ts`).
+
 ## Scripts
 
 | Script | Qué hace |

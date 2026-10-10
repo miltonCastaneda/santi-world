@@ -2,9 +2,19 @@ import type { Vec3 } from "../../core/math";
 import { BLOCK_NUM, type BlockId } from "../blocks";
 import { createWorldStore, type GeneratorKind, type WorldGenSpec } from "../worldgen/generator";
 import type { WorldLayout } from "../worldgen/layout";
+import { Chunk } from "./chunk";
 import type { BlockChange, ChunkStore } from "./chunkStore";
 
 const MAX_UNDO = 100;
+
+export type SavedChunk = {
+  cx: number;
+  cz: number;
+  version: number;
+  updatedAt: number;
+  blocks: Uint8Array<ArrayBuffer>;
+  placed: Uint8Array<ArrayBuffer>;
+};
 
 /** Mundo por chunks con las reglas de construcción del niño (poner, quitar y deshacer). */
 export class TerrainWorld {
@@ -20,6 +30,18 @@ export class TerrainWorld {
   static create(seed: string, generator: GeneratorKind = "zones"): TerrainWorld {
     const { store, generator: g } = createWorldStore(seed, generator);
     return new TerrainWorld({ seed, generator }, store, g.layout, g.spawn);
+  }
+
+  /** El mundo de la semilla con los chunks modificados guardados encima. */
+  static fromRecords(seed: string, generator: GeneratorKind, records: readonly SavedChunk[]): TerrainWorld {
+    const terrain = TerrainWorld.create(seed, generator);
+    for (const r of records) {
+      const chunk = new Chunk(r.cx, r.cz, r.blocks, r.placed);
+      chunk.version = r.version;
+      chunk.updatedAt = r.updatedAt;
+      terrain.store.put(chunk, true);
+    }
+    return terrain;
   }
 
   get seed(): string {

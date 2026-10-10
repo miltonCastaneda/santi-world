@@ -1,8 +1,18 @@
 import Dexie, { type DexieOptions, type Table } from "dexie";
-import { defaultGameState, type ChunkRecord, type EntitySnapshot, type GameState, type NewWorld, type SaveSnapshot, type User, type World } from "../domain/repository/model";
+import {
+  defaultGameState,
+  type ChunkRecord,
+  type EntitySnapshot,
+  type GameState,
+  type NewWorld,
+  type SaveSnapshot,
+  type User,
+  type World,
+  type WorldSettings,
+} from "../domain/repository/model";
 import type { LoadedWorld, WorldRepository } from "../domain/repository/worldRepository";
 import { decodeExport, encodeExport } from "./exportFormat";
-import { newWorldRecord, type RepositoryDeps } from "./inMemoryRepository";
+import { keepParentFields, newWorldRecord, type RepositoryDeps } from "./inMemoryRepository";
 import { migrateState, migrateWorld } from "./migrations";
 
 export const DB_NAME = "minecraf-de-santi";
@@ -98,11 +108,21 @@ export class DexieWorldRepository implements WorldRepository {
     // Fuera de la transacción: IndexedDB la cerraría si se espera algo que no es de la base.
     const thumbnail = s.thumbnail ? { worldId: s.world.id, type: s.thumbnail.type, data: await s.thumbnail.arrayBuffer() } : null;
     await this.db.transaction("rw", [this.db.worlds, this.db.states, this.db.entities, this.db.chunks, this.db.thumbnails], async () => {
-      await this.db.worlds.put(s.world);
+      await this.db.worlds.put(keepParentFields(s.world, await this.db.worlds.get(s.world.id)));
       await this.db.states.put(s.state);
       await this.db.entities.put({ worldId: s.world.id, list: s.entities });
       if (s.dirtyChunks.length > 0) await this.db.chunks.bulkPut(s.dirtyChunks);
       if (thumbnail) await this.db.thumbnails.put(thumbnail);
+    });
+  }
+
+  async updateSettings(worldId: string, settings: WorldSettings): Promise<World> {
+    return this.db.transaction("rw", this.db.worlds, async () => {
+      const w = await this.db.worlds.get(worldId);
+      if (!w) throw new Error(`No existe el mundo ${worldId}`);
+      const next = { ...w, settings };
+      await this.db.worlds.put(next);
+      return migrateWorld(next);
     });
   }
 

@@ -2,7 +2,6 @@ import type { Clock } from "../core/clock";
 import { EventBus } from "../core/events";
 import type { CameraView, ChunkRecord, GameState, SaveSnapshot, World } from "../domain/repository/model";
 import type { WorldRepository } from "../domain/repository/worldRepository";
-import { Chunk } from "../domain/world/chunk";
 import { TerrainWorld } from "../domain/world/terrainWorld";
 import type { GeneratorKind } from "../domain/worldgen/generator";
 import { GENERATOR_VERSION } from "../domain/worldgen/layout";
@@ -15,6 +14,7 @@ export type SessionEvents = {
   worldOpened: { world: World; state: GameState };
   saveFailed: { error: unknown; during: "switch" | "create" };
   busyChanged: { busy: boolean };
+  settingsChanged: { world: World };
 };
 
 export type SessionDeps = {
@@ -97,6 +97,16 @@ export class GameSession {
     });
   }
 
+  /** Los padres cambiaron la configuración: si es el mundo abierto, se aplica en caliente. */
+  async reloadSettings(worldId: string): Promise<boolean> {
+    if (this.world?.id !== worldId) return false;
+    const { world } = await this.deps.repo.loadWorld(worldId);
+    if (this.world?.id !== worldId) return false;
+    this.world = { ...this.world, settings: world.settings };
+    this.events.emit("settingsChanged", { world: this.world });
+    return true;
+  }
+
   /** Hay algo que guardar: chunks sucios o un cambio de estado (cámara, bloque elegido). */
   hasChanges(): boolean {
     if (!this.world) return false;
@@ -151,13 +161,7 @@ export class GameSession {
   private async open(worldId: string): Promise<void> {
     const { repo } = this.deps;
     const [{ world, state }, records] = await Promise.all([repo.loadWorld(worldId), repo.listChunks(worldId)]);
-    const terrain = TerrainWorld.create(world.seed, world.generator);
-    for (const r of records) {
-      const chunk = new Chunk(r.cx, r.cz, r.blocks, r.placed);
-      chunk.version = r.version;
-      chunk.updatedAt = r.updatedAt;
-      terrain.store.put(chunk, true);
-    }
+    const terrain = TerrainWorld.fromRecords(world.seed, world.generator, records);
     this.world = world;
     this.state = state;
     this.game.replaceWorld(terrain, { mode: "place", block: state.player.selectedBlock });

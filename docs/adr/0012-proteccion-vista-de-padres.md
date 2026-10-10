@@ -1,6 +1,6 @@
 # ADR 0012: Protección ligera de la vista de padres (ruta oculta + PIN opcional desactivado por defecto)
 
-- **Estado**: Propuesto
+- **Estado**: Aceptado (incremento 4)
 - **Fecha**: 2026-10-10
 - **Change relacionado**: `openspec/changes/fase-2-mundo-vivo/` (spec `vista-de-padres`, requisito B4)
 
@@ -30,3 +30,9 @@ El requisito B4 pide evaluar y proponer, sin imponer, una protección opcional p
 
 - Positivas: cumple B4 sin imponer nada y deja preparado el camino online.
 - Negativas: protección solo disuasoria, documentada como tal en la guía de padres.
+
+## Implementación (incremento 4)
+
+- `src/persistence/pin.ts` (`PinGuard`): `meta.pinHash = { salt, hash, iterations }` y `meta.pinLock = { failures, lockedUntil }`. El bloqueo se guarda en la base, así que recargar la página no lo salta.
+- La pantalla de PIN (`pinGate` en `src/ui/parents/parentsView.ts`) se muestra solo si hay `pinHash`.
+- Restablecer: borrar la fila `pinHash` de `meta` desde las herramientas del navegador (guía de padres).

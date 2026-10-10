@@ -2,13 +2,15 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 3)
+## Estado actual (Fase 2, incremento 4)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Todavía se juega con la cámara orbital de v1.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Todavía se juega con la cámara orbital de v1.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
                                          Game, bucle, render, input, HUD, Mis Mundos, F3, ruta de perf)
+padres/index.html --> src/apps/parents/main.ts   (repositorio, PIN, vista de padres; viewer.ts: visor de
+                                         solo lectura con readOnly(repo) y RenderApp, cargado bajo demanda)
 src/
   core/         rng.ts, clock.ts, events.ts, math.ts (Vec3, Aabb, rayos, DDA de vóxeles),
                 noise.ts (value noise y fbm con semilla)                                    (puro)
@@ -25,7 +27,8 @@ src/
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
                 autosave.ts (AutosaveService), migrations.ts (migrations[n] puras), legacyImport.ts
                 (v1 a "Mi primer mundo"), exportFormat.ts, errorLog.ts, storage.ts (persist()),
-                legacyLocalStorage.ts (formato v1)
+                legacyLocalStorage.ts (formato v1), pin.ts (PinGuard, PBKDF2), broadcast.ts
+                (BroadcastChannel 'santi': saved, worldsChanged, settingsChanged)
   render/       renderApp.ts (escena, cámara orbital, sin sombras, near 0,1 / far 250),
                 chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
                 meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
@@ -33,8 +36,9 @@ src/
                 (DataArrayTexture + MeshBasicMaterial con uDaylight), sky.ts (cielo y niebla)
   input/        pointerInput.ts (toque/clic a intents "use"; arrastre = cámara)
   ui/           hud.ts (paleta, Mis Mundos, Crear nuevo mundo), kid/misMundos.ts (tarjetas con miniatura,
-                sin borrar), kid/saveWarning.ts (ícono si falla el guardado), debugOverlay.ts (F3), style.css
-  testing/      testApi.ts (window.__santi, solo en desarrollo con ?test=1)
+                sin borrar), kid/saveWarning.ts (ícono si falla el guardado), debugOverlay.ts (F3), style.css,
+                parents/parentsView.ts (histórico, papelera, configuración, PIN, exportar/importar), parents.css
+  testing/      testApi.ts (window.__santi) y parentsTestApi.ts (window.__padres), solo en desarrollo con ?test=1
 ```
 
 ### Flujo de un clic
@@ -51,6 +55,8 @@ src/
 - `AutosaveService` guarda cada 30 s si hay cambios y con `visibilitychange: hidden`, `pagehide` y `blur`. Es de vuelo único: si llega otro pedido durante un guardado, se encola uno solo.
 - `GameSession.collect()` copia de forma síncrona los chunks sucios, el mundo y el estado (con `version` + 1 y `updatedAt`); la miniatura se captura del canvas; `WorldRepository.saveSnapshot()` escribe todo en una sola transacción. Al confirmar, solo se limpian los chunks que no cambiaron durante la escritura.
 - `switchWorld()` y `createWorld()` son los únicos caminos para reemplazar el mundo: esperan `autosave.saveNow()` y, si falla, no cambian nada (aviso ⚠️💾 y registro para los padres). "Crear nuevo mundo" ignora los clics repetidos durante la operación y en los 2 s siguientes.
+- La configuración (`settings`) y la papelera (`deletedAt`) las cambian solo los padres: `saveSnapshot` las conserva de lo guardado, así el juego (quizá en otra pestaña) nunca las pisa. La vista de padres avisa por `BroadcastChannel` y el juego aplica la configuración en caliente (`GameSession.reloadSettings`).
+- Al arrancar, el juego y la vista de padres purgan los mundos con más de 30 días en la papelera.
 - El puerto `WorldRepository` y el modelo están en `domain/repository/` para que `sim` (GameSession) dependa de ellos sin depender de `persistence`, que contiene las implementaciones (Dexie y memoria). Ambas pasan la misma suite de contrato (`tests/integration/persistence/repositoryContract.ts`).
 
 ### Parámetros de URL

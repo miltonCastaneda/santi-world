@@ -122,15 +122,15 @@
 - **Depende de**: 3. **Paralelizable**: sí, con el incremento 5.
 - **Demo**: en `/padres/` se listan los mundos, se abre uno en el visor, se borra, se restaura y se cambia la duración de la noche.
 
-- [ ] 4.1 Configurar Vite multipágina y el redirect de `/padres` a `/padres/` (ADR-0008), y verificar con un E2E que ambas URLs cargan la vista de padres y no el juego
-- [ ] 4.2 Crear la lista de mundos (miniatura, nombre, fechas y día del juego, ordenados por `updatedAt`, con imagen genérica si no hay miniatura) y verificarlo con un E2E del escenario "Lista con miniaturas"
-- [ ] 4.3 Crear el visor de solo lectura (mesher y atlas con `OrbitControls`, sin `sim` y sin guardar) y verificar con un E2E que `updatedAt` no cambia tras abrir el visor
-- [ ] 4.4 Implementar el borrado con confirmación, la papelera, la restauración y la purga a los 30 días, y verificar con pruebas de integración (`FakeClock`) y un E2E de "borrar con confirmación, cancelar y restaurar"
-- [ ] 4.5 Implementar la configuración por mundo (día y noche de 2 a 30 min, noche tranquila y volúmenes, con los límites aplicados) y verificar con pruebas unitarias de validación de rango
-- [ ] 4.6 Implementar el PIN opcional (hash PBKDF2, bloqueo de 60 s tras 5 fallos, desactivado por defecto; ADR-0012) y verificarlo con pruebas unitarias y un E2E del escenario "PIN activo e incorrecto"
-- [ ] 4.7 Implementar `BroadcastChannel` para refrescar la lista cuando el juego guarda, el uso de almacenamiento (`estimate()`) y exportar o importar un mundo, y verificar con un E2E con dos pestañas
-- [ ] 4.8 Escribir un E2E que confirme que **la UI del niño no tiene ningún enlace ni atajo a `/padres`** (escenario "Sin enlaces desde la UI del niño")
-- [ ] 4.9 Actualizar `docs/guia-padres.md` (cómo entrar, borrar, restaurar, configurar, PIN y restablecerlo), marcar ADR-0008 y ADR-0012 como Aceptados y agregar la entrada al CHANGELOG
+- [x] 4.1 Configurar Vite multipágina y el redirect de `/padres` a `/padres/` (ADR-0008), y verificar con un E2E que ambas URLs cargan la vista de padres y no el juego
+- [x] 4.2 Crear la lista de mundos (miniatura, nombre, fechas y día del juego, ordenados por `updatedAt`, con imagen genérica si no hay miniatura) y verificarlo con un E2E del escenario "Lista con miniaturas"
+- [x] 4.3 Crear el visor de solo lectura (mesher y atlas con `OrbitControls`, sin `sim` y sin guardar) y verificar con un E2E que `updatedAt` no cambia tras abrir el visor
+- [x] 4.4 Implementar el borrado con confirmación, la papelera, la restauración y la purga a los 30 días, y verificar con pruebas de integración (`FakeClock`) y un E2E de "borrar con confirmación, cancelar y restaurar"
+- [x] 4.5 Implementar la configuración por mundo (día y noche de 2 a 30 min, noche tranquila y volúmenes, con los límites aplicados) y verificar con pruebas unitarias de validación de rango
+- [x] 4.6 Implementar el PIN opcional (hash PBKDF2, bloqueo de 60 s tras 5 fallos, desactivado por defecto; ADR-0012) y verificarlo con pruebas unitarias y un E2E del escenario "PIN activo e incorrecto"
+- [x] 4.7 Implementar `BroadcastChannel` para refrescar la lista cuando el juego guarda, el uso de almacenamiento (`estimate()`) y exportar o importar un mundo, y verificar con un E2E con dos pestañas
+- [x] 4.8 Escribir un E2E que confirme que **la UI del niño no tiene ningún enlace ni atajo a `/padres`** (escenario "Sin enlaces desde la UI del niño")
+- [x] 4.9 Actualizar `docs/guia-padres.md` (cómo entrar, borrar, restaurar, configurar, PIN y restablecerlo), marcar ADR-0008 y ADR-0012 como Aceptados y agregar la entrada al CHANGELOG
 
 ## 5. Personaje, cámara en tercera persona, herramientas y servicio de audio
 

@@ -28,12 +28,16 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Panel "Mis Mundos" con tarjetas grandes y miniaturas WebP de 320x180, y botón "Crear nuevo mundo" que guarda primero (si el guardado falla no reemplaza nada y muestra un ícono de aviso).
 - Importación del mundo v1 como "Mi primer mundo" (pradera plana con la construcción en el centro); la clave original se conserva como `minecraf-de-santi-world-v2-backup`.
 - Migraciones de documentos (`migrations[n]` puras) y esquema versionado de IndexedDB.
-- Exportar e importar un mundo a un archivo, papelera y purga en el repositorio (la interfaz llega con la vista de padres).
+- Exportar e importar un mundo a un archivo, papelera y purga en el repositorio.
+- Vista de padres en `/padres/` (incremento 4), una página aparte (Vite multipágina, redirect de `/padres`) sin ningún enlace ni atajo desde el juego del niño: histórico con miniaturas, visor 3D de solo lectura, borrado con confirmación, papelera con restauración y purga a los 30 días, configuración por mundo (día y noche de 2 a 30 min, noche tranquila y volúmenes), exportar e importar, espacio usado y PIN opcional (PBKDF2, bloqueo de 60 s tras 5 fallos).
+- `BroadcastChannel('santi')`: la vista de padres se actualiza cuando el juego guarda, y el juego aplica en caliente la configuración que cambian los padres.
+- `WorldRepository.updateSettings` y `readOnly()` (el visor no tiene métodos que escriban). Guardar desde el juego conserva la configuración y la papelera que pusieron los padres.
 
 ### Cambiado
 - "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.
 - El mundo de 32x32 se reemplaza por el mundo generado (en el incremento 2 no se guardaba; desde el 3 se guarda en IndexedDB).
 - ADR-0002 pasa a "Aceptado".
+- ADR-0008 y ADR-0012 pasan a "Aceptado".
 - Sin sombras dinámicas en el terreno (desaparece el bug de sombras recortadas); `near` 0,1 y `far` 250.
 - ADR-0003 pasa a "Aceptado", con los ajustes de ADR-0013.
 - El código se reorganizó en capas `core`, `domain`, `sim`, `persistence`, `render`, `input`, `ui`, `testing` y `apps` sin cambiar el comportamiento del juego. El punto de entrada ahora es `src/apps/game/main.ts`.

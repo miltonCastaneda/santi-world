@@ -135,6 +135,33 @@ export function describeRepositoryContract(name: string, factory: RepoFactory): 
       await expect(repo.loadWorld(b.id)).rejects.toThrow();
     });
 
+    it("updateSettings cambia la configuración sin tocar updatedAt", async () => {
+      const w = await newWorld("u1");
+      clock.advance(1000);
+      const settings = { ...w.settings, nightMinutes: 5, quietNight: true };
+      const updated = await repo.updateSettings(w.id, settings);
+      expect(updated.settings).toEqual(settings);
+      expect(updated.updatedAt).toBe(w.updatedAt);
+      expect((await repo.loadWorld(w.id)).world.settings).toEqual(settings);
+      await expect(repo.updateSettings("no-existe", settings)).rejects.toThrow();
+    });
+
+    it("[vista-de-padres] Visor mientras el niño juega: el guardado del juego conserva la configuración y la papelera", async () => {
+      const w = await newWorld("u1");
+      const playing = await repo.loadWorld(w.id);
+      await repo.updateSettings(w.id, { ...w.settings, dayMinutes: 3 });
+      await repo.softDelete(w.id);
+      clock.advance(100);
+      await repo.saveSnapshot({ ...playing, world: { ...playing.world, version: 1, updatedAt: clock.now() }, dirtyChunks: [chunkRecord(w.id, 0, 0, 2)] });
+      const all = await repo.listWorlds("u1", { includeDeleted: true });
+      expect(all[0].version).toBe(1);
+      expect(all[0].deletedAt).toBeDefined();
+      expect(all[0].settings.dayMinutes).toBe(3);
+      expect(await repo.listWorlds("u1")).toEqual([]);
+      await repo.restore(w.id);
+      expect((await repo.loadChunk(w.id, 0, 0))?.blocks[0]).toBe(2);
+    });
+
     it("[plataforma-escalable] Exportación preparada para sincronizar: el archivo tiene ids, versión de esquema y marcas", async () => {
       const user = await repo.ensureDefaultUser();
       const w = await newWorld(user.id, "Casa");

@@ -1,6 +1,8 @@
 import type { Clock } from "../../core/clock";
 import { PointerInput } from "../../input/pointerInput";
+import { TRASH_RETENTION_MS } from "../../domain/repository/model";
 import { AutosaveService } from "../../persistence/autosave";
+import { openChannel } from "../../persistence/broadcast";
 import { DexieWorldRepository, SantiDatabase } from "../../persistence/dexieRepository";
 import { errorMessage, recordError } from "../../persistence/errorLog";
 import { importLegacyWorld } from "../../persistence/legacyImport";
@@ -60,7 +62,9 @@ setupDebugOverlay(() => ({
 
 async function boot(): Promise<void> {
   const user = await repo.ensureDefaultUser();
+  await repo.purgeExpired(wallClock.now(), TRASH_RETENTION_MS).catch((error) => logError("vaciar la papelera", error));
   const legacy = await importLegacyWorld({ storage: localStorage, repo, ownerId: user.id, clock: wallClock });
+  const channel = openChannel();
 
   const session = new GameSession(game, user.id, { repo, clock: wallClock, newSeed, camera: () => view.cameraView() });
   session.events.on("worldOpened", ({ state }) => {
@@ -74,7 +78,10 @@ async function boot(): Promise<void> {
       warning.show();
       logError("autoguardado", error);
     },
-    onSaved: () => warning.hide(),
+    onSaved: () => {
+      warning.hide();
+      if (session.world) channel.post({ type: "saved", worldId: session.world.id });
+    },
     onFirstSave: () => void requestPersistentStorage(),
   });
   session.attachSaver(autosave);
@@ -101,6 +108,9 @@ async function boot(): Promise<void> {
     openWorlds: () => void worldsPanel.show(),
   });
   session.events.on("busyChanged", ({ busy }) => hud.setBusy(busy));
+  channel.onMessage((msg) => {
+    if (msg.type === "settingsChanged") void session.reloadSettings(msg.worldId).catch((error) => logError("aplicar la configuración", error));
+  });
 
   try {
     await session.openInitial({ seed: seedParam, worldId: legacy.status === "imported" && !seedParam ? legacy.world.id : undefined });

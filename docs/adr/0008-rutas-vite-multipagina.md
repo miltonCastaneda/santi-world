@@ -1,6 +1,6 @@
 # ADR 0008: Rutas separadas con Vite multipágina ("/" y "/padres/"), sin librería de router
 
-- **Estado**: Propuesto
+- **Estado**: Aceptado (incremento 4)
 - **Fecha**: 2026-10-10
 - **Change relacionado**: `openspec/changes/fase-2-mundo-vivo/` (spec `vista-de-padres`)
 
@@ -25,3 +25,9 @@ Usar **Vite multipágina**: `index.html` (el juego) y `padres/index.html` (los p
 
 - Positivas: el juego del niño no incluye código de los padres; carga independiente; preparado para proteger `/padres/` en el servidor cuando haya modo online.
 - Negativas: hay que configurar el redirect en el hosting futuro (documentado en el README).
+
+## Implementación (incremento 4)
+
+- `vite.config.ts` declara las dos entradas y un plugin (`santi-parents-redirect`) que responde `301 /padres → /padres/` en `vite` y en `vite preview`.
+- ESLint prohíbe que `src/apps/game/**`, `src/ui/kid/**` y `src/ui/hud.ts` importen cualquier módulo `parents`.
+- E2E: `tests/e2e/parents.spec.ts` (las dos URLs cargan la vista de padres y no el juego), `tests/e2e/kid-no-parents.spec.ts` (ningún elemento ni atajo del niño lleva a `/padres/`) y `tests/e2e/parents.prod.spec.ts` (redirect y carga en 2 s o menos en el build, y el bundle del niño no contiene la vista de padres).
