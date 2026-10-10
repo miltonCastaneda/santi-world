@@ -57,7 +57,7 @@
 - [x] 0.2 Crear los scripts `test`, `test:watch`, `e2e`, `check` (`tsc --noEmit` + `eslint`), `perf` (vacío por ahora) y `ci`, y verificar que cada uno se ejecuta
 - [x] 0.3 Configurar ESLint con la regla de capas (`no-restricted-imports`) y `no-restricted-globals` (`Math.random`, `Date.now`, `window` y `document` en `core`, `domain` y `sim`), y verificarlo con un archivo de prueba que viole la regla y haga fallar `npm run check`
 - [x] 0.4 Escribir una prueba unitaria de ejemplo y un smoke E2E del juego v1 (carga sin errores en consola y el canvas no está en blanco), y verificar que `npm test` y `npm run e2e` pasan
-- [ ] 0.5 Crear el workflow de GitHub Actions (`check` + `test` + `e2e` smoke) y verificar que pasa en un push a la rama
+- [x] 0.5 Crear el workflow de GitHub Actions (`check` + `test` + `e2e` smoke) y verificar que pasa en un push a la rama
 - [x] 0.6 Completar `docs/testing.md` (comandos reales y convención de nombres `[capacidad] escenario`) y el README (scripts), agregar la entrada al CHANGELOG, y verificar que los comandos documentados funcionan tal cual
 
 ## 1. Refactor a arquitectura modular y bucle de paso fijo (sin cambiar el comportamiento)
@@ -84,16 +84,16 @@
 - **Depende de**: 1. **Paralelizable**: no (el resto depende de él). Conseguir las texturas CC0 sí puede hacerse en paralelo.
 - **Demo**: recorrer con la cámara orbital un mundo de 256x256 con granja (todavía vacía), montañas, río y estanque.
 
-- [ ] 2.1 Implementar `Chunk` (16x16x64, bitset `placed`, `version`) y `ChunkStore` (lectura y escritura entre chunks) y verificarlo con pruebas unitarias de coordenadas en bordes y de procedencia
-- [ ] 2.2 Implementar el generador por semilla y `generatorVersion`: terreno, río, estanque, granja con cercas y establo, montaña boscosa (con al menos 20 árboles con `TreeId`), montaña de roca (con al menos 10 diamantes con `OreId`) y borde natural. Verificar con pruebas de hash por chunk (*golden values*) y de presencia de las zonas
-- [ ] 2.3 Agregar los bloques nuevos al registro (tablones, hojas, cerca con colisión de 1,5, antorcha con luz, mineral de diamante, arena, nieve y lana) y verificar con pruebas de sus propiedades
-- [ ] 2.4 Implementar `ChunkMesher` (caras visibles entre chunks vecinos, geometría opaca y transparente, AO) y verificar con pruebas unitarias (2 bloques adyacentes no generan caras internas; un bloque en el borde genera las caras correctas en los dos chunks)
-- [ ] 2.5 Implementar la luz por vértice (`skyLight` y `blockLight` con BFS) y el material con `uDaylight` (`onBeforeCompile`), y verificar con una prueba unitaria la propagación de la luz de una antorcha
-- [ ] 2.6 Implementar `TextureAtlas` (márgenes de 2 px, `NearestFilter`, mipmaps por tile) con texturas CC0, y documentar la fuente y la licencia en `docs/assets.md` (nuevo)
-- [ ] 2.7 Cola de remallado con presupuesto de 4 ms por frame, prioridad por distancia y por edición, y carga y descarga con radio 6 e histéresis 8. Verificar con el overlay F3 que nunca hay más de 4 ms de mesher por frame
-- [ ] 2.8 Quitar las sombras dinámicas del terreno (y con ello el bug de sombras recortadas) y configurar `near`/`far`. Verificar con pruebas visuales (`toHaveScreenshot` con semilla fija) que no hay huecos entre chunks, z-fighting ni sangrado, y que el agua no parpadea
-- [ ] 2.9 Implementar el overlay de debug F3 (FPS, tiempo de frame, draw calls, chunks) y el primer `npm run perf` (ruta de cámara fija y semilla `perf-001`), y registrar los resultados en `docs/performance.md`
-- [ ] 2.10 Actualizar `docs/architecture.md`, marcar ADR-0003 como Aceptado y agregar la entrada al CHANGELOG
+- [x] 2.1 Implementar `Chunk` (16x16x64, bitset `placed`, `version`) y `ChunkStore` (lectura y escritura entre chunks) y verificarlo con pruebas unitarias de coordenadas en bordes y de procedencia
+- [x] 2.2 Implementar el generador por semilla y `generatorVersion`: terreno, río, estanque, granja con cercas y establo, montaña boscosa (con al menos 20 árboles con `TreeId`), montaña de roca (con al menos 10 diamantes con `OreId`) y borde natural. Verificar con pruebas de hash por chunk (*golden values*) y de presencia de las zonas
+- [x] 2.3 Agregar los bloques nuevos al registro (tablones, hojas, cerca con colisión de 1,5, antorcha con luz, mineral de diamante, arena, nieve y lana) y verificar con pruebas de sus propiedades
+- [x] 2.4 Implementar `ChunkMesher` (caras visibles entre chunks vecinos, geometría opaca y transparente, AO) y verificar con pruebas unitarias (2 bloques adyacentes no generan caras internas; un bloque en el borde genera las caras correctas en los dos chunks)
+- [x] 2.5 Implementar la luz por vértice (`skyLight` y `blockLight` con BFS) y el material con `uDaylight` (`onBeforeCompile`), y verificar con una prueba unitaria la propagación de la luz de una antorcha
+- [x] 2.6 Implementar `TextureAtlas` (márgenes de 2 px, `NearestFilter`, mipmaps por tile) con texturas CC0, y documentar la fuente y la licencia en `docs/assets.md` (nuevo)
+- [x] 2.7 Cola de remallado con presupuesto de 4 ms por frame, prioridad por distancia y por edición, y carga y descarga con radio 6 e histéresis 8. Verificar con el overlay F3 que nunca hay más de 4 ms de mesher por frame
+- [x] 2.8 Quitar las sombras dinámicas del terreno (y con ello el bug de sombras recortadas) y configurar `near`/`far`. Verificar con pruebas visuales (`toHaveScreenshot` con semilla fija) que no hay huecos entre chunks, z-fighting ni sangrado, y que el agua no parpadea
+- [x] 2.9 Implementar el overlay de debug F3 (FPS, tiempo de frame, draw calls, chunks) y el primer `npm run perf` (ruta de cámara fija y semilla `perf-001`), y registrar los resultados en `docs/performance.md`
+- [x] 2.10 Actualizar `docs/architecture.md`, marcar ADR-0003 como Aceptado y agregar la entrada al CHANGELOG
 
 ## 3. Persistencia con IndexedDB, autoguardado, migración heredada y "Mis Mundos"
 

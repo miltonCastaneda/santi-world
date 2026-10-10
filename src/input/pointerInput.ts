@@ -15,7 +15,6 @@ export class PointerInput {
   constructor(
     canvas: HTMLCanvasElement,
     private camera: THREE.Camera,
-    private toVoxelSpace: (v: THREE.Vector3) => { x: number; y: number; z: number },
     private send: (intent: Intent) => void,
   ) {
     canvas.addEventListener("pointerdown", (event) => {
@@ -46,7 +45,7 @@ export class PointerInput {
   private rayFromNdc(ndc: THREE.Vector2): Ray {
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(ndc, this.camera);
-    const d = raycaster.ray.direction;
-    return { origin: this.toVoxelSpace(raycaster.ray.origin), direction: { x: d.x, y: d.y, z: d.z } };
+    const { origin: o, direction: d } = raycaster.ray;
+    return { origin: { x: o.x, y: o.y, z: o.z }, direction: { x: d.x, y: d.y, z: d.z } };
   }
 }

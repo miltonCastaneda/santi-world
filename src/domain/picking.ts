@@ -9,8 +9,26 @@ export type BlockTarget = {
 };
 
 /**
- * Busca el bloque apuntado por un rayo en coordenadas de bloque, donde el bloque (x, y, z)
- * ocupa el cubo centrado en (x, y, z) de lado 1.
+ * Busca el bloque apuntado en el mundo por chunks, donde el bloque (x, y, z) ocupa
+ * [x, x+1) x [y, y+1) x [z, z+1).
+ */
+export function pickCell(
+  ray: Ray,
+  maxDistance: number,
+  isPickable: (x: number, y: number, z: number) => boolean,
+): BlockTarget | null {
+  const hit = raycastVoxels(ray, maxDistance, isPickable);
+  if (!hit) return null;
+  return {
+    block: hit.cell,
+    adjacent: { x: hit.cell.x + hit.normal.x, y: hit.cell.y + hit.normal.y, z: hit.cell.z + hit.normal.z },
+    distance: hit.distance,
+  };
+}
+
+/**
+ * Busca el bloque apuntado por un rayo en coordenadas de bloque del mundo v1, donde el bloque
+ * (x, y, z) ocupa el cubo centrado en (x, y, z) de lado 1.
  */
 export function pickBlock(
   ray: Ray,

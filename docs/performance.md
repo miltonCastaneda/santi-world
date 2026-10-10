@@ -1,23 +1,31 @@
 # Rendimiento y estabilidad visual
 
-> Esqueleto inicial. El presupuesto oficial está en la [constitution](constitution.md#5-rendimiento-y-estabilidad-visual). Aquí se documentan cómo se mide y los resultados de cada incremento.
+El presupuesto oficial está en la [constitution](constitution.md#presupuesto-de-rendimiento). Aquí se documentan cómo se mide y los resultados de cada incremento.
 
 ## Equipo de referencia
 
 GPU integrada tipo Intel UHD 620, 8 GB de RAM, Chrome estable, 1080p y pantalla completa.
 
-## Cómo se mide (previsto)
+## Cómo se mide
 
-1. **Overlay de debug** (solo en desarrollo, tecla `F3`): FPS, tiempo de frame, draw calls (`renderer.info`), triángulos, chunks cargados, entidades activas y memoria.
-2. **`npm run perf`** (Playwright con el navegador visible y GPU real):
-   - Carga el mundo con la semilla fija `perf-001`.
-   - Recorre una ruta de cámara fija durante 60 s, de día y luego de noche, con el máximo de entidades.
-   - Registra el tiempo de cada frame y reporta el p50, el p95, el p99 y el máximo de draw calls.
-   - Falla si se excede el presupuesto.
-3. **Pruebas visuales**: capturas con semilla y cámara fijas que se comparan contra una imagen de referencia (con tolerancia) para detectar huecos entre chunks, z-fighting y sangrado del atlas.
+1. **Overlay de debug** (solo en desarrollo, tecla `F3`): FPS, tiempo de frame (media y p95), draw calls y triángulos (`renderer.info`), chunks cargados, mallados, pendientes y en vuelo, y el tiempo del mesher en el hilo principal (último y máximo) y en los workers.
+2. **`npm run perf`** (`scripts/perf.mjs`):
+   - Compila con `vite build`, levanta `vite preview` en el puerto 5399 y abre Chromium **con ventana y GPU real** a 1920x1080 en `?perf=1`.
+   - Usa la semilla fija `perf-001`. Espera a que la carga inicial termine (todos los chunks del radio de vista mallados) y luego recorre una ruta de cámara fija durante 60 s: granja, montaña boscosa, montaña de roca, puente, estanque y de vuelta a la granja, orbitando a 40 bloques de distancia.
+   - Reporta el p50, el p95, el p99 y el máximo del tiempo de frame, los draw calls, el tiempo máximo por frame del mesher en el hilo principal, la media del mesher en los workers, la memoria JS y la GPU.
+   - Termina con código 1 si se excede el presupuesto (p95 de 20 ms, menos de 300 draw calls, p99 de 4 ms de mesher por frame y menos de 500 MB de memoria JS).
+   - Sobre el mesher: el mallado y la luz corren en Web Workers ([ADR-0013](adr/0013-mesher-en-web-worker-y-arreglo-de-texturas.md)); en el hilo principal solo se crean las geometrías, y `ChunkRenderer` aplica una nueva únicamente si su costo estimado cabe en lo que queda de los 4 ms. El máximo absoluto se reporta, pero no se usa como criterio: los picos aislados (de 4 a 6 ms) no dependen del tamaño de la malla (una de 275 caras llegó a 2,6 ms y una de 1429, a 4,2 ms) y corresponden a pausas del recolector de basura de V8 que caen dentro de ese tramo.
+   - Opciones: `--ms=30000` (duración), `--headless` (sin ventana; en muchos equipos sin GPU real, solo sirve como humo), `--record --label="incremento N"` (agrega la fila a la tabla de abajo).
+   - De noche y con el máximo de entidades: la ruta se amplía en los incrementos 7 (ciclo día/noche) y 8–13 (entidades).
+3. **Pruebas visuales** (`tests/e2e/visual.spec.ts`): capturas con semilla (`visual-001`) y cámara fijas comparadas con imágenes de referencia en `tests/e2e/__screenshots__/` (tolerancia del 2 %), más comprobaciones exactas:
+   - Ningún píxel del color del cielo al mirar el terreno desde arriba (huecos entre chunks).
+   - Romper y volver a colocar un bloque en el límite entre dos chunks deja la imagen idéntica.
+   - Tres capturas seguidas del estanque son idénticas (el agua no parpadea).
+
+   Para regenerar las referencias después de un cambio visual intencional: `npx playwright test tests/e2e/visual.spec.ts --update-snapshots`, revisar las imágenes y hacer commit.
 
 ## Resultados por incremento
 
-| Incremento | Fecha | p50 ms | p95 ms | Draw calls máx. | Notas |
-|---|---|---|---|---|---|
-| (pendiente) | | | | | |
+| Incremento | Fecha | p50 ms | p95 ms | Draw calls máx. | Mesher p99 / máx. ms por frame | Carga ms | GPU |
+|---|---|---|---|---|---|---|---|
+| incremento 2 (equipo de desarrollo) | 2026-10-10 | 16.6 | 17.1 | 149 | 0.9 / 6.8 | 4438 | ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11) |

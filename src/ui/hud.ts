@@ -1,4 +1,4 @@
-import { BLOCKS, BLOCK_IDS, type BlockId } from "../domain/blocks";
+import { BLOCKS, BUILDABLE_IDS, type BlockId } from "../domain/blocks";
 import type { Game, InteractionMode } from "../sim/game";
 
 /** HUD v1: paleta de bloques, modos, deshacer, empezar de nuevo y pantalla completa. */
@@ -14,7 +14,7 @@ export function setupHud(game: Game): void {
     throw new Error("Faltan elementos de la interfaz");
   }
 
-  for (const id of BLOCK_IDS) {
+  for (const id of BUILDABLE_IDS) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "block-btn";

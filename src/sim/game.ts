@@ -3,8 +3,8 @@ import { EventBus } from "../core/events";
 import type { Ray, Vec3 } from "../core/math";
 import { Rng } from "../core/rng";
 import type { BlockId } from "../domain/blocks";
-import { pickBlock } from "../domain/picking";
-import { VoxelWorld } from "../domain/world/voxelWorld";
+import { pickCell } from "../domain/picking";
+import { TerrainWorld } from "../domain/world/terrainWorld";
 import { FixedStepLoop, STEP_MS } from "./loop";
 
 export type InteractionMode = "place" | "remove";
@@ -19,8 +19,9 @@ export type Intent =
   | { type: "selectBlock"; block: BlockId };
 
 export type GameEvents = {
-  /** pos = null significa que cambió todo el mundo. */
-  blockChanged: { pos: Vec3 | null };
+  blockChanged: { pos: Vec3 };
+  /** El mundo se reemplazó por completo (por ejemplo, al empezar de nuevo). */
+  worldReplaced: { world: TerrainWorld };
   selectionChanged: Selection;
 };
 
@@ -30,15 +31,17 @@ export const PICK_DISTANCE = 200;
 export class Game {
   readonly events = new EventBus<GameEvents>();
   readonly rng: Rng;
-  world: VoxelWorld;
+  readonly seed: string;
+  world: TerrainWorld;
   selection: Selection = { mode: "place", block: "grass" };
   tick = 0;
   timeMs = 0;
   private intents: Intent[] = [];
 
-  constructor(options: { seed?: string | number; world?: VoxelWorld } = {}) {
-    this.rng = new Rng(options.seed ?? "santi");
-    this.world = options.world ?? new VoxelWorld();
+  constructor(options: { seed?: string; world?: TerrainWorld } = {}) {
+    this.seed = options.world?.seed ?? options.seed ?? "santi";
+    this.rng = new Rng(this.seed);
+    this.world = options.world ?? TerrainWorld.create(this.seed);
   }
 
   /** Las intenciones se aplican al inicio del siguiente paso de simulación. */
@@ -59,14 +62,12 @@ export class Game {
       case "use":
         this.use(intent.ray, intent.forceRemove ?? false);
         break;
-      case "undo": {
-        const pos = this.world.undo();
-        if (pos) this.events.emit("blockChanged", { pos });
+      case "undo":
+        this.changed(this.world.undo(this.timeMs));
         break;
-      }
       case "reset":
-        this.world.reset();
-        this.events.emit("blockChanged", { pos: null });
+        this.world = TerrainWorld.create(this.seed);
+        this.events.emit("worldReplaced", { world: this.world });
         break;
       case "setMode":
         this.selection = { ...this.selection, mode: intent.mode };
@@ -80,15 +81,19 @@ export class Game {
   }
 
   private use(ray: Ray, forceRemove: boolean): void {
-    const target = pickBlock(ray, PICK_DISTANCE, (x, y, z) => this.world.has(x, y, z));
+    const target = pickCell(ray, PICK_DISTANCE, (x, y, z) => this.world.isPickable(x, y, z));
     if (!target) return;
     if (forceRemove || this.selection.mode === "remove") {
       const { x, y, z } = target.block;
-      if (this.world.remove(x, y, z)) this.events.emit("blockChanged", { pos: target.block });
+      this.changed(this.world.remove(x, y, z, this.timeMs));
       return;
     }
     const { x, y, z } = target.adjacent;
-    if (this.world.place(x, y, z, this.selection.block)) this.events.emit("blockChanged", { pos: target.adjacent });
+    this.changed(this.world.place(x, y, z, this.selection.block, this.timeMs));
+  }
+
+  private changed(pos: Vec3 | null): void {
+    if (pos) this.events.emit("blockChanged", { pos });
   }
 }
 
@@ -102,8 +107,8 @@ export type HeadlessGame = {
 
 /** Juego completo sin render ni DOM, para pruebas y simulaciones. */
 export function createHeadlessGame(options: {
-  seed?: string | number;
-  world?: VoxelWorld;
+  seed?: string;
+  world?: TerrainWorld;
   clock: Clock & { advance(ms: number): void };
 }): HeadlessGame {
   const game = new Game(options);

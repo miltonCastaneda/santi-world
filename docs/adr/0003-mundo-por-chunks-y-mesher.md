@@ -1,6 +1,6 @@
 # ADR 0003: Mundo por chunks de 16x16x64 con mesher de caras visibles, luz por vértice y atlas
 
-- **Estado**: Propuesto
+- **Estado**: Aceptado (incremento 2), con los ajustes de [ADR-0013](0013-mesher-en-web-worker-y-arreglo-de-texturas.md): la luz y el mesher corren en un Web Worker, las texturas son un `DataArrayTexture` (una capa por tile, sin margen) en lugar del atlas 2D y el material base es `MeshBasicMaterial`. La persistencia de los chunks modificados llega en el incremento 3.
 - **Fecha**: 2026-10-10
 - **Change relacionado**: `openspec/changes/fase-2-mundo-vivo/` (specs `mundos-y-persistencia` y `rendimiento-y-estabilidad-visual`)
 

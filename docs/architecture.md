@@ -2,32 +2,50 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 1)
+## Estado actual (Fase 2, incremento 2)
 
-El juego v1 funciona igual que antes, pero ya está repartido en capas con un bucle de simulación de paso fijo.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Todavía se juega con la cámara orbital de v1 y **el mundo no se guarda** (decisión del incremento 2; ver el Migration Plan del design): el mundo v1 de `localStorage` queda intacto hasta que el incremento 3 lo importe.
 
 ```
-index.html --> src/apps/game/main.ts   (raíz de composición: crea Game, bucle, render, input y HUD)
+index.html --> src/apps/game/main.ts   (raíz de composición: Game, bucle, render, input, HUD, F3, ruta de perf)
 src/
-  core/         rng.ts (mulberry32 con semilla), clock.ts (Clock, FakeClock), events.ts (EventBus),
-                math.ts (Vec3, Aabb, rayo vs AABB, DDA de vóxeles)                       (puro)
-  domain/       blocks.ts (catálogo), world/voxelWorld.ts (reglas de poner/quitar/deshacer),
-                picking.ts (bloque apuntado y celda adyacente con DDA)                    (puro)
-  sim/          loop.ts (FixedStepLoop, 20 Hz, máx. 5 pasos por frame, pausa),
-                game.ts (Game: cola de intents, eventos, createHeadlessGame)              (puro)
-  persistence/  legacyLocalStorage.ts (mundo v1 en localStorage)
-  render/       renderApp.ts (escena, cámara orbital, luces), worldMesh.ts (InstancedMesh por tipo)
+  core/         rng.ts, clock.ts, events.ts, math.ts (Vec3, Aabb, rayos, DDA de vóxeles),
+                noise.ts (value noise y fbm con semilla)                                    (puro)
+  domain/       blocks.ts (16 bloques: forma, sólido, opaco, luz, tiles), picking.ts (pickCell),
+                world/chunk.ts (Chunk 16x16x64: Uint8Array + bitset "placed" + versión),
+                world/chunkStore.ts (lectura/escritura entre chunks, generación bajo demanda, sucios),
+                world/light.ts (luz de cielo y de antorchas por BFS, con margen de 14 bloques),
+                world/terrainWorld.ts (reglas de poner/quitar/deshacer sobre el ChunkStore),
+                worldgen/layout.ts y generator.ts (zonas y chunks por semilla, GENERATOR_VERSION)  (puro)
+  sim/          loop.ts (FixedStepLoop, 20 Hz), game.ts (intents, eventos, createHeadlessGame)   (puro)
+  persistence/  legacyLocalStorage.ts (mundo v1; se usa en el incremento 3)
+  render/       renderApp.ts (escena, cámara orbital, sin sombras, near 0,1 / far 250),
+                chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
+                meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
+                tiles.ts y textures.ts (tiles procedurales de 16 px), blockMaterial.ts
+                (DataArrayTexture + MeshBasicMaterial con uDaylight), sky.ts (cielo y niebla)
   input/        pointerInput.ts (toque/clic a intents "use"; arrastre = cámara)
-  ui/           hud.ts (paleta, modos, deshacer, reset, pantalla completa), style.css
+  ui/           hud.ts (paleta de bloques construibles), debugOverlay.ts (F3), style.css
   testing/      testApi.ts (window.__santi, solo en desarrollo con ?test=1)
 ```
 
 ### Flujo de un clic
 
-1. `input/` convierte el clic en un rayo en coordenadas de bloque y envía `{ type: "use", ray }`.
+1. `input/` convierte el clic en un rayo en coordenadas de vóxel y envía `{ type: "use", ray }`.
 2. `Game` aplica los intents al inicio del siguiente paso (como mucho 50 ms después).
-3. `domain/picking` encuentra el bloque y `VoxelWorld` aplica las reglas.
-4. `Game` emite `blockChanged`; `apps/game` reconstruye la malla y guarda.
+3. `pickCell` recorre la grilla con DDA (el agua natural no se puede apuntar) y `TerrainWorld` aplica las reglas en el `ChunkStore`, que marca el chunk como sucio.
+4. `Game` emite `blockChanged`; `ChunkRenderer.invalidateBlock` pone primero el chunk editado, luego los vecinos del borde y luego los que alcanza la luz.
+5. El worker recibe los chunks sucios de los 3x3 alrededor, regenera el resto con la semilla, calcula la luz y la malla y devuelve arreglos tipados. El hilo principal crea la geometría nueva antes de quitar la vieja (nunca hay un frame con hueco).
+
+### Parámetros de URL
+
+| Parámetro | Efecto |
+|---|---|
+| `?seed=` | Semilla del mundo (por defecto `santi`; `perf-001` con `?perf`) |
+| `?view=` | Radio de vista en chunks, de 2 a 8 (por defecto 6) |
+| `?workers=` | Cantidad de workers del mesher, de 0 a 4 (por defecto 1; 0 usa la ruta síncrona) |
+| `?perf=1&perfMs=` | Ruta de cámara de `npm run perf` |
+| `?test=1` | Instala `window.__santi` (solo en desarrollo) |
 
 La simulación nunca lee el reloj del navegador: el bucle recibe el tiempo desde `requestAnimationFrame` y la pausa al ocultar la pestaña. Con `createHeadlessGame({ seed, clock })` el juego completo corre en Node para las pruebas.
 

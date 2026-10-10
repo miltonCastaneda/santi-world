@@ -36,10 +36,12 @@ describe("[plataforma-escalable] bucle de paso fijo", () => {
     const run = (fps: number) => {
       const h = createHeadlessGame({ seed: "det", clock: new FakeClock() });
       h.game.enqueue({ type: "selectBlock", block: "red" });
-      h.game.enqueue({ type: "use", ray: { origin: { x: 10, y: 10, z: 10 }, direction: { x: 0, y: -1, z: 0 } } });
-      h.game.enqueue({ type: "use", ray: { origin: { x: 3, y: 10, z: 20 }, direction: { x: 0.1, y: -1, z: 0 } } });
+      h.game.enqueue({ type: "use", ray: { origin: { x: 120.5, y: 40, z: 130.5 }, direction: { x: 0, y: -1, z: 0 } } });
+      h.game.enqueue({ type: "use", ray: { origin: { x: 123.5, y: 40, z: 140.5 }, direction: { x: 0.1, y: -1, z: 0 } } });
+      h.game.enqueue({ type: "use", ray: { origin: { x: 123.5, y: 40, z: 140.5 }, direction: { x: 0.1, y: -1, z: 0 } }, forceRemove: true });
       h.advance(5 * 60_000, 1000 / fps);
-      return { tick: h.game.tick, blocks: h.game.world.entries().sort() };
+      const dirty = h.game.world.store.dirtyChunks().map((c) => [c.key, Array.from(c.blocks).join("")]);
+      return { tick: h.game.tick, dirty };
     };
     expect(run(30)).toEqual(run(144));
   });

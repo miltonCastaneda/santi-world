@@ -16,10 +16,14 @@ export default defineConfig({
   testDir: "tests/e2e",
   // WebGL por software (SwiftShader) satura la CPU: un navegador a la vez.
   workers: 1,
-  timeout: 60_000,
+  timeout: 120_000,
+  expect: { timeout: 30_000 },
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
+  // Las imágenes de referencia no dependen del sistema operativo: el WebGL por software (SwiftShader)
+  // dibuja igual en Windows y en Linux, con la tolerancia de cada prueba.
+  snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{arg}{ext}",
   use: {
     trace: "retain-on-failure",
   },
