@@ -18,14 +18,18 @@ describe("[plataforma-escalable] Rng con semilla", () => {
 
   it("next está en [0, 1) e int respeta sus límites", () => {
     const rng = new Rng(42);
+    let [minV, maxV, minN, maxN] = [Infinity, -Infinity, Infinity, -Infinity];
     for (let i = 0; i < 10_000; i++) {
       const v = rng.next();
-      expect(v).toBeGreaterThanOrEqual(0);
-      expect(v).toBeLessThan(1);
       const n = rng.int(3, 7);
-      expect(n).toBeGreaterThanOrEqual(3);
-      expect(n).toBeLessThanOrEqual(7);
+      minV = Math.min(minV, v);
+      maxV = Math.max(maxV, v);
+      minN = Math.min(minN, n);
+      maxN = Math.max(maxN, n);
     }
+    expect(minV).toBeGreaterThanOrEqual(0);
+    expect(maxV).toBeLessThan(1);
+    expect([minN, maxN]).toEqual([3, 7]);
   });
 
   it("guardar y restaurar el estado reproduce la continuación exacta", () => {

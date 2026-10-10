@@ -40,7 +40,7 @@ describe("[mundos-y-persistencia] generador del mundo", () => {
 
   describe.each(["santi", "perf-001", "abc", "12345"])("[mundos-y-persistencia] Zonas presentes (semilla %s)", (seed) => {
     const { store, generator } = createWorldStore(seed);
-    const { layout } = generator;
+    const layout = generator.layout!;
 
     it("granja cercada y con establo", () => {
       const { farm } = layout;

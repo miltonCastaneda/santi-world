@@ -1,6 +1,6 @@
 import type { Vec3 } from "../../core/math";
 import { BLOCK_NUM, type BlockId } from "../blocks";
-import { createWorldStore } from "../worldgen/generator";
+import { createWorldStore, type GeneratorKind, type WorldGenSpec } from "../worldgen/generator";
 import type { WorldLayout } from "../worldgen/layout";
 import type { BlockChange, ChunkStore } from "./chunkStore";
 
@@ -11,14 +11,19 @@ export class TerrainWorld {
   private history: BlockChange[] = [];
 
   constructor(
-    readonly seed: string,
+    readonly gen: WorldGenSpec,
     readonly store: ChunkStore,
-    readonly layout: WorldLayout,
+    readonly layout: WorldLayout | null,
+    readonly spawn: Vec3,
   ) {}
 
-  static create(seed: string): TerrainWorld {
-    const { store, generator } = createWorldStore(seed);
-    return new TerrainWorld(seed, store, generator.layout);
+  static create(seed: string, generator: GeneratorKind = "zones"): TerrainWorld {
+    const { store, generator: g } = createWorldStore(seed, generator);
+    return new TerrainWorld({ seed, generator }, store, g.layout, g.spawn);
+  }
+
+  get seed(): string {
+    return this.gen.seed;
   }
 
   /** El agua natural no se apunta: el rayo la atraviesa hasta el fondo. */

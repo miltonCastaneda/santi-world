@@ -5,7 +5,7 @@ import { TerrainWorld } from "../../../src/domain/world/terrainWorld";
 import { BASE_Y, riverCenterX, WATER_Y } from "../../../src/domain/worldgen/layout";
 
 describe("[personaje-y-herramientas] reglas de construcción en el mundo por chunks", () => {
-  const farmCell = (w: TerrainWorld) => ({ x: w.layout.farm.x0 + 5, z: w.layout.farm.z0 + 5 });
+  const farmCell = (w: TerrainWorld) => ({ x: w.layout!.farm.x0 + 5, z: w.layout!.farm.z0 + 5 });
 
   it("poner, quitar y deshacer en orden inverso, conservando la procedencia", () => {
     const w = TerrainWorld.create("reglas");
@@ -35,7 +35,7 @@ describe("[personaje-y-herramientas] reglas de construcción en el mundo por chu
   it("el rayo atraviesa el agua natural y se puede construir dentro del agua", () => {
     const w = TerrainWorld.create("reglas");
     const z = 60;
-    const x = Math.round(riverCenterX(w.layout.river, z));
+    const x = Math.round(riverCenterX(w.layout!.river, z));
     expect(w.store.get(x, WATER_Y, z)).toBe(BLOCK_NUM.water);
     const hit = pickCell({ origin: { x: x + 0.5, y: 30, z: z + 0.5 }, direction: { x: 0, y: -1, z: 0 } }, 100, (a, b, c) => w.isPickable(a, b, c));
     expect(hit).not.toBeNull();

@@ -15,6 +15,7 @@
     "ci": "npm run check && npm test && npm run e2e"
   },
   "dependencies": {
+    "dexie": "^4.4.6",
     "three": "^0.170.0"
   },
   "devDependencies": {

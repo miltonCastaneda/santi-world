@@ -54,9 +54,27 @@ describe("[mundos-y-persistencia] chunks", () => {
     expect(c.version).toBe(1);
     expect(c.updatedAt).toBe(1234);
     expect(store.dirtyChunks().map((d) => d.key)).toEqual(["1,1"]);
-    expect(store.unload(1, 1)).toBe(false);
+    expect(store.isModified(1, 1)).toBe(true);
+  });
+
+  it("[mundos-y-persistencia] un chunk modificado nunca se descarga, aunque ya esté guardado", () => {
+    const store = emptyStore();
+    store.chunk(2, 2);
+    expect(store.unload(2, 2)).toBe(true);
+    store.set(20, 2, 20, BLOCK_NUM.dirt, true);
     store.markClean(["1,1"]);
-    expect(store.unload(1, 1)).toBe(true);
+    expect(store.unload(1, 1)).toBe(false);
+    expect(store.get(20, 2, 20)).toBe(BLOCK_NUM.dirt);
+  });
+
+  it("[mundos-y-persistencia] markSaved solo limpia los chunks que no cambiaron durante el guardado", () => {
+    const store = emptyStore();
+    store.set(20, 2, 20, BLOCK_NUM.dirt, true);
+    store.set(40, 2, 40, BLOCK_NUM.dirt, true);
+    const copied = store.dirtyChunks().map((c) => ({ cx: c.cx, cz: c.cz, version: c.version }));
+    store.set(41, 2, 40, BLOCK_NUM.dirt, true);
+    store.markSaved(copied);
+    expect(store.dirtyChunks().map((c) => c.key)).toEqual(["2,2"]);
   });
 
   it("un cambio en el borde afecta también al chunk vecino", () => {

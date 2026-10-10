@@ -17,7 +17,8 @@ export function worldToChunk(x: number, z: number): { cx: number; cz: number; lx
 
 /**
  * Mundo finito de sizeInChunks x sizeInChunks chunks. Los chunks se crean bajo demanda con el
- * generador; los que modificó el jugador se marcan como sucios para guardarlos.
+ * generador. Los "modificados" difieren de lo que daría la semilla (no se descargan nunca, porque
+ * regenerarlos perdería los cambios); los "sucios" además tienen cambios sin guardar.
  */
 export class ChunkStore {
   readonly sizeInChunks: number;
@@ -25,6 +26,7 @@ export class ChunkStore {
   readonly height = CHUNK_HEIGHT;
   private chunks = new Map<string, Chunk>();
   private dirty = new Set<string>();
+  private modified = new Set<string>();
 
   constructor(private readonly options: { sizeInChunks: number; generate: ChunkGenerator }) {
     this.sizeInChunks = options.sizeInChunks;
@@ -60,15 +62,16 @@ export class ChunkStore {
     return this.chunks.has(chunkKey(cx, cz));
   }
 
-  /** Reemplaza un chunk (por ejemplo, uno cargado de la base de datos). */
-  put(chunk: Chunk): void {
+  /** Reemplaza un chunk. `modified` indica que difiere del generador (por ejemplo, uno cargado de la base de datos). */
+  put(chunk: Chunk, modified = false): void {
     this.chunks.set(chunk.key, chunk);
+    if (modified) this.modified.add(chunk.key);
   }
 
-  /** Libera un chunk que no está sucio. Los sucios se conservan hasta guardarlos. */
+  /** Libera un chunk que se puede regenerar con la semilla. Los modificados se conservan siempre. */
   unload(cx: number, cz: number): boolean {
     const key = chunkKey(cx, cz);
-    if (this.dirty.has(key)) return false;
+    if (this.modified.has(key)) return false;
     return this.chunks.delete(key);
   }
 
@@ -98,6 +101,7 @@ export class ChunkStore {
     const wasPlaced = c.isPlaced(lx, y, lz);
     c.set(lx, y, lz, num, placed, now);
     this.dirty.add(c.key);
+    this.modified.add(c.key);
     return { x, y, z, before, after: num, wasPlaced };
   }
 
@@ -122,6 +126,22 @@ export class ChunkStore {
 
   markClean(keys: Iterable<string>): void {
     for (const k of keys) this.dirty.delete(k);
+  }
+
+  /** Confirma un guardado: limpia solo los chunks que no cambiaron desde que se copiaron. */
+  markSaved(saved: Iterable<{ cx: number; cz: number; version: number }>): void {
+    for (const s of saved) {
+      const c = this.chunks.get(chunkKey(s.cx, s.cz));
+      if (c && c.version === s.version) this.dirty.delete(c.key);
+    }
+  }
+
+  isModified(cx: number, cz: number): boolean {
+    return this.modified.has(chunkKey(cx, cz));
+  }
+
+  modifiedChunks(): Chunk[] {
+    return [...this.modified].map((k) => this.chunks.get(k)).filter((c): c is Chunk => !!c);
   }
 
   /** Altura del bloque más alto que no es aire en la columna (o -1). */

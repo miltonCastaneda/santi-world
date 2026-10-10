@@ -2,11 +2,15 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CHUNK_SIZE } from "../domain/world/chunk";
 import type { ChunkStore } from "../domain/world/chunkStore";
+import type { WorldGenSpec } from "../domain/worldgen/generator";
 import { createBlockMaterials, type BlockMaterials } from "./blockMaterial";
 import { ChunkRenderer } from "./chunkRenderer";
 import { Sky } from "./sky";
 
 export type RenderAppOptions = { viewRadius?: number; workers?: number };
+
+const THUMB_W = 320;
+const THUMB_H = 180;
 
 /**
  * Escena, cámara y renderer del juego. La cámara orbital es provisional hasta el incremento 5.
@@ -25,7 +29,7 @@ export class RenderApp {
   constructor(
     readonly canvas: HTMLCanvasElement,
     store: ChunkStore,
-    seed: string,
+    gen: WorldGenSpec,
     focus: { x: number; y: number; z: number },
     options: RenderAppOptions = {},
   ) {
@@ -56,7 +60,7 @@ export class RenderApp {
 
     this.materials = createBlockMaterials();
     this.sky = new Sky(this.scene, this.materials, viewDistance);
-    this.chunks = new ChunkRenderer(store, seed, this.materials, { viewRadius, workers: options.workers ?? 1 });
+    this.chunks = new ChunkRenderer(store, gen, this.materials, { viewRadius, workers: options.workers ?? 1 });
     this.scene.add(this.chunks.group);
 
     window.addEventListener("resize", () => this.resize());
@@ -68,11 +72,42 @@ export class RenderApp {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  /** Coloca la cámara (para pruebas visuales y la ruta de rendimiento). */
+  /** Coloca la cámara (al abrir un mundo, en pruebas visuales y en la ruta de rendimiento). */
   setView(position: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }): void {
     this.camera.position.set(position.x, position.y, position.z);
     this.controls.target.set(target.x, target.y, target.z);
     this.controls.update();
+  }
+
+  /** Vista inicial de un mundo sin cámara guardada: desde arriba y en diagonal hacia el punto de aparición. */
+  setSpawnView(spawn: { x: number; y: number; z: number }): void {
+    this.setView({ x: spawn.x + 22, y: spawn.y + 20, z: spawn.z + 26 }, spawn);
+  }
+
+  cameraView(): { position: { x: number; y: number; z: number }; target: { x: number; y: number; z: number } } {
+    const { x, y, z } = this.camera.position;
+    const t = this.controls.target;
+    return { position: { x, y, z }, target: { x: t.x, y: t.y, z: t.z } };
+  }
+
+  /** Miniatura del mundo (WebP de 320x180, recortada al centro) tal como se ve ahora. */
+  thumbnail(): Promise<Blob | null> {
+    this.renderer.render(this.scene, this.camera);
+    const out = document.createElement("canvas");
+    out.width = THUMB_W;
+    out.height = THUMB_H;
+    const ctx = out.getContext("2d");
+    if (!ctx) return Promise.resolve(null);
+    const src = this.canvas;
+    let sw = src.width;
+    let sh = (src.width * THUMB_H) / THUMB_W;
+    if (sh > src.height) {
+      sh = src.height;
+      sw = (sh * THUMB_W) / THUMB_H;
+    }
+    // Se copia en la misma tarea que el render: después el navegador puede limpiar el buffer de WebGL.
+    ctx.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, 0, 0, THUMB_W, THUMB_H);
+    return new Promise((resolve) => out.toBlob((b) => resolve(b), "image/webp", 0.8));
   }
 
   render(): void {

@@ -6,18 +6,60 @@ import { BASE_Y, columnAt, createLayout, riverCenterX, WORLD_CHUNKS, type WorldL
 
 type Voxel = { x: number; y: number; z: number; num: number; onlyIfAir: boolean };
 
+/** "zones": mundo con zonas de la Fase 2. "legacy-flat": pradera plana para el mundo importado de v1. */
+export type GeneratorKind = "zones" | "legacy-flat";
+
+/** Lo necesario para regenerar cualquier chunk no modificado de un mundo. */
+export type WorldGenSpec = { seed: string; generator: GeneratorKind };
+
 export type WorldGenerator = {
-  layout: WorldLayout;
+  kind: GeneratorKind;
+  /** Zonas del mundo (null en la pradera plana). */
+  layout: WorldLayout | null;
+  /** Punto donde empieza la cámara (y el personaje, desde el incremento 5). */
+  spawn: { x: number; y: number; z: number };
   generate(cx: number, cz: number): Chunk;
 };
 
+/** Superficie de la pradera plana y desplazamiento del mundo v1 (32x32) importado en su centro. */
+export const FLAT_TOP_Y = BASE_Y;
+export const LEGACY_OFFSET = { x: (WORLD_CHUNKS * CHUNK_SIZE - 32) / 2, y: FLAT_TOP_Y + 1, z: (WORLD_CHUNKS * CHUNK_SIZE - 32) / 2 };
+
 /** Generador determinista: la misma semilla produce los mismos bloques en cualquier orden de carga. */
-export function createGenerator(seed: string | number): WorldGenerator {
+export function createGenerator(seed: string | number, kind: GeneratorKind = "zones"): WorldGenerator {
+  return kind === "legacy-flat" ? createFlatGenerator() : createZonesGenerator(seed);
+}
+
+function createFlatGenerator(): WorldGenerator {
+  const center = (WORLD_CHUNKS * CHUNK_SIZE) / 2;
+  return {
+    kind: "legacy-flat",
+    layout: null,
+    spawn: { x: center, y: FLAT_TOP_Y, z: center },
+    generate(cx, cz) {
+      const chunk = new Chunk(cx, cz);
+      for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+        for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+          for (let y = 0; y <= FLAT_TOP_Y; y++) {
+            const num = y === FLAT_TOP_Y ? BLOCK_NUM.grass : y >= FLAT_TOP_Y - 3 ? BLOCK_NUM.dirt : BLOCK_NUM.stone;
+            chunk.setGenerated(lx, y, lz, num);
+          }
+        }
+      }
+      return chunk;
+    },
+  };
+}
+
+function createZonesGenerator(seed: string | number): WorldGenerator {
   const layout = createLayout(seed);
   const features = bucketByChunk(featureVoxels(layout));
+  const { farm } = layout;
 
   return {
+    kind: "zones",
     layout,
+    spawn: { x: (farm.x0 + farm.x1) / 2, y: BASE_Y, z: (farm.z0 + farm.z1) / 2 },
     generate(cx, cz) {
       const chunk = new Chunk(cx, cz);
       const ox = cx * CHUNK_SIZE;
@@ -46,8 +88,8 @@ export function createGenerator(seed: string | number): WorldGenerator {
   };
 }
 
-export function createWorldStore(seed: string | number): { store: ChunkStore; generator: WorldGenerator } {
-  const generator = createGenerator(seed);
+export function createWorldStore(seed: string | number, kind: GeneratorKind = "zones"): { store: ChunkStore; generator: WorldGenerator } {
+  const generator = createGenerator(seed, kind);
   return { store: new ChunkStore({ sizeInChunks: WORLD_CHUNKS, generate: generator.generate }), generator };
 }
 

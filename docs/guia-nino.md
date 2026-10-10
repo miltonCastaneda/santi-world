@@ -9,6 +9,13 @@
 - **La flecha hacia atrás** deshace lo último que hiciste.
 - **Para mirar alrededor**, arrastra con el mouse.
 
+## Tus mundos
+
+- **El botón con el mundo 🌍** abre **"Mis Mundos"**: ahí están todos tus mundos, cada uno con su foto. Toca uno para volver a jugar en él, tal como lo dejaste.
+- **El botón ＋** crea un **mundo nuevo**. ¡Tranquilo! El mundo que tenías se guarda solo y lo encuentras en "Mis Mundos".
+- Tu primer mundo, el de antes, se llama **"Mi primer mundo"**.
+- Si ves el dibujo **⚠️💾**, avísale a papá o a mamá.
+
 ## Pronto (Fase 2)
 
 - Tendrás un **personaje** con una "S" en la camiseta que camina con las flechas.

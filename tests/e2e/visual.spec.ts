@@ -28,7 +28,7 @@ test.describe("[rendimiento-y-estabilidad-visual] estabilidad visual", () => {
 
   test("[rendimiento-y-estabilidad-visual] Comparación visual: la granja con semilla y cámara fijas", async ({ page }) => {
     await page.evaluate(() => {
-      const { farm, barn } = window.__santi!.layout();
+      const { farm, barn } = window.__santi!.layout()!;
       const t = { x: barn.x0 - 4, y: 11, z: barn.z1 + 3 };
       window.__santi!.setView({ x: t.x - 14, y: 22, z: t.z + 16 }, t);
       void farm;
@@ -43,7 +43,7 @@ test.describe("[rendimiento-y-estabilidad-visual] estabilidad visual", () => {
   test("[rendimiento-y-estabilidad-visual] Borde entre regiones: romper y volver a colocar en el límite", async ({ page }) => {
     // x = 128 es el límite entre los chunks 7 y 8.
     const spot = await page.evaluate(() => {
-      const z = window.__santi!.layout().farm.z0 + 6;
+      const z = window.__santi!.layout()!.farm.z0 + 6;
       const y = window.__santi!.surfaceY(128, z) + 1;
       window.__santi!.setBlock(128, y, z, "stone");
       window.__santi!.setBlock(127, y, z, "stone");
@@ -64,7 +64,7 @@ test.describe("[rendimiento-y-estabilidad-visual] estabilidad visual", () => {
 
   test("[rendimiento-y-estabilidad-visual] Agua y transparencias: el agua no parpadea", async ({ page }) => {
     await page.evaluate(() => {
-      const { pond } = window.__santi!.layout();
+      const { pond } = window.__santi!.layout()!;
       window.__santi!.setView({ x: pond.x - 10, y: 18, z: pond.z + 12 }, { x: pond.x, y: 9, z: pond.z });
     });
     await settle(page);

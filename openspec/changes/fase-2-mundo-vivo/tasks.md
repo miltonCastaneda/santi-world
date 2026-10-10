@@ -103,16 +103,16 @@
 - **Depende de**: 2. **Paralelizable**: no.
 - **Demo**: crear 3 mundos, cambiar entre ellos, cerrar el navegador y recuperarlos. "Mi primer mundo" contiene la construcción v1.
 
-- [ ] 3.1 Instalar `dexie` (ADR-0002), definir `WorldRepository` y una suite de pruebas de contrato compartida, e implementar `InMemoryWorldRepository`. Verificar que la suite pasa contra memoria
-- [ ] 3.2 Implementar `DexieWorldRepository` (tablas del design D4; `saveSnapshot` en una sola transacción) y verificar que la misma suite de contrato pasa con `fake-indexeddb`
-- [ ] 3.3 Implementar el usuario por defecto con UUID y las marcas `version` y `updatedAt` en el mundo, los chunks y el estado, y verificarlo con una prueba (escenario "Usuario por defecto")
-- [ ] 3.4 Implementar la persistencia de **solo los chunks modificados** (los demás se regeneran con la semilla) y verificar con una prueba que se recarga idéntico tras editar 3 chunks
-- [ ] 3.5 Implementar `AutosaveService` (cada 30 s, `visibilitychange`, `pagehide` y `blur`, vuelo único) y verificar con pruebas de integración y `FakeClock` los escenarios "Autoguardado periódico", "Cerrar la pestaña" y "El guardado no congela el juego"
-- [ ] 3.6 Implementar `GameSession.switchWorld()` y `createWorld()` con "guardar antes de limpiar" y que un guardado fallido aborte la operación, y verificar con pruebas de integración los escenarios "Crear un mundo nuevo guarda primero", "Falla el guardado previo" y "Clics repetidos"
-- [ ] 3.7 Implementar las migraciones (`db.version(n).upgrade` y `migrations[n]` puras) y la importación heredada `legacyImport` (de `localStorage` v2 a "Mi primer mundo", con los bloques `placed` y la clave renombrada a `-backup`). Verificar con un fixture real de v1 los escenarios "Migración del mundo heredado" y "Migración fallida"
-- [ ] 3.8 Generar miniaturas (WebP de 320x180 al guardar) y crear el panel "Mis Mundos" del niño (tarjetas grandes, "Crear nuevo mundo" y sin borrar), y verificar con un E2E "construir, guardar, recargar y recuperar" y "crear un mundo nuevo y comprobar que el anterior se guardó"
-- [ ] 3.9 Reemplazar "Empezar de nuevo" por "Crear nuevo mundo" y llamar a `navigator.storage.persist()` en el primer guardado, y verificar con un E2E que ningún botón del niño borra un mundo
-- [ ] 3.10 Actualizar `docs/guia-padres.md` (dónde se guardan los mundos y el respaldo heredado), `docs/guia-nino.md` (Mis Mundos), README y `docs/architecture.md`, marcar ADR-0002 como Aceptado y agregar la entrada al CHANGELOG
+- [x] 3.1 Instalar `dexie` (ADR-0002), definir `WorldRepository` y una suite de pruebas de contrato compartida, e implementar `InMemoryWorldRepository`. Verificar que la suite pasa contra memoria
+- [x] 3.2 Implementar `DexieWorldRepository` (tablas del design D4; `saveSnapshot` en una sola transacción) y verificar que la misma suite de contrato pasa con `fake-indexeddb`
+- [x] 3.3 Implementar el usuario por defecto con UUID y las marcas `version` y `updatedAt` en el mundo, los chunks y el estado, y verificarlo con una prueba (escenario "Usuario por defecto")
+- [x] 3.4 Implementar la persistencia de **solo los chunks modificados** (los demás se regeneran con la semilla) y verificar con una prueba que se recarga idéntico tras editar 3 chunks
+- [x] 3.5 Implementar `AutosaveService` (cada 30 s, `visibilitychange`, `pagehide` y `blur`, vuelo único) y verificar con pruebas de integración y `FakeClock` los escenarios "Autoguardado periódico", "Cerrar la pestaña" y "El guardado no congela el juego"
+- [x] 3.6 Implementar `GameSession.switchWorld()` y `createWorld()` con "guardar antes de limpiar" y que un guardado fallido aborte la operación, y verificar con pruebas de integración los escenarios "Crear un mundo nuevo guarda primero", "Falla el guardado previo" y "Clics repetidos"
+- [x] 3.7 Implementar las migraciones (`db.version(n).upgrade` y `migrations[n]` puras) y la importación heredada `legacyImport` (de `localStorage` v2 a "Mi primer mundo", con los bloques `placed` y la clave renombrada a `-backup`). Verificar con un fixture real de v1 los escenarios "Migración del mundo heredado" y "Migración fallida"
+- [x] 3.8 Generar miniaturas (WebP de 320x180 al guardar) y crear el panel "Mis Mundos" del niño (tarjetas grandes, "Crear nuevo mundo" y sin borrar), y verificar con un E2E "construir, guardar, recargar y recuperar" y "crear un mundo nuevo y comprobar que el anterior se guardó"
+- [x] 3.9 Reemplazar "Empezar de nuevo" por "Crear nuevo mundo" y llamar a `navigator.storage.persist()` en el primer guardado, y verificar con un E2E que ningún botón del niño borra un mundo
+- [x] 3.10 Actualizar `docs/guia-padres.md` (dónde se guardan los mundos y el respaldo heredado), `docs/guia-nino.md` (Mis Mundos), README y `docs/architecture.md`, marcar ADR-0002 como Aceptado y agregar la entrada al CHANGELOG
 
 ## 4. Vista de padres en `/padres/`
 

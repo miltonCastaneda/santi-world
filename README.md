@@ -16,6 +16,8 @@ npm run dev
 
 Abre `http://localhost:5173`. Como el servidor escucha en la red local (`host: true`), otro equipo de la misma red también puede abrir el juego con la IP de tu máquina.
 
+Los mundos se guardan en IndexedDB del navegador (local, sin servidor) y el juego tiene autoguardado. Para saber dónde están, cómo respaldarlos y cómo se importó el mundo de la versión 1, ver la [guía para padres](docs/guia-padres.md#dónde-se-guardan-los-mundos).
+
 ## Scripts
 
 | Script | Qué hace |
@@ -26,7 +28,7 @@ Abre `http://localhost:5173`. Como el servidor escucha en la red local (`host: t
 | `npm test` | Pruebas unitarias y de integración (Vitest). |
 | `npm run e2e` | Pruebas E2E y smoke (Playwright + Chromium). |
 | `npm run check` | Tipos (`tsc --noEmit`) y lint, incluida la regla de capas. |
-| `npm run perf` | Medición de rendimiento (disponible desde el incremento 2). |
+| `npm run perf` | Medición de rendimiento con GPU real (ver [`docs/performance.md`](docs/performance.md)). |
 | `npm run ci` | `check`, `test` y `e2e`: lo mismo que GitHub Actions. |
 
 La primera vez que vayas a ejecutar las E2E, instala el navegador con `npx playwright install chromium`. Los detalles están en [`docs/testing.md`](docs/testing.md).

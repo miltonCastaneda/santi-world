@@ -18,7 +18,7 @@ export async function waitWorldReady(page: Page): Promise<void> {
 export async function lookAtFarm(page: Page, dx = 0, dz = 0): Promise<{ x: number; y: number; z: number }> {
   return page.evaluate(
     ([dx, dz]) => {
-      const farm = window.__santi!.layout().farm;
+      const farm = window.__santi!.layout()!.farm;
       const x = Math.floor((farm.x0 + farm.x1) / 2) + dx + 0.5;
       const z = Math.floor((farm.z0 + farm.z1) / 2) + dz + 0.5;
       const y = window.__santi!.surfaceY(Math.floor(x), Math.floor(z)) + 1;

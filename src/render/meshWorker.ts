@@ -1,15 +1,15 @@
 import { Chunk } from "../domain/world/chunk";
 import { ChunkStore } from "../domain/world/chunkStore";
-import { createGenerator, type WorldGenerator } from "../domain/worldgen/generator";
+import { createGenerator, type WorldGenerator, type WorldGenSpec } from "../domain/worldgen/generator";
 import { meshChunk, type ChunkMeshData } from "./chunkMesher";
 
 export type MeshRequest = {
   id: number;
   cx: number;
   cz: number;
-  seed: string;
+  gen: WorldGenSpec;
   sizeInChunks: number;
-  /** Chunks modificados por el jugador entre el chunk y sus 8 vecinos; el resto se regenera con la semilla. */
+  /** Chunks modificados (guardados o no) entre el chunk y sus 8 vecinos; el resto se regenera con la semilla. */
   overrides: { cx: number; cz: number; blocks: Uint8Array<ArrayBuffer> }[];
 };
 
@@ -22,8 +22,11 @@ class GeneratedCache {
   private generator: WorldGenerator;
   private cache = new Map<string, Chunk>();
 
-  constructor(readonly seed: string) {
-    this.generator = createGenerator(seed);
+  readonly key: string;
+
+  constructor(gen: WorldGenSpec) {
+    this.key = cacheKey(gen);
+    this.generator = createGenerator(gen.seed, gen.generator);
   }
 
   get(cx: number, cz: number): Chunk {
@@ -42,9 +45,11 @@ class GeneratedCache {
 
 let cache: GeneratedCache | null = null;
 
+const cacheKey = (gen: WorldGenSpec) => `${gen.generator}:${gen.seed}`;
+
 export function handleMeshRequest(req: MeshRequest): MeshResponse {
   const t0 = performance.now();
-  if (!cache || cache.seed !== req.seed) cache = new GeneratedCache(req.seed);
+  if (!cache || cache.key !== cacheKey(req.gen)) cache = new GeneratedCache(req.gen);
   const base = cache;
   const store = new ChunkStore({ sizeInChunks: req.sizeInChunks, generate: (cx, cz) => base.get(cx, cz) });
   for (const c of req.overrides) store.put(new Chunk(c.cx, c.cz, c.blocks));

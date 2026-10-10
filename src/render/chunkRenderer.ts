@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { chunkKey, CHUNK_HEIGHT, CHUNK_SIZE } from "../domain/world/chunk";
 import type { ChunkStore } from "../domain/world/chunkStore";
+import type { WorldGenSpec } from "../domain/worldgen/generator";
 import { LIGHT_REACH } from "../domain/world/light";
 import type { BlockMaterials } from "./blockMaterial";
 import { meshChunk, type ChunkMeshData, type MeshData } from "./chunkMesher";
@@ -58,8 +59,8 @@ export class ChunkRenderer {
 
   constructor(
     private store: ChunkStore,
-    /** Semilla del mundo: los workers regeneran los chunks no modificados en lugar de recibirlos. */
-    private seed: string,
+    /** Semilla y generador: los workers regeneran los chunks no modificados en lugar de recibirlos. */
+    private gen: WorldGenSpec,
     private materials: BlockMaterials,
     options: Partial<ChunkRendererOptions> = {},
     createWorker: (() => Worker) | null = defaultWorkerFactory(),
@@ -121,11 +122,15 @@ export class ChunkRenderer {
   }
 
   /** Vuelve a dibujar todo (por ejemplo, al reemplazar el mundo). */
-  rebuildAll(store: ChunkStore, seed: string): void {
+  rebuildAll(store: ChunkStore, gen: WorldGenSpec): void {
     this.store = store;
-    this.seed = seed;
+    this.gen = gen;
     for (const key of [...this.meshes.keys()]) this.drop(key);
     this.pending.clear();
+    // Los resultados que lleguen del mundo anterior se descartan: ya no tienen clave en vuelo.
+    this.inFlight.clear();
+    this.inFlightKeys.clear();
+    this.results.length = 0;
     const f = this.focus;
     this.focus = null;
     if (f) this.setFocus(f.cx * CHUNK_SIZE, f.cz * CHUNK_SIZE);
@@ -235,12 +240,12 @@ export class ChunkRenderer {
     const overrides: MeshRequest["overrides"] = [];
     for (let dz = -1; dz <= 1; dz++) {
       for (let dx = -1; dx <= 1; dx++) {
-        if (!this.store.isDirty(job.cx + dx, job.cz + dz)) continue;
+        if (!this.store.isModified(job.cx + dx, job.cz + dz)) continue;
         const c = this.store.peek(job.cx + dx, job.cz + dz);
         if (c) overrides.push({ cx: c.cx, cz: c.cz, blocks: c.blocks.slice() });
       }
     }
-    return { id, cx: job.cx, cz: job.cz, seed: this.seed, sizeInChunks: this.store.sizeInChunks, overrides };
+    return { id, cx: job.cx, cz: job.cz, gen: this.gen, sizeInChunks: this.store.sizeInChunks, overrides };
   }
 
   private apply(cx: number, cz: number, data: ChunkMeshData): void {

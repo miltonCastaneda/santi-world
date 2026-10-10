@@ -14,13 +14,12 @@ export type Selection = { mode: InteractionMode; block: BlockId };
 export type Intent =
   | { type: "use"; ray: Ray; forceRemove?: boolean }
   | { type: "undo" }
-  | { type: "reset" }
   | { type: "setMode"; mode: InteractionMode }
   | { type: "selectBlock"; block: BlockId };
 
 export type GameEvents = {
   blockChanged: { pos: Vec3 };
-  /** El mundo se reemplazó por completo (por ejemplo, al empezar de nuevo). */
+  /** El mundo se reemplazó por completo (al abrir o crear otro desde GameSession). */
   worldReplaced: { world: TerrainWorld };
   selectionChanged: Selection;
 };
@@ -30,8 +29,7 @@ export const PICK_DISTANCE = 200;
 /** Estado y reglas del juego. Puro: sin DOM, sin Three.js y sin reloj del navegador. */
 export class Game {
   readonly events = new EventBus<GameEvents>();
-  readonly rng: Rng;
-  readonly seed: string;
+  rng: Rng;
   world: TerrainWorld;
   selection: Selection = { mode: "place", block: "grass" };
   tick = 0;
@@ -39,9 +37,27 @@ export class Game {
   private intents: Intent[] = [];
 
   constructor(options: { seed?: string; world?: TerrainWorld } = {}) {
-    this.seed = options.world?.seed ?? options.seed ?? "santi";
-    this.rng = new Rng(this.seed);
-    this.world = options.world ?? TerrainWorld.create(this.seed);
+    this.world = options.world ?? TerrainWorld.create(options.seed ?? "santi");
+    this.rng = new Rng(this.world.seed);
+  }
+
+  get seed(): string {
+    return this.world.seed;
+  }
+
+  /**
+   * Cambia el mundo entero. Solo debe llamarlo GameSession, que antes guarda el anterior
+   * ("guardar antes de limpiar"). Descarta las intenciones pendientes del mundo anterior.
+   */
+  replaceWorld(world: TerrainWorld, selection?: Selection): void {
+    this.world = world;
+    this.rng = new Rng(world.seed);
+    this.intents = [];
+    this.events.emit("worldReplaced", { world });
+    if (selection) {
+      this.selection = selection;
+      this.events.emit("selectionChanged", selection);
+    }
   }
 
   /** Las intenciones se aplican al inicio del siguiente paso de simulación. */
@@ -64,10 +80,6 @@ export class Game {
         break;
       case "undo":
         this.changed(this.world.undo(this.timeMs));
-        break;
-      case "reset":
-        this.world = TerrainWorld.create(this.seed);
-        this.events.emit("worldReplaced", { world: this.world });
         break;
       case "setMode":
         this.selection = { ...this.selection, mode: intent.mode };

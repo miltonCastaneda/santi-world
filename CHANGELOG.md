@@ -22,9 +22,18 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Overlay de debug `F3`, `npm run perf` con la ruta de cámara de la semilla `perf-001` (resultados en `docs/performance.md`) y pruebas visuales con imágenes de referencia (`tests/e2e/visual.spec.ts`).
 - Parámetros de URL `?seed=`, `?view=`, `?workers=` y `?perf=1`.
 - ADR-0013 (mesher en Web Worker y texturas como arreglo de capas), en estado "Aceptado".
+- Varios mundos guardados en IndexedDB con Dexie (incremento 3), detrás del puerto `WorldRepository` con implementaciones Dexie y en memoria que pasan la misma suite de contrato. Usuario por defecto con UUID y marcas `version` y `updatedAt` en el mundo, el estado y los chunks.
+- Solo se guardan los chunks modificados; el resto se regenera con la semilla.
+- Autoguardado cada 30 s, al ocultar o cerrar la pestaña y al perder el foco, de vuelo único. `navigator.storage.persist()` en el primer guardado.
+- Panel "Mis Mundos" con tarjetas grandes y miniaturas WebP de 320x180, y botón "Crear nuevo mundo" que guarda primero (si el guardado falla no reemplaza nada y muestra un ícono de aviso).
+- Importación del mundo v1 como "Mi primer mundo" (pradera plana con la construcción en el centro); la clave original se conserva como `minecraf-de-santi-world-v2-backup`.
+- Migraciones de documentos (`migrations[n]` puras) y esquema versionado de IndexedDB.
+- Exportar e importar un mundo a un archivo, papelera y purga en el repositorio (la interfaz llega con la vista de padres).
 
 ### Cambiado
-- El mundo de 32x32 se reemplaza por el mundo generado. En este incremento **el mundo nuevo no se guarda**: el mundo v1 de `localStorage` queda intacto y el incremento 3 lo importará como "Mi primer mundo".
+- "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.
+- El mundo de 32x32 se reemplaza por el mundo generado (en el incremento 2 no se guardaba; desde el 3 se guarda en IndexedDB).
+- ADR-0002 pasa a "Aceptado".
 - Sin sombras dinámicas en el terreno (desaparece el bug de sombras recortadas); `near` 0,1 y `far` 250.
 - ADR-0003 pasa a "Aceptado", con los ajustes de ADR-0013.
 - El código se reorganizó en capas `core`, `domain`, `sim`, `persistence`, `render`, `input`, `ui`, `testing` y `apps` sin cambiar el comportamiento del juego. El punto de entrada ahora es `src/apps/game/main.ts`.

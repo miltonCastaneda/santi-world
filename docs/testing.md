@@ -32,9 +32,15 @@ La primera vez, instala el navegador de Playwright con `npx playwright install c
 tests/
   unit/          pruebas unitarias (Vitest)
   integration/   pruebas de integración (Vitest + fake-indexeddb)
+    persistence/ repositoryContract.ts: suite de contrato de WorldRepository que se ejecuta contra
+                 cada implementación (memoria y Dexie); sesión, autoguardado e importación v1
+  fixtures/      datos reales de versiones anteriores (v1-world.json: mundo guardado por la v1.0.0)
   e2e/           pruebas E2E y smoke (Playwright)
     helpers/     utilidades: errores de consola, conteo de colores del canvas
+    __screenshots__/  imágenes de referencia de las pruebas visuales
 ```
+
+Cada prueba E2E corre en un contexto nuevo del navegador, así que empieza con IndexedDB y `localStorage` vacíos. Con `?seed=X` el juego abre el mundo de esa semilla o lo crea, y al recargar con la misma URL vuelve a abrir el mismo mundo.
 
 ## Convenciones
 

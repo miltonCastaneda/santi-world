@@ -1,6 +1,6 @@
 # ADR 0002: Persistencia local con IndexedDB (Dexie) detrás de WorldRepository, sin backend por ahora
 
-- **Estado**: Propuesto
+- **Estado**: Aceptado (incremento 3). El puerto `WorldRepository` quedó en `domain/repository/` (y no en `persistence/`) para que `GameSession`, en `sim`, pueda usarlo sin violar la regla de capas; las implementaciones Dexie y en memoria siguen en `persistence/`.
 - **Fecha**: 2026-10-10
 - **Change relacionado**: `openspec/changes/fase-2-mundo-vivo/` (spec `mundos-y-persistencia`)
 
