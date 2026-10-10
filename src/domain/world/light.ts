@@ -97,6 +97,28 @@ function spread(light: Uint8Array, blocks: Uint8Array, queue: Int32Array, tail: 
 }
 
 /**
+ * Luz de antorchas en una celda. Si no hay ninguna fuente a `LIGHT_REACH` bloques o menos (distancia
+ * Manhattan), es 0 sin calcular nada; si la hay, se calcula la región con la misma difusión que el
+ * render, así la regla coincide con lo que se ve.
+ */
+export function blockLightAt(store: ChunkStore, x: number, y: number, z: number): number {
+  let source = false;
+  for (let dx = -LIGHT_REACH; dx <= LIGHT_REACH && !source; dx++) {
+    const ry = LIGHT_REACH - Math.abs(dx);
+    for (let dy = -ry; dy <= ry && !source; dy++) {
+      const rz = ry - Math.abs(dy);
+      for (let dz = -rz; dz <= rz; dz++) {
+        if (EMIT[store.get(x + dx, y + dy, z + dz)] > Math.abs(dx) + Math.abs(dy) + Math.abs(dz)) {
+          source = true;
+          break;
+        }
+      }
+    }
+  }
+  return source ? computeLight(store, x, z, x, z).blockAt(x, y, z) : 0;
+}
+
+/**
  * Calcula la luz de la región [x0, x1] x [z0, z1] (incluidos). Cielo: 15 en las celdas expuestas y
  * se difunde perdiendo 1 por bloque bajo techos. Bloques: cada fuente se difunde por inundación (BFS).
  */

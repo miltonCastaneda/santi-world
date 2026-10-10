@@ -1,24 +1,29 @@
 import type { Clock } from "../core/clock";
 import { EventBus } from "../core/events";
-import type { Ray, Vec3 } from "../core/math";
+import { rayAabb, type Ray, type Vec3 } from "../core/math";
 import { Rng } from "../core/rng";
 import { BLOCK_NUM, BLOCKS_BY_NUM, type BlockId } from "../domain/blocks";
-import { EntityStore } from "../domain/entities/entityStore";
+import { EntityStore, type Entity, type EntityKind } from "../domain/entities/entityStore";
 import { createSpawnSlots, homesOf, type Home, type SpawnSlot } from "../domain/entities/population";
-import type { HomeId } from "../domain/entities/species";
+import { isSpeciesId, type HomeId } from "../domain/entities/species";
+import { ZOMBIE } from "../domain/entities/zombie";
 import type { EntitySnapshot } from "../domain/repository/model";
 import { bodyOverlapsCell, type CollisionQuery } from "../domain/physics/collide";
 import { pickCell } from "../domain/picking";
+import { resolveHit, type HitOutcome, type TargetKind } from "../domain/rules/damage";
 import { REACH, TOOLS, type ToolId } from "../domain/rules/tools";
 import { CHUNK_HEIGHT } from "../domain/world/chunk";
+import { blockLightAt } from "../domain/world/light";
 import { TerrainWorld } from "../domain/world/terrainWorld";
 import { entityFromSnapshot, entityToSnapshot } from "./entitySnapshots";
 import { FixedStepLoop, STEP_MS } from "./loop";
-import { Player, type HitResult } from "./player";
+import { Player, PLAYER_SPEED, type HitResult } from "./player";
 import { AnimalSystem, type AnimalContext, type AnimalSound } from "./systems/animals";
 import { durationsFrom, WorldClock, type Phase } from "./systems/dayNight";
 import type { PathWorld } from "./systems/pathfinding";
 import { respawnPending, type RespawnWorld } from "./systems/respawn";
+import { NightSpawner, type SpawnWorld } from "./systems/spawn";
+import { ZombieSystem, type ZombieContext } from "./systems/zombies";
 
 export type Selection = { tool: ToolId; block: BlockId };
 
@@ -51,7 +56,10 @@ export type GameEvents = {
   inventoryToggled: { open: boolean };
   animalSound: AnimalSound;
   /** Una entidad desapareció ("poof"); si tenía slot, queda pendiente de reaparecer al amanecer. */
-  entityRemoved: { id: string; species: string; pos: Vec3 };
+  entityRemoved: { id: string; species: EntityKind; pos: Vec3 };
+  /** El niño le pegó a una criatura con una herramienta (rebote o "poof", nunca dolor). */
+  entityHit: { id: string; species: EntityKind; pos: Vec3; outcome: HitOutcome; defeated: boolean };
+  zombieSpawned: { id: string; pos: Vec3 };
   phaseChanged: { phase: Phase; dayCount: number };
   /** Falta un minuto para la noche. */
   nightSoon: Record<string, never>;
@@ -64,6 +72,11 @@ export type TimeSettings = { dayMinutes: number; nightMinutes: number; quietNigh
 
 export const PICK_DISTANCE = 200;
 const FOOTSTEP_MS = 400;
+/** Al amanecer (o con la noche tranquila) los zombis hacen "poof" escalonados en este tiempo (spec: 5 s o menos). */
+export const RETREAT_MS = 4000;
+/** Margen alrededor de las criaturas para acertarles con el clic (un niño de 4 años no apunta fino). */
+const PICK_PAD = 0.2;
+const NATURAL_GROUND = new Set<number>([BLOCK_NUM.grass, BLOCK_NUM.dirt, BLOCK_NUM.sand, BLOCK_NUM.snow, BLOCK_NUM.stone]);
 
 /** Estado y reglas del juego. Puro: sin DOM, sin Three.js y sin reloj del navegador. */
 export class Game {
@@ -73,6 +86,8 @@ export class Game {
   readonly player: Player;
   readonly entities = new EntityStore();
   readonly animals: AnimalSystem;
+  readonly zombies: ZombieSystem;
+  readonly spawner: NightSpawner;
   readonly clock = new WorldClock();
   /** Sin zombis ni dragón (la noche llega igual). */
   quietNight = false;
@@ -94,7 +109,37 @@ export class Game {
     this.player = new Player(this.spawnPoint());
     this.lastHearts = this.player.hearts;
     this.animals = new AnimalSystem(this.world.seed);
+    this.zombies = new ZombieSystem(this.world.seed, this.animals.paths);
+    this.spawner = new NightSpawner(this.world.seed);
     this.prepareHomes();
+  }
+
+  /** Lo que el aparecedor de zombis consulta del mundo. */
+  readonly spawnWorld: SpawnWorld = ((game: Game): SpawnWorld => ({
+    collision: (x, y, z) => game.collision(x, y, z),
+    isWater: (x, y, z) => game.world.store.get(x, y, z) === BLOCK_NUM.water,
+    chunkVersion: (cx, cz) => game.world.store.peek(cx, cz)?.version ?? 0,
+    get size() {
+      return game.world.store.sizeInBlocks;
+    },
+    surfaceY: (x, z) => game.world.store.surfaceY(x, z),
+    isNaturalGround: (x, y, z) => {
+      const store = game.world.store;
+      const num = store.get(x, y, z);
+      return NATURAL_GROUND.has(num) && !store.isPlaced(x, y, z);
+    },
+    blockLight: (x, y, z) => blockLightAt(game.world.store, x, y, z),
+  }))(this);
+
+  private get zombieContext(): ZombieContext {
+    return {
+      world: this.pathWorld,
+      player: this.player.body,
+      playerSpeed: PLAYER_SPEED,
+      hitPlayer: (from) => this.hitPlayer(from),
+      catchAnimal: (id) => this.removeEntity(id),
+      onSound: ({ id, pos }) => this.events.emit("animalSound", { id, species: "zombie", sound: ZOMBIE.sound, pos }),
+    };
   }
 
   /** Lo que el pathfinding y la física de las entidades consultan del mundo. */
@@ -156,6 +201,35 @@ export class Game {
     return respawned;
   }
 
+  get zombieCount(): number {
+    let n = 0;
+    for (const e of this.entities.all()) if (e.species === "zombie") n++;
+    return n;
+  }
+
+  /** Zombi nuevo en `pos` (lo usa el aparecedor; las pruebas pueden ponerlo donde quieran). */
+  spawnZombie(pos: Vec3): Entity {
+    const z = this.zombies.spawn(this.entities, pos, this.timeMs);
+    this.events.emit("zombieSpawned", { id: z.id, pos: { ...z.body.pos } });
+    return z;
+  }
+
+  /**
+   * De noche (sin la noche tranquila) aparecen zombis; fuera de la noche o al activar la noche
+   * tranquila, los que quedan hacen "poof" escalonados en `RETREAT_MS` o menos.
+   */
+  private stepNight(): void {
+    const active = this.clock.phase === "night" && !this.quietNight;
+    const now = this.timeMs;
+    for (const e of [...this.entities.all()]) {
+      if (e.species !== "zombie") continue;
+      if (!active && e.despawnAt == null) e.despawnAt = now + Math.round(this.zombies.rng.range(0, RETREAT_MS));
+      if (e.despawnAt != null && now >= e.despawnAt) this.removeEntity(e.id);
+    }
+    const spot = this.spawner.step(now, active, this.zombieCount, this.player.pos, this.spawnWorld);
+    if (spot) this.spawnZombie(spot);
+  }
+
   restoreEntities(snapshots: readonly EntitySnapshot[]): void {
     for (const s of snapshots) {
       const e = entityFromSnapshot(s, this.timeMs);
@@ -204,6 +278,8 @@ export class Game {
     this.intents = [];
     this.entities.clear();
     this.animals.reset(world.seed);
+    this.zombies.reset(world.seed);
+    this.spawner.reset(world.seed);
     this.pendingRespawns = [];
     this.clock.restore(0, 1);
     this.prepareHomes();
@@ -230,6 +306,8 @@ export class Game {
     this.timeMs += dtMs;
     this.stepPlayer(dtMs);
     this.animals.step(this.entities, this.animalContext, this.tick, this.timeMs, dtMs, (s) => this.events.emit("animalSound", s));
+    this.zombies.step(this.entities, this.zombieContext, this.tick, this.timeMs, dtMs);
+    this.stepNight();
     this.stepClock(dtMs);
   }
 
@@ -247,6 +325,8 @@ export class Game {
           this.events.emit("midnight", { dayCount });
           break;
         case "dawn":
+          // Si la hora saltó (padres o pruebas) y quedó algún zombi, se va antes de las reapariciones.
+          for (const e of [...this.entities.all()]) if (e.species === "zombie") this.removeEntity(e.id);
           this.events.emit("dawn", { dayCount, respawned: this.dawn() });
           break;
       }
@@ -323,6 +403,12 @@ export class Game {
     this.player.act(tool.swing, this.timeMs);
     this.events.emit("toolUsed", { tool: tool.id });
     const target = pickCell(ray, PICK_DISTANCE, (x, y, z) => this.world.isPickable(x, y, z));
+    // Una criatura delante del bloque apuntado recibe el golpe en su lugar.
+    const creature = this.pickEntity(ray, target?.distance ?? PICK_DISTANCE);
+    if (creature) {
+      this.hitEntity(creature, tool.id);
+      return;
+    }
     if (!target) return;
     if (distanceToCell(this.player.eye(), target.block) > REACH) {
       this.events.emit("tooFar", { pos: target.block });
@@ -352,6 +438,51 @@ export class Game {
       this.events.emit("blockBroken", { pos, block: before });
       this.changed(pos);
     }
+  }
+
+  /** La criatura más cercana que cruza el rayo antes de `maxDistance`. */
+  private pickEntity(ray: Ray, maxDistance: number): Entity | null {
+    let best: Entity | null = null;
+    let bestT = maxDistance;
+    for (const e of this.entities.all()) {
+      if (e.species === "threat") continue;
+      const { pos, halfWidth: w, height } = e.body;
+      const box = {
+        min: { x: pos.x - w - PICK_PAD, y: pos.y - PICK_PAD, z: pos.z - w - PICK_PAD },
+        max: { x: pos.x + w + PICK_PAD, y: pos.y + height + PICK_PAD, z: pos.z + w + PICK_PAD },
+      };
+      const t = rayAabb(ray, box, bestT);
+      // Un rayo que sale de dentro de la criatura no la "mira" (el ojo del jugador nunca está dentro).
+      if (t !== null && t > 0 && t < bestT) {
+        best = e;
+        bestT = t;
+      }
+    }
+    return best;
+  }
+
+  /** Golpe de cerca con la herramienta elegida, según la tabla de `domain/rules/damage`. */
+  private hitEntity(e: Entity, tool: ToolId): void {
+    const b = e.body;
+    const eye = this.player.eye();
+    const gap = Math.hypot(
+      Math.max(b.pos.x - b.halfWidth - eye.x, 0, eye.x - (b.pos.x + b.halfWidth)),
+      Math.max(b.pos.y - eye.y, 0, eye.y - (b.pos.y + b.height)),
+      Math.max(b.pos.z - b.halfWidth - eye.z, 0, eye.z - (b.pos.z + b.halfWidth)),
+    );
+    if (gap > REACH) {
+      this.events.emit("tooFar", { pos: { ...b.pos } });
+      return;
+    }
+    const kind: TargetKind | null = e.species === "zombie" ? "zombie" : isSpeciesId(e.species) ? "animal" : null;
+    if (!kind) return;
+    const { outcome, defeated, hits } = resolveHit(tool, kind, e.hits ?? 0);
+    if (outcome === "none") return;
+    e.hits = hits;
+    this.events.emit("entityHit", { id: e.id, species: e.species, pos: { ...b.pos }, outcome, defeated });
+    // Rebote cartoon: un saltito, sin daño.
+    if (outcome === "boing" && b.onGround) b.vel.y = 4;
+    if (defeated) this.removeEntity(e.id);
   }
 
   private changed(pos: Vec3 | null): void {

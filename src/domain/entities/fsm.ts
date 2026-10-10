@@ -1,7 +1,7 @@
 import type { Rng } from "../../core/rng";
 
 /** Lo que hace la entidad mientras está en un estado. Lo ejecuta el sistema de IA. */
-export type ActionKind = "idle" | "wander" | "graze" | "rest" | "flee" | "returnHome" | "follow" | "swim";
+export type ActionKind = "idle" | "wander" | "graze" | "rest" | "flee" | "returnHome" | "follow" | "swim" | "seek" | "chase" | "bump";
 
 /** Condiciones de una transición, como datos (ADR-0005). Todas las de una transición deben cumplirse. */
 export type Condition =
@@ -13,7 +13,9 @@ export type Condition =
   | { if: "leaderAway"; beyond: number }
   | { if: "leaderNear"; within: number }
   | { if: "inWater" }
-  | { if: "onLand" };
+  | { if: "onLand" }
+  | { if: "hasTarget" }
+  | { if: "noTarget" };
 
 export type Transition = { to: string; when: readonly Condition[] };
 
@@ -41,6 +43,8 @@ export type Perception = {
   inWater: boolean;
   /** Llegó a su destino o no hay camino. */
   arrived: boolean;
+  /** Tiene a quién perseguir (zombis). */
+  hasTarget?: boolean;
 };
 
 export type Brain = { state: string; enteredAt: number; until: number };
@@ -65,6 +69,10 @@ function holds(c: Condition, brain: Brain, p: Perception, now: number, rng: Rng)
       return p.inWater;
     case "onLand":
       return !p.inWater;
+    case "hasTarget":
+      return p.hasTarget === true;
+    case "noTarget":
+      return p.hasTarget !== true;
   }
 }
 

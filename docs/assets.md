@@ -18,15 +18,15 @@ Si en el futuro se usan texturas de terceros, solo se aceptan CC0 o equivalentes
 
 | Recurso | Fuente | Licencia |
 |---|---|---|
-| 11 efectos (`SOUND_NAMES` en `src/audio/synth.ts`): `step`, `place`, `break`, `bump`, `click`, `jump`, `poof`, `boing`, `swish`, `far` y `chime` (aviso de que se acerca la noche) | Sintetizados por código en `src/audio/synth.ts` (`synthesize(name, sampleRate)`): tonos con envolvente y ruido determinista (sin `Math.random`); no hay archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+| 12 efectos (`SOUND_NAMES` en `src/audio/synth.ts`): `step`, `place`, `break`, `bump`, `click`, `jump`, `poof`, `boing`, `swish`, `far`, `chime` (aviso de que se acerca la noche) y `sparkle` (destellos: un arpegio de campanitas cuando se va un zombi) | Sintetizados por código en `src/audio/synth.ts` (`synthesize(name, sampleRate)`): tonos con envolvente y ruido determinista (sin `Math.random`); no hay archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 | 6 voces de animales (`ANIMAL_SOUNDS`): `baa` (oveja), `moo` (vaca), `meh` (cabra), `cluck` (gallina), `peep` (pollito) y `quack` (pato) | Sintetizados por código en `src/audio/synth.ts`: una voz con armónicos y frecuencia variable (vibrato o caída), con sílabas en la gallina y el pollito; sin archivos de audio | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+| Voz del zombi: `groan`, un "uuuh" bajito y tonto, como un bostezo (sin gruñidos) | Sintetizado por código en `src/audio/synth.ts`, con la misma técnica que las voces de animales | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
+| 2 pistas de música (`MUSIC` en `src/audio/synth.ts`): `day` (96 bpm, do mayor) y `night` (canción de cuna, 66 bpm, sol mayor) | Compuestas como datos (grados de la escala pentatónica, melodía en corcheas y un bajo por compás) y sintetizadas por código (`synthesizeMusic`) en un bucle de 10 y 14,5 s | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
 
-- Los animales suenan en el bus `ambient`, posicionales: se atenúan con la distancia y no se oyen a 24 bloques o más. Como máximo suenan 3 a la vez, y tienen prioridad los más cercanos. Cada especie emite su voz cada cierto tiempo (`soundEveryMs` en `src/domain/entities/species.ts`).
+- Los animales y los zombis suenan en el bus `ambient`, posicionales: se atenúan con la distancia y no se oyen a 24 bloques o más. Como máximo suenan 3 a la vez, y tienen prioridad los más cercanos. Cada especie emite su voz cada cierto tiempo (`soundEveryMs` en `src/domain/entities/species.ts` y `src/domain/entities/zombie.ts`).
 - Cada sonido dura 0,5 s o menos y su pico es de 0,5 o menos (una prueba unitaria lo verifica), así que ninguno sale fuerte aunque el volumen esté al máximo. Encima de eso, el bus maestro tiene un tope de 0,8 ([ADR-0009](adr/0009-audio-web-audio-buses.md)).
 - Los buffers se generan una vez, al arrancar, y se reutilizan. Son deterministas: el mismo nombre suena siempre igual.
 - Qué evento del juego suena con qué efecto está en `src/audio/gameAudio.ts`.
-| 2 pistas de música (`MUSIC` en `src/audio/synth.ts`): `day` (96 bpm, do mayor) y `night` (canción de cuna, 66 bpm, sol mayor) | Compuestas como datos (grados de la escala pentatónica, melodía en corcheas y un bajo por compás) y sintetizadas por código (`synthesizeMusic`) en un bucle de 10 y 14,5 s | CC0 1.0 (creación propia del proyecto, dedicada al dominio público) |
-
 - La música suena en el bus `music` y se cruza en 6 s (`MUSIC_FADE_S`) cuando empieza el atardecer (pista de noche) o el amanecer (pista de día).
 - Los sonidos de terceros que se agreguen deben ser CC0 y registrarse en esta tabla con el enlace a la fuente.
 
@@ -40,3 +40,25 @@ Toda pista nueva la cumple antes de entrar (la prueba unitaria `música que no a
 - [x] Sin disonancias: solo notas de la escala pentatónica mayor.
 - [x] Sin graves fuertes ni percusión; nada de sirenas, gritos ni risas.
 - [x] Se puede apagar: botón de silencio y volumen de música en la vista de padres.
+
+## Criaturas y efectos
+
+Los modelos de los animales y del zombi se arman con cajas de colores planos en `src/render/entityRenderer.ts` (`MODELS`); no hay archivos de modelos ni texturas. El zombi es cartoon: piel verde clara, camisa celeste, ojos grandes con brillo, sonrisa y mejillas rosadas, y camina con los brazos estirados hacia adelante.
+
+### Checklist "Revisión de efectos"
+
+Spec `experiencia-infantil`, escenario "Revisión de efectos": todo efecto de golpes y desapariciones pertenece al catálogo aprobado (rebote, parpadeo, poof, estrellas, destellos y sonidos suaves). Se revisa en cada PR que agregue una criatura, una herramienta o un efecto.
+
+| Momento | Efecto visual | Sonido | En el catálogo |
+|---|---|---|---|
+| Golpe a un animal (mano, pico, espada o collar) | Rebote: salta hacia arriba (`entityHit` con `boing`) y parpadea (aparece y desaparece) 0,4 s | `boing` | [x] |
+| Zombi derrotado (1 golpe con mano, pico o espada) | Destellos de colores que suben, 0,9 s (`poof(pos, "sparkle")`) | `sparkle` | [x] |
+| Zombi que se va al amanecer o con la noche tranquila | Destellos, escalonados en 4 s | `sparkle` | [x] |
+| Animal que desaparece (atrapado por un zombi) | Nube blanca con estrellas (`poof(pos, "cloud")`); reaparece al amanecer | `poof` | [x] |
+| El jugador recibe un golpe | Empuje suave, parpadeo de invulnerabilidad y corazón gris en el HUD | `boing` (o `poof` si se queda sin corazones y reaparece) | [x] |
+| Zombi que choca con el jugador o un animal | Se queda quieto un momento (estado `bump`) | Ninguno | [x] |
+
+- [x] Sin sangre, heridas, cuerpos ni caídas: nada queda en el suelo.
+- [x] Sin gritos, gruñidos ni sonidos de dolor: el zombi solo hace "uuuh".
+- [x] Ningún efecto dura más de 1 s ni cubre la pantalla.
+- [x] Los colores de los destellos son pasteles (`SPARKLE_COLORS`), sin rojo intenso.

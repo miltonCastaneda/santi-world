@@ -3,7 +3,7 @@
  * uno es una función pura de la frecuencia de muestreo, así que se pueden probar sin navegador.
  */
 export const ANIMAL_SOUNDS = ["baa", "moo", "meh", "cluck", "peep", "quack"] as const;
-export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS] as const;
+export const SOUND_NAMES = ["step", "place", "break", "bump", "click", "jump", "poof", "boing", "swish", "far", "chime", ...ANIMAL_SOUNDS, "sparkle", "groan"] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];
 
@@ -104,6 +104,28 @@ export function synthesize(name: SoundName, rate: number): Float32Array<ArrayBuf
     case "quack": {
       const v = voice(rate, (t) => 480 - 120 * t, [0.16, 0.12, 0.09, 0.05]);
       return render(rate, 0.25, (t) => v(t) + 0.03 * rnd(), { attack: 0.01, decay: 0.09 });
+    }
+    // Zombi derrotado: destellos, un arpegio de campanitas que sube (do, mi, sol, do).
+    case "sparkle": {
+      const notes = [1047, 1319, 1568, 2093];
+      return render(
+        rate,
+        0.45,
+        (t) => {
+          let v = 0;
+          notes.forEach((f, k) => {
+            const s = t - k * 0.06;
+            if (s > 0) v += Math.sin(2 * Math.PI * f * s) * Math.exp(-s / 0.12) * Math.min(1, s / 0.004);
+          });
+          return 0.12 * v;
+        },
+        { attack: 0.003, decay: 0.3 },
+      );
+    }
+    // Zombi: un "uuuh" bajito y tonto, como un bostezo (nada de gruñidos).
+    case "groan": {
+      const v = voice(rate, (t) => 210 - 50 * t + 8 * Math.sin(2 * Math.PI * 5 * t), [0.16, 0.08, 0.04]);
+      return render(rate, 0.5, (t) => v(t) * Math.min(1, t / 0.12) * (0.8 + 0.2 * Math.sin(2 * Math.PI * 3 * t)), { attack: 0.05, decay: 0.3 });
     }
   }
 }

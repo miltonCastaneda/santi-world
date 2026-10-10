@@ -17,7 +17,8 @@ Tienes un **personaje** con una **"S"** en la camiseta. ¡Eres tú!
 
 - ✋ **La Mano** pone bloques. Elige un color abajo y haz clic donde quieras construir.
 - ⛏️ **El Pico** rompe bloques.
-- ⚔️ **La Espada**, 🏹 **el Arco** y 📿 **el Collar** sirven para los animales y los zombis que llegan pronto.
+- ⚔️ **La Espada**: con **un golpe** un zombi se va con destellos ✨. Si tocas a un animal, solo da un saltito ("boing").
+- 🏹 **El Arco** y 📿 **el Collar** sirven para cosas que llegan pronto.
 - La herramienta que estás usando se pone **verde** y tu personaje la lleva en la mano.
 
 ## Tus bloques (abajo)
@@ -56,9 +57,17 @@ Tu primer mundo, el de antes, se llama **"Mi primer mundo"**. Si ves el dibujo *
 - El número es **qué día es** en tu mundo. Cada mañana sube uno.
 - De noche el cielo se pone oscuro y salen las **estrellas** ⭐. Por la mañana, los animales que se fueron vuelven a la granja.
 
+## Los zombis (de noche)
+
+- De noche llegan **zombis** 🧟 verdes y sonrientes. Caminan **despacio** con los brazos estirados y dicen "uuuh".
+- Si un zombi toca a un animal, el animal hace **poof**... ¡pero vuelve a la granja por la mañana!
+- Si un zombi te toca, pierdes un corazón y das un saltito. Los corazones vuelven solos.
+- Con **un golpe** (la mano, el pico o la espada) el zombi se va con **destellos** ✨.
+- ¡**Construye muros** alrededor de tus animales! Los zombis no pueden romper bloques ni saltar muros. Con un **techo** y una **antorcha** 🔥 cerca, no aparecen ahí.
+- Cuando sale el **sol**, todos los zombis se van.
+
 ## Pronto (Fase 2)
 
 - Llegará el **cerdo-gallina**, que vuela.
-- De noche saldrán **zombis** muy lentos. ¡Construye muros para cuidar a tus animales!
 - Con el **collar** puedes hacerte amigo de un lobo.
 - En la montaña de rocas hay **diamantes** para recoger con el pico.

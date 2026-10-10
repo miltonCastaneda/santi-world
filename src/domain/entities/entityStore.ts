@@ -5,6 +5,9 @@ import type { HomeId, SpeciesId } from "./species";
 
 export type EntityAnim = "idle" | "walk" | "run" | "graze" | "rest" | "swim";
 
+/** Animales de granja, zombis y el marcador de amenaza de las pruebas. */
+export type EntityKind = SpeciesId | "zombie" | "threat";
+
 /** Camino calculado por el pathfinding: puntos de pies (centro de celda) y versiones de los chunks que cruza. */
 export type Path = { points: Vec3[]; chunks: Map<string, number> };
 
@@ -15,7 +18,7 @@ export type Entity = {
   id: string;
   /** Orden de creación: reparte el "pensar" entre ticks y fija el orden de iteración. */
   seq: number;
-  species: SpeciesId | "threat";
+  species: EntityKind;
   body: Body;
   yaw: number;
   /** Amenaza para los animales (lobos salvajes y zombis; en pruebas, un marcador). */
@@ -33,6 +36,16 @@ export type Entity = {
   anim?: EntityAnim;
   /** Huye en esta dirección (unitaria, en XZ). */
   fleeDir?: { x: number; z: number } | null;
+  /** A quién persigue un zombi ("player" o el id de un animal). */
+  targetId?: string | null;
+  /** Objetivos sin camino y hasta cuándo no se vuelven a intentar. */
+  unreachable?: Map<string, number>;
+  /** Cuándo pidió el último camino (se renueva si el objetivo se mueve). */
+  pathAt?: number;
+  /** Momento en que hace "poof" (zombis al amanecer). */
+  despawnAt?: number | null;
+  /** Golpes recibidos (para las criaturas que necesitan más de uno). */
+  hits?: number;
 };
 
 const CELL = 8;

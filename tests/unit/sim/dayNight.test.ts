@@ -6,10 +6,10 @@ import { durationsFrom, NIGHT_WARNING_MS, TRANSITION_MS, WorldClock, type ClockE
 
 const MIN = 60_000;
 
-/** Juego sin render en una pradera plana (sin animales): solo interesa el reloj. */
+/** Juego sin render en una pradera plana (sin animales ni zombis): solo interesa el reloj. */
 function headless(minutes: number) {
   const h = createHeadlessGame({ world: TerrainWorld.create("reloj", "legacy-flat"), clock: new FakeClock() });
-  h.game.configureTime({ dayMinutes: minutes, nightMinutes: minutes, quietNight: false });
+  h.game.configureTime({ dayMinutes: minutes, nightMinutes: minutes, quietNight: true });
   return h;
 }
 

@@ -1,4 +1,5 @@
-// npm run perf -- [--ms=60000] [--headless] [--record] [--label="incremento 2"]
+// npm run perf -- [--ms=60000] [--headless] [--night] [--record] [--label="incremento 2"]
+// (--night: la ruta de noche con el máximo de zombis alrededor de la granja)
 //
 // Compila, levanta `vite preview`, abre `?perf=1` (semilla perf-001) en Chromium con GPU real,
 // espera a que la ruta de cámara termine y compara el resultado con el presupuesto de
@@ -38,7 +39,8 @@ const browser = await chromium.launch({
 let failed = false;
 try {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-  page.on("pageerror", (e) => console.error("Error en la página:", e.message));  const extra = args.workers !== undefined ? `&workers=${args.workers}` : "";
+  page.on("pageerror", (e) => console.error("Error en la página:", e.message));
+  const extra = (args.workers !== undefined ? `&workers=${args.workers}` : "") + (args.night ? "&night=1" : "");
   await page.goto(`http://localhost:${port}/?perf=1&perfMs=${durationMs}${extra}`);
   console.log(`Recorriendo la ruta de cámara durante ${durationMs / 1000} s…`);
   await page.waitForFunction(() => window.__perfResult !== undefined, null, { timeout: durationMs + 120_000, polling: 1000 });

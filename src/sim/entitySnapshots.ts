@@ -6,7 +6,8 @@ type AnimalData = { yaw: number; seq: number; untilIn: number; soundIn: number; 
 
 /** Entidad a guardar. Los tiempos se guardan relativos (el reloj de la simulación vuelve a 0 al abrir). */
 export function entityToSnapshot(e: Entity, worldId: string, now: number): EntitySnapshot | null {
-  if (e.species === "threat" || !e.brain) return null;
+  // Los zombis no se guardan: de noche vuelven a aparecer poco a poco.
+  if (!isSpeciesId(e.species) || !e.brain) return null;
   const data: AnimalData = {
     yaw: e.yaw,
     seq: e.seq,

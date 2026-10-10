@@ -193,13 +193,13 @@
 - **Depende de**: 7. **Paralelizable**: no.
 - **Demo**: de noche llegan zombis lentos, un corral cerrado protege a las ovejas, un golpe hace "poof" y al amanecer desaparecen.
 
-- [ ] 8.1 Implementar `NightSpawner` (uno cada 20 s, máximo 8, a más de 24 bloques, sin techo y con `blockLight` menor que 8, respetando la noche tranquila) y verificar con pruebas unitarias "Límite de zombis", "Distancia de aparición", "Refugio iluminado" y "Noche sin enemigos"
-- [ ] 8.2 Definir la máquina de estados del zombi (Seek, Chase y Bump, al 60% de la velocidad, recálculo de camino en 2 s o menos) y verificar con pruebas unitarias "Recalcular camino" y "Velocidad"
-- [ ] 8.3 Implementar el combate: un zombi que toca a un animal provoca su "poof" (pendiente de reaparecer) y uno que toca al jugador le quita 1 corazón con empuje; **zombi = 1 golpe** con Mano, Pico o Espada. Verificarlo con la tabla de reglas de daño en pruebas unitarias
-- [ ] 8.4 Implementar la retirada al amanecer (todos hacen "poof" en 5 s o menos) y verificar con una prueba de integración sin interfaz "Amanecer" (0 zombis y exactamente N reapariciones)
-- [ ] 8.5 Verificar con una prueba de integración de noche completa: con el corral cerrado y techado se pierden 0 animales ("Muro protector")
-- [ ] 8.6 Crear el modelo de zombi cartoon, los destellos y los sonidos suaves, y verificar con la checklist "Revisión de efectos" (violencia solo cartoon)
-- [ ] 8.7 Ejecutar `npm run perf` de noche con 8 zombis y registrar los resultados; actualizar `docs/guia-nino.md` ("construye muros") y `docs/guia-padres.md` (noche tranquila) y agregar la entrada al CHANGELOG
+- [x] 8.1 Implementar `NightSpawner` (uno cada 20 s, máximo 8, a más de 24 bloques, sin techo y con `blockLight` menor que 8, respetando la noche tranquila) y verificar con pruebas unitarias "Límite de zombis", "Distancia de aparición", "Refugio iluminado" y "Noche sin enemigos"
+- [x] 8.2 Definir la máquina de estados del zombi (Seek, Chase y Bump, al 60% de la velocidad, recálculo de camino en 2 s o menos) y verificar con pruebas unitarias "Recalcular camino" y "Velocidad"
+- [x] 8.3 Implementar el combate: un zombi que toca a un animal provoca su "poof" (pendiente de reaparecer) y uno que toca al jugador le quita 1 corazón con empuje; **zombi = 1 golpe** con Mano, Pico o Espada. Verificarlo con la tabla de reglas de daño en pruebas unitarias
+- [x] 8.4 Implementar la retirada al amanecer (todos hacen "poof" en 5 s o menos) y verificar con una prueba de integración sin interfaz "Amanecer" (0 zombis y exactamente N reapariciones)
+- [x] 8.5 Verificar con una prueba de integración de noche completa: con el corral cerrado y techado se pierden 0 animales ("Muro protector")
+- [x] 8.6 Crear el modelo de zombi cartoon, los destellos y los sonidos suaves, y verificar con la checklist "Revisión de efectos" (violencia solo cartoon)
+- [x] 8.7 Ejecutar `npm run perf` de noche con 8 zombis y registrar los resultados; actualizar `docs/guia-nino.md` ("construye muros") y `docs/guia-padres.md` (noche tranquila) y agregar la entrada al CHANGELOG
 
 ## 9. Inventario, carne y antorchas
 

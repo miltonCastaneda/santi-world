@@ -40,3 +40,9 @@ Un intérprete genérico ejecuta las máquinas de estado. Cada entidad "piensa" 
 - `src/sim/systems/animals.ts`: cada animal piensa cada 4 ticks, escalonado por su orden de creación (`(tick + seq) % 4`); el movimiento (dirección hacia el siguiente punto del camino, separación suave entre animales, física AABB y flotación) corre en cada tick. Los "escapes" no son un estado: el deambular elige destinos a 30 bloques o menos del centro de la granja, y con la cerca cerrada el A* no encuentra camino hacia afuera.
 - `src/domain/entities/entityStore.ts`: entidades planas con componentes opcionales y un índice espacial de celdas de 8 bloques; la iteración sigue el orden de creación (determinismo).
 - Pruebas: transiciones genéricas con RNG con semilla (`tests/unit/domain/fsm.test.ts`) e integración sin interfaz de 10 minutos simulados (`tests/integration/sim/animals.test.ts`): población inicial, huida en 1 s o menos, pollitos cerca de la gallina, cerca segura, escape por un hueco y determinismo.
+
+## Implementación (incremento 8)
+
+- El zombi usa el mismo intérprete: `ZOMBIE_MACHINE` en `src/domain/entities/zombie.ts` tiene los estados `seek` (buscar, 300 a 600 ms), `chase` (perseguir, 2 s y vuelve a entrar para recalcular), `bump` (quieto 0,9 a 1,2 s tras un contacto) y `wander` (pasear cuando no hay objetivo alcanzable). Se agregaron las acciones `seek`, `chase` y `bump` y las condiciones `hasTarget` y `noTarget`.
+- La percepción (`hasTarget`) y las reglas que no son de la máquina viven en `src/sim/systems/zombies.ts` (`ZombieSystem`): elegir el objetivo más cercano a 24 bloques o menos que no esté marcado como inalcanzable, el contacto y la separación entre zombis. El contacto pasa a `bump` directamente (como una interrupción), porque ocurre en el tick de movimiento y no cada 4.
+- El azar del zombi sale de su propio `Rng` con semilla (`seed:zombies`), así que agregar zombis no cambia el comportamiento de los animales.

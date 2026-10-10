@@ -2,9 +2,9 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 7)
+## Estado actual (Fase 2, incremento 8)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio. En la granja y el estanque viven 15 animales con IA por máquinas de estado y pathfinding A*. Hay ciclo de día y noche con reloj en el HUD, música y reaparición de animales al amanecer. De noche aparecen zombis cartoon que persiguen respetando lo construido, se derrotan de 1 golpe y se van al amanecer.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
@@ -17,15 +17,18 @@ src/
   domain/       blocks.ts (16 bloques: forma, sólido, opaco, luz, tiles), picking.ts (pickCell),
                 world/chunk.ts (Chunk 16x16x64: Uint8Array + bitset "placed" + versión),
                 world/chunkStore.ts (lectura/escritura entre chunks, generación bajo demanda, sucios),
-                world/light.ts (luz de cielo y de antorchas por BFS, con margen de 14 bloques),
+                world/light.ts (luz de cielo y de antorchas por BFS, con margen de 14 bloques;
+                blockLightAt para una celda),
                 world/terrainWorld.ts (reglas de poner/quitar/deshacer sobre el ChunkStore),
                 worldgen/layout.ts y generator.ts (generadores "zones" y "legacy-flat", GENERATOR_VERSION),
                 repository/model.ts (User, World, GameState, ChunkRecord, SCHEMA_VERSION) y
                 repository/worldRepository.ts (puerto WorldRepository), settings.ts (clampSettings),
                 physics/collide.ts (moveBody: AABB con barrido Y, X, Z, gravedad, borde invisible),
-                rules/tools.ts (Mano, Pico, Espada, Arco y Collar; alcance de 6),
+                rules/tools.ts (Mano, Pico, Espada, Arco y Collar; alcance de 6), rules/damage.ts
+                (tabla herramienta x objetivo: boing, derrota o nada; golpes para derrotar),
                 entities/fsm.ts (máquinas de estado por datos y su intérprete), entities/species.ts
-                (6 especies como datos), entities/entityStore.ts (entidades + índice espacial),
+                (6 especies como datos), entities/zombie.ts (datos y máquina del zombi),
+                entities/entityStore.ts (entidades + índice espacial),
                 entities/population.ts (población inicial y spawn slots con semilla)             (puro)
   sim/          loop.ts (FixedStepLoop, 20 Hz), game.ts (intents, eventos, replaceWorld, colisión,
                 createHeadlessGame), player.ts (Player: movimiento, salto, corazones, reaparición,
@@ -34,8 +37,10 @@ src/
                 systems/animals.ts (AnimalSystem: percibir, pensar cada 4 ticks, moverse, sonidos),
                 systems/pathfinding.ts (A* con presupuesto, PathQueue, invalidación por versión de
                 chunk), systems/dayNight.ts (WorldClock: fases, eventos, duraciones en caliente),
-                systems/respawn.ts (reaparición por slots al amanecer), entitySnapshots.ts
-                (entidad <-> EntitySnapshot)                                                      (puro)
+                systems/respawn.ts (reaparición por slots al amanecer), systems/spawn.ts
+                (NightSpawner: dónde y cuándo aparece un zombi), systems/zombies.ts (ZombieSystem:
+                objetivo, caminos, contacto, separación), entitySnapshots.ts (entidad <->
+                EntitySnapshot; solo animales)                                                    (puro)
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
                 autosave.ts (AutosaveService), migrations.ts (migrations[n] puras), legacyImport.ts
                 (v1 a "Mi primer mundo"), exportFormat.ts, errorLog.ts, storage.ts (persist()),
@@ -45,7 +50,8 @@ src/
                 sin sombras, near 0,1 / far 250), followCamera.ts (brazo de resorte de 6 bloques a 20°,
                 se acorta con un DDA para no entrar en los bloques, giro con el botón derecho),
                 playerModel.ts (personaje de cajas con la "S" y animación procedural),
-                entityRenderer.ts (animales: InstancedMesh por especie y parte, sombra, "poof"),
+                entityRenderer.ts (animales y zombis: InstancedMesh por especie y parte, sombra,
+                "poof" y destellos, parpadeo),
                 chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
                 meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
                 tiles.ts y textures.ts (tiles procedurales de 16 px), blockMaterial.ts
@@ -96,6 +102,14 @@ src/
 4. `hudClock` lee el reloj cada 250 ms. `gameAudio` toca la campanita en `nightSoon` y cambia la música con `phaseChanged` (`AudioService.setMusic`, cruce de 6 s).
 5. Se guardan `timeOfCycleMs`, `dayCount` y los slots pendientes en el estado del mundo; al abrir, el reloj se restaura antes de recrear los animales.
 
+### Zombis
+
+1. En cada paso, después de los animales, `ZombieSystem.step` mueve a los zombis y luego `Game.stepNight` decide: si es de noche (fase `night`) y no está la noche tranquila, `NightSpawner.step` busca cada 20 s un lugar en un anillo de 27 a 40 bloques alrededor del jugador (más de 24, en el borde del mundo se descarta) que sea terreno natural, el bloque más alto de la columna (sin techo), caminable y con `blockLightAt` menor que 8. Con 8 zombis no busca. Fuera de la noche (o con la noche tranquila), cada zombi recibe un `despawnAt` escalonado en 4 s y se quita con `removeEntity`; el evento `dawn` quita además los que queden antes de las reapariciones.
+2. Cada 4 ticks el zombi elige el objetivo más cercano a 24 bloques o menos (el jugador o un animal) que no esté marcado como inalcanzable, y pide un camino a la `PathQueue` con prioridad 0, la más alta (los animales usan 1 y 2, y el paseo del zombi, 3). Un objetivo sin camino queda inalcanzable 5 s y el zombi pasea; al moverse el objetivo más de 2 bloques, o si el camino deja de ser válido porque cambió un chunk, lo vuelve a pedir (como mucho cada 0,5 s). Cerca del objetivo (2 bloques) va en línea recta.
+3. Al tocar al jugador, `Game.hitPlayer` le resta un corazón con empuje; al tocar a un animal, `Game.removeEntity` lo hace "poof" y su slot queda pendiente para el amanecer. En ambos casos el zombi pasa a `bump` (quieto un momento).
+4. `useTool` busca primero una criatura en el rayo (más cerca que el bloque apuntado y a 6 bloques o menos) y aplica `resolveHit` de `domain/rules/damage`: el zombi se derrota de 1 golpe con la mano, el pico o la espada; un animal solo rebota (`entityHit` con `boing`).
+5. Los zombis no se guardan (`entitySnapshots` solo toma animales). El render los dibuja como una especie más (`RENDER_KINDS`) y, al desaparecer, con destellos; el audio toca `groan`, `boing` y `sparkle`.
+
 ### Guardado
 
 - El `ChunkStore` distingue los chunks **modificados** (difieren de la semilla: nunca se descargan de memoria) de los **sucios** (tienen cambios sin guardar). Solo se guardan los modificados; el resto se regenera con la semilla y el generador del mundo.
@@ -114,6 +128,7 @@ src/
 | `?view=` | Radio de vista en chunks, de 2 a 8 (por defecto 6) |
 | `?workers=` | Cantidad de workers del mesher, de 0 a 4 (por defecto 1; 0 usa la ruta síncrona) |
 | `?perf=1&perfMs=` | Ruta de cámara de `npm run perf` |
+| `?night=1` (con `?perf`) | La ruta empieza de noche con 8 zombis (`npm run perf -- --night`) |
 | `?test=1` | Instala `window.__santi` (solo en desarrollo) |
 
 La simulación nunca lee el reloj del navegador: el bucle recibe el tiempo desde `requestAnimationFrame` y la pausa al ocultar la pestaña. Con `createHeadlessGame({ seed, clock })` el juego completo corre en Node para las pruebas.

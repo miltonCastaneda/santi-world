@@ -18,6 +18,7 @@ import { Game } from "../../sim/game";
 import { FixedStepLoop } from "../../sim/loop";
 import { ACTION_MS } from "../../sim/player";
 import { GameSession } from "../../sim/session";
+import { MAX_ZOMBIES } from "../../sim/systems/spawn";
 import { setupDebugOverlay } from "../../ui/debugOverlay";
 import { setupHud } from "../../ui/hud";
 import { setupHudClock } from "../../ui/kid/hudClock";
@@ -56,8 +57,17 @@ const playerView = (): PlayerView => {
   };
 };
 
+/** Parpadeo tras un rebote (hasta este momento, por entidad). */
+const blinkUntil = new Map<string, number>();
+const BLINK_MS = 400;
+
 function* entityViews(): Iterable<EntityView> {
-  for (const e of game.entities.all()) yield { id: e.id, species: e.species, pos: e.body.pos, yaw: e.yaw, anim: e.anim ?? "idle" };
+  const now = performance.now();
+  for (const e of game.entities.all()) {
+    const until = blinkUntil.get(e.id);
+    if (until !== undefined && until < now) blinkUntil.delete(e.id);
+    yield { id: e.id, species: e.species, pos: e.body.pos, yaw: e.yaw, anim: e.anim ?? "idle", blink: until !== undefined && until >= now };
+  }
 }
 
 const view = new RenderApp(canvas, game.world.store, game.world.gen, game.world.spawn, {
@@ -68,6 +78,9 @@ const view = new RenderApp(canvas, game.world.store, game.world.gen, game.world.
 });
 
 game.events.on("blockChanged", ({ pos }) => view.chunks.invalidateBlock(pos.x, pos.z));
+game.events.on("entityHit", ({ id, outcome }) => {
+  if (outcome === "boing") blinkUntil.set(id, performance.now() + BLINK_MS);
+});
 game.events.on("worldReplaced", ({ world }) => {
   view.chunks.rebuildAll(world.store, world.gen);
   view.entities?.clear();
@@ -183,6 +196,7 @@ async function boot(): Promise<void> {
   }
 
   const perf = params.has("perf") && game.world.layout ? createPerfRoute(view, game.world.layout, game.seed, Number(params.get("perfMs") ?? 60_000)) : null;
+  if (perf && params.has("night")) startPerfNight();
 
   document.addEventListener("visibilitychange", () => loop.setPaused(document.hidden));
 
@@ -232,9 +246,22 @@ async function boot(): Promise<void> {
           fps: frameStats.fps,
           entitiesDrawn: view.entities?.stats.drawn ?? 0,
           entityDrawCalls: view.entities?.stats.drawCalls ?? 0,
+          poofs: view.entities?.stats.poofs ?? 0,
         }),
       },
     });
+  }
+}
+
+/** `?perf=1&night=1`: la ruta de cámara de noche, con el máximo de zombis alrededor de la granja. */
+function startPerfNight(): void {
+  game.clock.restore(game.clock.durations.dayMs, game.clock.dayCount);
+  const p = game.player.pos;
+  for (let i = 0; i < MAX_ZOMBIES; i++) {
+    const a = (i / MAX_ZOMBIES) * Math.PI * 2;
+    const x = Math.floor(p.x + Math.cos(a) * 12);
+    const z = Math.floor(p.z + Math.sin(a) * 12);
+    game.spawnZombie({ x: x + 0.5, y: game.world.store.surfaceY(x, z) + 1, z: z + 0.5 });
   }
 }
 

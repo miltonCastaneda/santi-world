@@ -80,6 +80,8 @@ export type SantiTestApi = {
   clearEntities(): void;
   /** "Poof" de una entidad: si es de un slot, queda pendiente de reaparecer al amanecer. */
   poofEntity(id: string): boolean;
+  /** Pone un zombi en `pos` (pies); devuelve su id. */
+  spawnZombie(pos: Vec3): string;
   pendingRespawns(): string[];
   dayNight(): DayNightSnapshot;
   /** Adelanta (o atrasa) el reloj del mundo a ese punto del ciclo. */
@@ -171,6 +173,7 @@ export function installTestApi(deps: {
       })),
     clearEntities: () => game.entities.clear(),
     poofEntity: (id) => game.removeEntity(id),
+    spawnZombie: (pos) => game.spawnZombie(pos).id,
     pendingRespawns: () => [...game.pendingRespawns],
     dayNight: () => {
       const c = game.clock;

@@ -21,6 +21,11 @@ export function connectGameAudio(audio: AudioService, game: Game): void {
     if (isSoundName(sound)) audio.play(sound, { pos, category: "animal", bus: "ambient" });
   });
   e.on("nightSoon", () => audio.play("chime", { volume: 0.7 }));
+  // Golpes cartoon: rebote con "boing"; un zombi derrotado (o que se va al amanecer) hace destellos.
+  e.on("entityHit", ({ pos, outcome }) => {
+    if (outcome === "boing") audio.play("boing", { pos, volume: 0.8 });
+  });
+  e.on("entityRemoved", ({ species, pos }) => audio.play(species === "zombie" ? "sparkle" : "poof", { pos, volume: 0.8 }));
   // La música cambia al empezar el atardecer y el amanecer: el cruce acompaña a la luz.
   e.on("phaseChanged", () => audio.setMusic(musicFor(game.clock)));
 }

@@ -59,10 +59,10 @@ Cada tarjeta muestra la miniatura, el nombre, la fecha de creación, la de últi
 **"Configurar"** permite elegir, para ese mundo:
 
 - La duración del **día** y de la **noche**, de **2 a 30 minutos** cada una. Si escribes un valor fuera de ese rango, se ajusta al límite y se te avisa.
-- La **noche tranquila**: sin zombis ni dragón.
+- La **noche tranquila**: sin zombis (ni, más adelante, dragón).
 - El **volumen** general, de la música y de los efectos (0 a 100).
 
-Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el niño lo está jugando en otra pestaña. Si cambias la duración de la noche mientras ya es de noche, se respeta lo que ya pasó: la noche termina cuando se cumple la nueva duración (o enseguida, si ya la superó). La noche tranquila ya queda guardada y se aplica cuando lleguen los enemigos (próximos incrementos).
+Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el niño lo está jugando en otra pestaña. Si cambias la duración de la noche mientras ya es de noche, se respeta lo que ya pasó: la noche termina cuando se cumple la nueva duración (o enseguida, si ya la superó). Si activas la noche tranquila de noche, los zombis que haya se van con destellos en 4 segundos o menos.
 
 ### El día y la noche
 
@@ -72,6 +72,15 @@ Los cambios se aplican la próxima vez que se abre el mundo, o al instante si el
 - **Un minuto antes de la noche** aparece una luna que parpadea suavemente junto al reloj y suena una campanita una sola vez.
 - **Al amanecer** reaparecen, cerca de su lugar, los animales que hayan desaparecido (nunca se duplican, y esto también se guarda).
 - La **música** es una canción suave de día y una canción de cuna de noche; se cruzan en 6 segundos. Su volumen se ajusta con el control "Música".
+
+### Los zombis
+
+- Solo aparecen **de noche** (nunca al atardecer ni con la noche tranquila): uno cada 20 segundos, como máximo 8 a la vez, siempre a más de 24 bloques del niño y en terreno natural (pasto, tierra, arena, nieve o piedra), al aire libre y lejos de la luz de las antorchas.
+- Son **cartoon**: verdes, sonrientes, con mejillas rosadas, y caminan al **60 %** de la velocidad del niño. Su voz es un "uuuh" bajito.
+- **Persiguen** al niño o al animal más cercano buscando un camino: no rompen bloques ni saltan muros de 2 bloques, así que un corral cerrado (y techado, para que nada aparezca adentro) protege a los animales. Si no encuentran camino, se dan por vencidos y pasean.
+- Si tocan al niño le quitan **1 corazón** con un empujón suave (después tiene 1 segundo de invulnerabilidad). Si tocan a un animal, este hace "poof" y **reaparece al amanecer**. Nunca rompen construcciones ni quitan cosas.
+- Se derrotan con **un golpe** de la mano, el pico o la espada: desaparecen con destellos de colores, sin nada que asuste.
+- **Al amanecer** (o al activar la noche tranquila) se van todos con destellos, escalonados en 4 segundos. No se guardan: al reabrir un mundo de noche, vuelven a aparecer de a poco.
 
 ### Exportar e importar (respaldo)
 

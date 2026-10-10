@@ -51,6 +51,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Reloj del HUD sin texto: sol o luna dentro de un arco que se llena, "Día N" y, un minuto antes de la noche, una luna que parpadea y una campanita (una sola vez).
 - Reaparición por slots solo al amanecer: los animales que faltan vuelven cerca de su lugar, sin duplicarse ni aparecer sobre construcciones; la lista de pendientes se guarda.
 - Música de día y canción de cuna de noche generadas por código (pentatónica, 96 y 66 bpm, pico 0,25), con cruce de 6 s en el bus `music`.
+- Zombis nocturnos (incremento 8): `NightSpawner` (uno cada 20 s, máximo 8, a más de 24 bloques, en terreno natural sin techo y con luz de bloque menor que 8; nunca con la noche tranquila) y `ZombieSystem` con estados `seek`, `chase`, `bump` y `wander`, al 60 % de la velocidad del jugador, que persigue al jugador o al animal más cercano con el A* (prioridad 0) y recalcula el camino en 2 s o menos.
+- Tabla de reglas de daño (`domain/rules/damage`): un zombi se derrota de 1 golpe con la mano, el pico o la espada; a un animal cualquier golpe solo le da un "boing". Un zombi que toca al jugador le quita 1 corazón con empuje y uno que toca a un animal le hace "poof" (reaparece al amanecer).
+- Al amanecer, o al activar la noche tranquila, los zombis se van con destellos escalonados en 4 s. No se guardan con el mundo.
+- Modelo de zombi cartoon (piel verde, camisa celeste, ojos grandes, sonrisa y mejillas rosadas), destellos de colores, rebote con parpadeo al golpear un animal, y los sonidos `groan` (un "uuuh" bajito) y `sparkle`. Checklist "Revisión de efectos" en `docs/assets.md`.
+- `npm run perf -- --night`: la ruta de cámara de noche con 8 zombis.
 
 ### Cambiado
 - "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.
@@ -67,6 +72,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - ADR-0007, ADR-0009 y ADR-0010 pasan a "Aceptado".
 - `SCHEMA_VERSION` pasa a 2 (migración de estado: `animalsSpawned`). No se puede poner un bloque donde hay un animal.
 - ADR-0005 y ADR-0006 pasan a "Aceptado".
+- Un golpe de la herramienta alcanza primero a la criatura apuntada si está más cerca que el bloque.
 
 ## [1.0.0] - 2026-10-10
 

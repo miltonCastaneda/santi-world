@@ -2,7 +2,12 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { Vec3 } from "../core/math";
 import type { EntityAnim } from "../domain/entities/entityStore";
-import { isSpeciesId, SPECIES_IDS, type SpeciesId } from "../domain/entities/species";
+import { SPECIES_IDS } from "../domain/entities/species";
+
+/** Lo que sabe dibujar: los animales de granja y los zombis. */
+const RENDER_KINDS = [...SPECIES_IDS, "zombie"] as const;
+type RenderKind = (typeof RENDER_KINDS)[number];
+const isRenderKind = (s: string): s is RenderKind => (RENDER_KINDS as readonly string[]).includes(s);
 
 /** Lo que el render lee de cada animal en cada frame (nunca lo modifica). */
 export type EntityView = {
@@ -42,8 +47,49 @@ const quad = (x: number, y: number, z: number): V3[] => [
 ];
 const leg = (w: number, h: number, color: number): Box[] => [{ size: [w, h, w], at: [0, -h / 2, 0], color }];
 
+const ZOMBIE_SKIN = 0x8fd16a;
+const ZOMBIE_SHIRT = 0x3fa7c9;
+
 /** Animales de cajas, estilo del personaje (ADR-0010). El frente es +z. */
-const MODELS: Record<SpeciesId, ModelDef> = {
+const MODELS: Record<RenderKind, ModelDef> = {
+  // Zombi cartoon (preguntas abiertas, punto 6): verde claro, ojos grandes con brillo y una sonrisa;
+  // los brazos estirados hacia adelante, sin heridas ni dientes.
+  zombie: {
+    body: [
+      { size: [0.56, 0.68, 0.32], at: [0, 1.09, 0], color: ZOMBIE_SHIRT },
+      { size: [0.18, 0.18, 0.6], at: [-0.37, 1.32, 0.22], color: ZOMBIE_SHIRT },
+      { size: [0.18, 0.18, 0.6], at: [0.37, 1.32, 0.22], color: ZOMBIE_SHIRT },
+      { size: [0.17, 0.17, 0.14], at: [-0.37, 1.32, 0.58], color: ZOMBIE_SKIN },
+      { size: [0.17, 0.17, 0.14], at: [0.37, 1.32, 0.58], color: ZOMBIE_SKIN },
+    ],
+    head: {
+      pivot: [0, 1.43, 0],
+      boxes: [
+        { size: [0.5, 0.48, 0.48], at: [0, 0.24, 0], color: ZOMBIE_SKIN },
+        { size: [0.52, 0.1, 0.5], at: [0, 0.5, 0], color: 0x4e8a3c },
+        // Ojos grandes: blanco, pupila y un brillo.
+        ...[-0.12, 0.12].flatMap((x): Box[] => [
+          { size: [0.16, 0.17, 0.02], at: [x, 0.29, 0.245], color: 0xffffff },
+          { size: [0.08, 0.09, 0.02], at: [x, 0.27, 0.255], color: EYE },
+          { size: [0.03, 0.03, 0.02], at: [x + 0.02, 0.3, 0.262], color: 0xffffff },
+        ]),
+        { size: [0.16, 0.04, 0.02], at: [0, 0.11, 0.245], color: 0x3c6b30 },
+        { size: [0.04, 0.04, 0.02], at: [-0.09, 0.13, 0.245], color: 0x3c6b30 },
+        { size: [0.04, 0.04, 0.02], at: [0.09, 0.13, 0.245], color: 0x3c6b30 },
+        { size: [0.07, 0.04, 0.02], at: [-0.17, 0.17, 0.243], color: 0xf2a7a7 },
+        { size: [0.07, 0.04, 0.02], at: [0.17, 0.17, 0.243], color: 0xf2a7a7 },
+      ],
+    },
+    legs: {
+      hips: [
+        [-0.13, 0.75, 0],
+        [0.13, 0.75, 0],
+      ],
+      boxes: leg(0.24, 0.75, 0x6c5ba8),
+      height: 0.75,
+    },
+    shadow: 0.45,
+  },
   sheep: {
     body: [
       { size: [0.8, 0.6, 1.0], at: [0, 0.75, 0], color: 0xf4f1ea },
@@ -239,13 +285,17 @@ class Instances {
 const scratch = new THREE.Matrix4();
 
 /** Estado visual de cada animal: posición suavizada y fase de las animaciones. */
-type Shown = { species: SpeciesId; pos: THREE.Vector3; yaw: number; phase: number; swing: number; headPitch: number; lower: number; seenAt: number };
+type Shown = { species: RenderKind; pos: THREE.Vector3; yaw: number; phase: number; swing: number; headPitch: number; lower: number; seenAt: number };
 
-type Poof = { origin: THREE.Vector3; startedAt: number };
+/** `cloud`: nube blanca con estrellas (animales). `sparkle`: destellos de colores que suben (zombis). */
+export type PoofStyle = "cloud" | "sparkle";
+type Poof = { origin: THREE.Vector3; startedAt: number; style: PoofStyle };
 const POOF_PARTICLES = 10;
 const POOF_SECONDS = 0.6;
+const SPARKLE_SECONDS = 0.9;
 const MAX_POOFS = 24;
 const POOF_COLORS = [new THREE.Color(0xffffff), new THREE.Color(0xffd23f)];
+const SPARKLE_COLORS = [new THREE.Color(0xffe066), new THREE.Color(0x8ee8ff), new THREE.Color(0xffb3e6), new THREE.Color(0xffffff)];
 
 /**
  * Dibuja los animales con una malla instanciada por especie y parte (cuerpo, cabeza y patas), una
@@ -254,7 +304,7 @@ const POOF_COLORS = [new THREE.Color(0xffffff), new THREE.Color(0xffd23f)];
  */
 export class EntityRenderer {
   readonly group = new THREE.Group();
-  private readonly parts: Record<SpeciesId, { body: Instances; head: Instances; legs: Instances }>;
+  private readonly parts: Record<RenderKind, { body: Instances; head: Instances; legs: Instances }>;
   private readonly shadows: Instances;
   private readonly poofMesh: Instances;
   private readonly materials: THREE.Material[] = [];
@@ -269,8 +319,8 @@ export class EntityRenderer {
     this.group.name = "entities";
     const lambert = new THREE.MeshLambertMaterial({ vertexColors: true });
     this.materials.push(lambert);
-    const parts = {} as Record<SpeciesId, { body: Instances; head: Instances; legs: Instances }>;
-    for (const id of SPECIES_IDS) {
+    const parts = {} as Record<RenderKind, { body: Instances; head: Instances; legs: Instances }>;
+    for (const id of RENDER_KINDS) {
       const m = MODELS[id];
       const geos = [boxesGeometry(m.body), boxesGeometry(m.head.boxes), boxesGeometry(m.legs.boxes)];
       this.geometries.push(...geos);
@@ -303,15 +353,15 @@ export class EntityRenderer {
   }
 
   /** Nube "poof" con estrellas en `pos` (desaparición de una criatura). */
-  poof(pos: Vec3): void {
+  poof(pos: Vec3, style: PoofStyle = "cloud"): void {
     if (this.poofs.length >= MAX_POOFS) this.poofs.shift();
-    this.poofs.push({ origin: new THREE.Vector3(pos.x, pos.y + 0.4, pos.z), startedAt: this.time });
+    this.poofs.push({ origin: new THREE.Vector3(pos.x, pos.y + (style === "sparkle" ? 0.9 : 0.4), pos.z), startedAt: this.time, style });
   }
 
   update(dtSeconds: number, views: Iterable<EntityView>, camera: THREE.Vector3): void {
     this.time += dtSeconds;
     this.frame++;
-    for (const id of SPECIES_IDS) {
+    for (const id of RENDER_KINDS) {
       const p = this.parts[id];
       p.body.begin();
       p.head.begin();
@@ -322,8 +372,8 @@ export class EntityRenderer {
     let drawn = 0;
     const smooth = 1 - Math.exp(-dtSeconds * 15);
     for (const v of views) {
-      if (!isSpeciesId(v.species)) continue;
-      const shown = this.track(v, dtSeconds, smooth);
+      if (!isRenderKind(v.species)) continue;
+      const shown = this.track({ ...v, species: v.species }, dtSeconds, smooth);
       if (shown.pos.distanceTo(camera) > ENTITY_DRAW_DISTANCE) continue;
       if (v.blink && Math.floor(this.time * 10) % 2 === 1) continue;
       this.draw(shown, v.anim);
@@ -332,23 +382,23 @@ export class EntityRenderer {
     // Lo que dejó de existir hace "poof" (si estaba cerca: lo lejano ni se veía).
     for (const [id, s] of this.shown) {
       if (s.seenAt === this.frame) continue;
-      if (s.pos.distanceTo(camera) <= ENTITY_DRAW_DISTANCE) this.poof(s.pos);
+      if (s.pos.distanceTo(camera) <= ENTITY_DRAW_DISTANCE) this.poof(s.pos, s.species === "zombie" ? "sparkle" : "cloud");
       this.shown.delete(id);
     }
     this.drawPoofs();
 
-    const all = [...SPECIES_IDS.flatMap((id) => [this.parts[id].body, this.parts[id].head, this.parts[id].legs]), this.shadows, this.poofMesh];
+    const all = [...RENDER_KINDS.flatMap((id) => [this.parts[id].body, this.parts[id].head, this.parts[id].legs]), this.shadows, this.poofMesh];
     for (const inst of all) inst.end();
     // Una draw call por malla visible (un solo material por malla).
     const drawCalls = all.filter((inst) => inst.mesh.visible).length;
     this.lastStats = { drawCalls, drawn, poofs: this.poofs.length };
   }
 
-  private track(v: EntityView, dt: number, smooth: number): Shown {
+  private track(v: EntityView & { species: RenderKind }, dt: number, smooth: number): Shown {
     let s = this.shown.get(v.id);
     const target = new THREE.Vector3(v.pos.x, v.pos.y, v.pos.z);
     if (!s || s.species !== v.species) {
-      s = { species: v.species as SpeciesId, pos: target, yaw: v.yaw, phase: 0, swing: 0, headPitch: 0, lower: 0, seenAt: this.frame };
+      s = { species: v.species, pos: target, yaw: v.yaw, phase: 0, swing: 0, headPitch: 0, lower: 0, seenAt: this.frame };
       this.shown.set(v.id, s);
     } else if (s.pos.distanceTo(target) > 4) {
       s.pos.copy(target);
@@ -404,11 +454,15 @@ export class EntityRenderer {
   }
 
   private drawPoofs(): void {
-    this.poofs = this.poofs.filter((p) => this.time - p.startedAt < POOF_SECONDS);
+    this.poofs = this.poofs.filter((p) => this.time - p.startedAt < (p.style === "sparkle" ? SPARKLE_SECONDS : POOF_SECONDS));
     this.poofMesh.begin();
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     for (const p of this.poofs) {
+      if (p.style === "sparkle") {
+        this.drawSparkle(p, m, q);
+        continue;
+      }
       const t = (this.time - p.startedAt) / POOF_SECONDS;
       const spread = 1 - (1 - t) * (1 - t);
       for (let i = 0; i < POOF_PARTICLES; i++) {
@@ -424,8 +478,24 @@ export class EntityRenderer {
     }
   }
 
+  /** Destellos: una espiral de colores que sube girando y titila al apagarse. */
+  private drawSparkle(p: Poof, m: THREE.Matrix4, q: THREE.Quaternion): void {
+    const t = (this.time - p.startedAt) / SPARKLE_SECONDS;
+    const n = POOF_PARTICLES + 4;
+    for (let i = 0; i < n; i++) {
+      const a = i * 2.39996 + t * 4;
+      const r = 0.25 + 0.6 * Math.sin(Math.min(1, t * 1.6) * Math.PI * 0.5);
+      const pos = new THREE.Vector3(p.origin.x + Math.cos(a) * r, p.origin.y + (i / n - 0.5) * 1.4 + t * 0.9, p.origin.z + Math.sin(a) * r);
+      q.setFromAxisAngle(new THREE.Vector3(0.3, 1, 0.2).normalize(), a * 2);
+      const twinkle = 0.75 + 0.25 * Math.sin(this.time * 30 + i);
+      const size = (0.16 * (1 - t) + 0.02) * twinkle;
+      m.compose(pos, q, new THREE.Vector3(size, size, size));
+      this.poofMesh.push(m, SPARKLE_COLORS[i % SPARKLE_COLORS.length]);
+    }
+  }
+
   dispose(): void {
-    for (const id of SPECIES_IDS) for (const inst of Object.values(this.parts[id])) inst.dispose();
+    for (const id of RENDER_KINDS) for (const inst of Object.values(this.parts[id])) inst.dispose();
     this.shadows.dispose();
     this.poofMesh.dispose();
     for (const g of this.geometries) g.dispose();

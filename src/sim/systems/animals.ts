@@ -1,9 +1,9 @@
 import type { Vec3 } from "../../core/math";
 import { Rng } from "../../core/rng";
-import type { Entity, EntityStore } from "../../domain/entities/entityStore";
+import type { Entity, EntityKind, EntityStore } from "../../domain/entities/entityStore";
 import { newBrain, think, type Perception } from "../../domain/entities/fsm";
 import type { Home, SpawnSlot } from "../../domain/entities/population";
-import { SPECIES, THREAT_RADIUS, type HomeId, type SpeciesDef, type SpeciesId } from "../../domain/entities/species";
+import { isSpeciesId, SPECIES, THREAT_RADIUS, type HomeId, type SpeciesDef, type SpeciesId } from "../../domain/entities/species";
 import { GRAVITY, isStuck, JUMP_VELOCITY, moveBody } from "../../domain/physics/collide";
 import { inRect } from "../../domain/worldgen/layout";
 import { isPathValid, PathQueue, standY, type PathAgent, type PathWorld } from "./pathfinding";
@@ -18,10 +18,10 @@ export type AnimalContext = {
   homes: Record<HomeId, Home> | null;
 };
 
-export type AnimalSound = { id: string; species: SpeciesId; sound: string; pos: Vec3 };
+export type AnimalSound = { id: string; species: EntityKind; sound: string; pos: Vec3 };
 
 const agentOf = (def: SpeciesDef): PathAgent => ({ height: def.height, swims: def.swims });
-const isAnimal = (e: Entity): e is Entity & { species: SpeciesId } => e.species !== "threat" && e.brain !== undefined;
+const isAnimal = (e: Entity): e is Entity & { species: SpeciesId } => isSpeciesId(e.species) && e.brain !== undefined;
 
 /**
  * IA, movimiento y física de los animales (design D6 a D9). Determinista: un único RNG propio y la
