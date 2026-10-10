@@ -1,30 +1,47 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import type { Vec3 } from "../core/math";
 import { CHUNK_SIZE } from "../domain/world/chunk";
 import type { ChunkStore } from "../domain/world/chunkStore";
 import type { WorldGenSpec } from "../domain/worldgen/generator";
 import { createBlockMaterials, type BlockMaterials } from "./blockMaterial";
 import { ChunkRenderer } from "./chunkRenderer";
+import { FollowCamera } from "./followCamera";
+import { PlayerModel, type PlayerView } from "./playerModel";
 import { Sky } from "./sky";
 
-export type RenderAppOptions = { viewRadius?: number; workers?: number };
+/** Cámara en tercera persona detrás del personaje (el juego). Sin esto, cámara orbital (visor de padres). */
+export type FollowOptions = {
+  player: () => PlayerView;
+  isSolid: (x: number, y: number, z: number) => boolean;
+  now: () => number;
+};
+
+export type RenderAppOptions = { viewRadius?: number; workers?: number; follow?: FollowOptions };
 
 const THUMB_W = 320;
 const THUMB_H = 180;
 
 /**
- * Escena, cámara y renderer del juego. La cámara orbital es provisional hasta el incremento 5.
- * Sin sombras dinámicas: la profundidad la dan la oclusión ambiental y la luz por vértice.
+ * Escena, cámara y renderer. El juego usa la cámara en tercera persona con el personaje; el visor de
+ * padres, la orbital. Sin sombras dinámicas: la profundidad la dan la oclusión ambiental y la luz por
+ * vértice.
  */
 export class RenderApp {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
-  readonly controls: OrbitControls;
+  readonly controls: OrbitControls | null = null;
+  readonly follow: FollowCamera | null = null;
+  readonly playerModel: PlayerModel | null = null;
   readonly materials: BlockMaterials;
   readonly chunks: ChunkRenderer;
   readonly sky: Sky;
   private worldSize: number;
+  /** Vista fija (pruebas, ruta de rendimiento): la cámara no sigue al personaje hasta `followPlayer()`. */
+  private fixed: { target: Vec3 } | null = null;
+  private lastRender = 0;
+  private readonly followOptions: FollowOptions | null;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -43,19 +60,27 @@ export class RenderApp {
     this.worldSize = store.sizeInBlocks;
     this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 250);
     this.camera.position.set(focus.x + 22, focus.y + 20, focus.z + 26);
+    this.followOptions = options.follow ?? null;
 
-    this.controls = new OrbitControls(this.camera, canvas);
-    this.controls.target.set(focus.x, focus.y, focus.z);
-    this.controls.enableDamping = true;
-    this.controls.minDistance = 8;
-    this.controls.maxDistance = 80;
-    this.controls.maxPolarAngle = Math.PI / 2.05;
-    this.controls.screenSpacePanning = false;
-    this.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
-    this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-    this.controls.update();
+    if (this.followOptions) {
+      this.follow = new FollowCamera(this.camera, canvas, this.followOptions.isSolid, this.followOptions.now);
+      this.playerModel = new PlayerModel();
+      this.scene.add(this.playerModel.root);
+    } else {
+      const controls = new OrbitControls(this.camera, canvas);
+      controls.target.set(focus.x, focus.y, focus.z);
+      controls.enableDamping = true;
+      controls.minDistance = 8;
+      controls.maxDistance = 80;
+      controls.maxPolarAngle = Math.PI / 2.05;
+      controls.screenSpacePanning = false;
+      controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+      controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+      controls.update();
+      this.controls = controls;
+    }
 
-    // Para entidades futuras (MeshLambert); el terreno usa luz por vértice.
+    // Para las entidades (MeshLambert); el terreno usa luz por vértice.
     this.scene.add(new THREE.HemisphereLight(0xfff4d6, 0x4a7c3a, 1.2));
 
     this.materials = createBlockMaterials();
@@ -71,7 +96,9 @@ export class RenderApp {
   /** Libera GPU y workers (el visor de padres se abre y se cierra varias veces). */
   dispose(): void {
     window.removeEventListener("resize", this.onResize);
-    this.controls.dispose();
+    this.controls?.dispose();
+    this.follow?.dispose();
+    this.playerModel?.dispose();
     this.chunks.dispose();
     this.materials.dispose();
     this.renderer.dispose();
@@ -83,22 +110,55 @@ export class RenderApp {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  /** Coloca la cámara (al abrir un mundo, en pruebas visuales y en la ruta de rendimiento). */
-  setView(position: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }): void {
+  /** Coloca la cámara en una vista fija (visor, pruebas visuales y ruta de rendimiento). */
+  setView(position: Vec3, target: Vec3): void {
     this.camera.position.set(position.x, position.y, position.z);
-    this.controls.target.set(target.x, target.y, target.z);
-    this.controls.update();
+    if (this.controls) {
+      this.controls.target.set(target.x, target.y, target.z);
+      this.controls.update();
+      return;
+    }
+    this.fixed = { target: { ...target } };
+    this.camera.lookAt(target.x, target.y, target.z);
   }
 
-  /** Vista inicial de un mundo sin cámara guardada: desde arriba y en diagonal hacia el punto de aparición. */
-  setSpawnView(spawn: { x: number; y: number; z: number }): void {
+  /** Vuelve a la cámara detrás del personaje, colocada al instante. */
+  followPlayer(): void {
+    this.fixed = null;
+    if (!this.follow || !this.followOptions) return;
+    const p = this.followOptions.player();
+    this.follow.snap(p.pos, p.yaw);
+  }
+
+  get isFollowing(): boolean {
+    return this.follow !== null && this.fixed === null;
+  }
+
+  /** Vista inicial del visor de padres: desde arriba y en diagonal hacia el punto de aparición. */
+  setSpawnView(spawn: Vec3): void {
     this.setView({ x: spawn.x + 22, y: spawn.y + 20, z: spawn.z + 26 }, spawn);
   }
 
-  cameraView(): { position: { x: number; y: number; z: number }; target: { x: number; y: number; z: number } } {
+  /** Rumbo horizontal de la cámara: el movimiento con WASD es relativo a él. */
+  get headingYaw(): number {
+    if (this.follow && !this.fixed) return this.follow.yaw;
+    const d = new THREE.Vector3();
+    this.camera.getWorldDirection(d);
+    return Math.atan2(d.x, d.z);
+  }
+
+  cameraView(): { position: Vec3; target: Vec3 } {
     const { x, y, z } = this.camera.position;
-    const t = this.controls.target;
-    return { position: { x, y, z }, target: { x: t.x, y: t.y, z: t.z } };
+    return { position: { x, y, z }, target: this.focusPoint() };
+  }
+
+  private focusPoint(): Vec3 {
+    if (this.controls) {
+      const t = this.controls.target;
+      return { x: t.x, y: t.y, z: t.z };
+    }
+    if (this.fixed) return this.fixed.target;
+    return this.follow!.focus;
   }
 
   /** Miniatura del mundo (WebP de 320x180, recortada al centro) tal como se ve ahora. */
@@ -121,9 +181,25 @@ export class RenderApp {
     return new Promise((resolve) => out.toBlob((b) => resolve(b), "image/webp", 0.8));
   }
 
-  render(): void {
-    this.controls.update();
-    const t = this.controls.target;
+  render(nowMs = performance.now()): void {
+    const dt = this.lastRender === 0 ? 0 : Math.min(0.1, (nowMs - this.lastRender) / 1000);
+    this.lastRender = nowMs;
+    if (this.controls) this.updateOrbit();
+    if (this.playerModel && this.followOptions) {
+      const p = this.followOptions.player();
+      this.playerModel.update(dt, p);
+      if (this.follow && !this.fixed) this.follow.update(dt, this.playerModel.root.position, p.yaw, p.anim === "walk");
+    }
+    const f = this.focusPoint();
+    this.chunks.setFocus(f.x, f.z);
+    this.chunks.update();
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  private updateOrbit(): void {
+    const controls = this.controls!;
+    controls.update();
+    const t = controls.target;
     const clampedX = Math.max(0, Math.min(this.worldSize, t.x));
     const clampedZ = Math.max(0, Math.min(this.worldSize, t.z));
     if (clampedX !== t.x || clampedZ !== t.z) {
@@ -133,8 +209,5 @@ export class RenderApp {
       this.camera.position.x += dx;
       this.camera.position.z += dz;
     }
-    this.chunks.setFocus(t.x, t.z);
-    this.chunks.update();
-    this.renderer.render(this.scene, this.camera);
   }
 }

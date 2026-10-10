@@ -1,15 +1,21 @@
+import { AudioService, type AudioContextLike } from "../../audio/audioService";
+import { connectGameAudio } from "../../audio/gameAudio";
+import { SOUND_NAMES } from "../../audio/synth";
 import type { Clock } from "../../core/clock";
+import { TRASH_RETENTION_MS, type WorldSettings } from "../../domain/repository/model";
+import { GameInput } from "../../input/gameInput";
 import { PointerInput } from "../../input/pointerInput";
-import { TRASH_RETENTION_MS } from "../../domain/repository/model";
 import { AutosaveService } from "../../persistence/autosave";
 import { openChannel } from "../../persistence/broadcast";
 import { DexieWorldRepository, SantiDatabase } from "../../persistence/dexieRepository";
 import { errorMessage, recordError } from "../../persistence/errorLog";
 import { importLegacyWorld } from "../../persistence/legacyImport";
 import { requestPersistentStorage } from "../../persistence/storage";
+import type { PlayerView } from "../../render/playerModel";
 import { RenderApp } from "../../render/renderApp";
 import { Game } from "../../sim/game";
 import { FixedStepLoop } from "../../sim/loop";
+import { ACTION_MS } from "../../sim/player";
 import { GameSession } from "../../sim/session";
 import { setupDebugOverlay } from "../../ui/debugOverlay";
 import { setupHud } from "../../ui/hud";
@@ -33,14 +39,40 @@ const newSeed = () => crypto.randomUUID().slice(0, 8);
 // Mundo provisional hasta que la sesión abra el guardado (no se dibuja: el bucle arranca después).
 const game = new Game({ seed: seedParam ?? "santi" });
 const loop = new FixedStepLoop((dt) => game.step(dt));
-const view = new RenderApp(canvas, game.world.store, game.world.gen, game.world.spawn, { viewRadius, workers });
+
+const playerView = (): PlayerView => {
+  const p = game.player;
+  const t = game.timeMs;
+  return {
+    pos: p.pos,
+    yaw: p.yaw,
+    anim: p.animAt(t),
+    swing: p.swing,
+    actionProgress: Math.min(1, Math.max(0, 1 - (p.actionUntil - t) / ACTION_MS)),
+    tool: p.tool,
+    invulnerable: p.isInvulnerable(t),
+  };
+};
+
+const view = new RenderApp(canvas, game.world.store, game.world.gen, game.world.spawn, {
+  viewRadius,
+  workers,
+  follow: { player: playerView, isSolid: (x, y, z) => game.collision(x, y, z) > 0, now: () => performance.now() },
+});
 
 game.events.on("blockChanged", ({ pos }) => view.chunks.invalidateBlock(pos.x, pos.z));
 game.events.on("worldReplaced", ({ world }) => view.chunks.rebuildAll(world.store, world.gen));
+game.events.on("playerRespawned", () => view.isFollowing && view.followPlayer());
 
 const repo = new DexieWorldRepository(new SantiDatabase(), { clock: wallClock, newId: () => crypto.randomUUID() });
 const warning = setupSaveWarning();
 const logError = (context: string, error: unknown) => void recordError(repo, { at: wallClock.now(), context, message: errorMessage(error) });
+
+const audio = new AudioService(() => (typeof AudioContext === "undefined" ? null : (new AudioContext() as unknown as AudioContextLike)));
+audio.attachUnlock(window);
+setTimeout(() => audio.prepare(SOUND_NAMES), 0);
+connectGameAudio(audio, game);
+const applyVolumes = (s: WorldSettings) => audio.setVolumes(s.volume);
 
 new PointerInput(canvas, view.camera, (intent) => game.enqueue(intent));
 
@@ -66,11 +98,13 @@ async function boot(): Promise<void> {
   const legacy = await importLegacyWorld({ storage: localStorage, repo, ownerId: user.id, clock: wallClock });
   const channel = openChannel();
 
+  // La cámara se guarda solo para que el visor de padres abra donde estaba jugando el niño.
   const session = new GameSession(game, user.id, { repo, clock: wallClock, newSeed, camera: () => view.cameraView() });
-  session.events.on("worldOpened", ({ state }) => {
-    if (state.camera) view.setView(state.camera.position, state.camera.target);
-    else view.setSpawnView(game.world.spawn);
+  session.events.on("worldOpened", ({ world }) => {
+    view.followPlayer();
+    applyVolumes(world.settings);
   });
+  session.events.on("settingsChanged", ({ world }) => applyVolumes(world.settings));
 
   const autosave = new AutosaveService(repo, session, wallClock, {
     thumbnail: () => view.thumbnail(),
@@ -106,10 +140,20 @@ async function boot(): Promise<void> {
   const hud = setupHud(game, {
     createWorld: () => void session.createWorld(),
     openWorlds: () => void worldsPanel.show(),
+    toggleMute: () => audio.toggleMute(),
+    click: () => audio.play("click"),
   });
   session.events.on("busyChanged", ({ busy }) => hud.setBusy(busy));
   channel.onMessage((msg) => {
     if (msg.type === "settingsChanged") void session.reloadSettings(msg.worldId).catch((error) => logError("aplicar la configuración", error));
+  });
+
+  const input = new GameInput(window, canvas!, {
+    send: (intent) => game.enqueue(intent),
+    headingYaw: () => view.headingYaw,
+    selectSlot: (i) => hud.selectSlot(i),
+    cycleSlot: (d) => hud.cycleSlot(d),
+    isBlocked: () => document.querySelector(".worlds-panel:not([hidden])") !== null,
   });
 
   try {
@@ -126,9 +170,11 @@ async function boot(): Promise<void> {
 
   const frame = (now: number) => {
     frameStats.frame(now);
+    input.update();
     loop.frame(now);
     perf?.frame(now);
-    view.render();
+    view.render(now);
+    audio.setListener(view.camera.position, view.headingYaw);
     autosave.tick();
     requestAnimationFrame(frame);
   };
@@ -143,8 +189,15 @@ async function boot(): Promise<void> {
       autosave,
       repo,
       legacy,
+      audio,
       view: {
         setView: (p, t) => view.setView(p, t),
+        followPlayer: () => view.followPlayer(),
+        cameraPos: () => ({ ...view.camera.position }),
+        playerModel: () => (view.playerModel ? { anim: view.playerModel.anim, shownTool: view.playerModel.shownTool } : null),
+        setPlayerVisible: (visible) => {
+          if (view.playerModel) view.playerModel.root.visible = visible;
+        },
         isWorldReady: () => view.chunks.idle && view.chunks.stats.meshed > 0,
         stats: () => ({
           updateP95: percentile(view.chunks.updateSamples, 0.95),

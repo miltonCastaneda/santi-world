@@ -2,13 +2,13 @@
 
 > Este documento describe la arquitectura **vigente**. Cada change que modifique módulos o límites lo actualiza. Las decisiones y sus alternativas están en [`docs/adr/`](adr/).
 
-## Estado actual (Fase 2, incremento 4)
+## Estado actual (Fase 2, incremento 5)
 
-Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Todavía se juega con la cámara orbital de v1.
+Mundo de 256x256x64 por chunks, generado con semilla (granja, establo, río con puente, estanque, montaña boscosa, montaña de roca con diamantes y borde natural), con texturas, luz por vértice y un mesher en Web Worker. Varios mundos guardados en IndexedDB con autoguardado, "Mis Mundos" y el mundo v1 importado como "Mi primer mundo". Vista de padres en `/padres/`. Se juega con un personaje en tercera persona (física AABB, cámara con brazo de resorte, herramientas, corazones) y hay audio.
 
 ```
 index.html --> src/apps/game/main.ts   (raíz de composición: repositorio, importación v1, sesión, autoguardado,
-                                         Game, bucle, render, input, HUD, Mis Mundos, F3, ruta de perf)
+                                         Game, bucle, render, input, audio, HUD, Mis Mundos, F3, ruta de perf)
 padres/index.html --> src/apps/parents/main.ts   (repositorio, PIN, vista de padres; viewer.ts: visor de
                                          solo lectura con readOnly(repo) y RenderApp, cargado bajo demanda)
 src/
@@ -21,21 +21,32 @@ src/
                 world/terrainWorld.ts (reglas de poner/quitar/deshacer sobre el ChunkStore),
                 worldgen/layout.ts y generator.ts (generadores "zones" y "legacy-flat", GENERATOR_VERSION),
                 repository/model.ts (User, World, GameState, ChunkRecord, SCHEMA_VERSION) y
-                repository/worldRepository.ts (puerto WorldRepository)                          (puro)
-  sim/          loop.ts (FixedStepLoop, 20 Hz), game.ts (intents, eventos, replaceWorld, createHeadlessGame),
-                session.ts (GameSession: abrir, crear y cambiar de mundo; guardar antes de limpiar)  (puro)
+                repository/worldRepository.ts (puerto WorldRepository), settings.ts (clampSettings),
+                physics/collide.ts (moveBody: AABB con barrido Y, X, Z, gravedad, borde invisible),
+                rules/tools.ts (Mano, Pico, Espada, Arco y Collar; alcance de 6)                 (puro)
+  sim/          loop.ts (FixedStepLoop, 20 Hz), game.ts (intents, eventos, replaceWorld, colisión,
+                createHeadlessGame), player.ts (Player: movimiento, salto, corazones, reaparición,
+                animación), session.ts (GameSession: abrir, crear y cambiar de mundo; guardar antes
+                de limpiar; guarda posición, rumbo, corazones y herramienta)                     (puro)
   persistence/  dexieRepository.ts (IndexedDB, esquema db.version(n)), inMemoryRepository.ts (pruebas),
                 autosave.ts (AutosaveService), migrations.ts (migrations[n] puras), legacyImport.ts
                 (v1 a "Mi primer mundo"), exportFormat.ts, errorLog.ts, storage.ts (persist()),
                 legacyLocalStorage.ts (formato v1), pin.ts (PinGuard, PBKDF2), broadcast.ts
                 (BroadcastChannel 'santi': saved, worldsChanged, settingsChanged)
-  render/       renderApp.ts (escena, cámara orbital, sin sombras, near 0,1 / far 250),
+  render/       renderApp.ts (escena; en el juego FollowCamera + PlayerModel, en el visor cámara orbital;
+                sin sombras, near 0,1 / far 250), followCamera.ts (brazo de resorte de 6 bloques a 20°,
+                se acorta con un DDA para no entrar en los bloques, giro con el botón derecho),
+                playerModel.ts (personaje de cajas con la "S" y animación procedural),
                 chunkRenderer.ts (cola con prioridad, presupuesto de 4 ms, radio 6 / descarga 8),
                 meshWorker.ts (luz + mesher en un Web Worker), chunkMesher.ts (caras visibles, AO),
                 tiles.ts y textures.ts (tiles procedurales de 16 px), blockMaterial.ts
                 (DataArrayTexture + MeshBasicMaterial con uDaylight), sky.ts (cielo y niebla)
-  input/        pointerInput.ts (toque/clic a intents "use"; arrastre = cámara)
-  ui/           hud.ts (paleta, Mis Mundos, Crear nuevo mundo), kid/misMundos.ts (tarjetas con miniatura,
+  input/        pointerInput.ts (clic izquierdo a intent "useTool"), gameInput.ts (WASD/flechas relativas
+                a la cámara, Espacio, 1 a 9, rueda, E; protecciones del navegador; suelta todo en blur)
+  audio/        audioService.ts (buses con tope 0,8, silencio, voces de animales, posicional),
+                synth.ts (efectos sintetizados CC0), gameAudio.ts (eventos del juego a sonidos)
+  ui/           hud.ts (corazones, herramientas, barra de bloques, deshacer, Mis Mundos, nuevo mundo,
+                silencio, pantalla completa, "muy lejos"), kid/misMundos.ts (tarjetas con miniatura,
                 sin borrar), kid/saveWarning.ts (ícono si falla el guardado), debugOverlay.ts (F3), style.css,
                 parents/parentsView.ts (histórico, papelera, configuración, PIN, exportar/importar), parents.css
   testing/      testApi.ts (window.__santi) y parentsTestApi.ts (window.__padres), solo en desarrollo con ?test=1
@@ -43,11 +54,18 @@ src/
 
 ### Flujo de un clic
 
-1. `input/` convierte el clic en un rayo en coordenadas de vóxel y envía `{ type: "use", ray }`.
+1. `input/` convierte el clic en un rayo en coordenadas de vóxel y envía `{ type: "useTool", ray }`.
 2. `Game` aplica los intents al inicio del siguiente paso (como mucho 50 ms después).
-3. `pickCell` recorre la grilla con DDA (el agua natural no se puede apuntar) y `TerrainWorld` aplica las reglas en el `ChunkStore`, que marca el chunk como sucio.
-4. `Game` emite `blockChanged`; `ChunkRenderer.invalidateBlock` pone primero el chunk editado, luego los vecinos del borde y luego los que alcanza la luz.
+3. `pickCell` recorre la grilla con DDA (el agua natural no se puede apuntar). Según la herramienta elegida, la Mano pone y el Pico rompe; si la celda está a más de 6 bloques de los ojos del personaje emite `tooFar`, y nunca pone un bloque donde está el personaje. `TerrainWorld` aplica las reglas en el `ChunkStore`, que marca el chunk como sucio.
+4. `Game` emite `blockChanged` (y `blockPlaced` o `blockBroken`, que oye el audio); `ChunkRenderer.invalidateBlock` pone primero el chunk editado, luego los vecinos del borde y luego los que alcanza la luz.
 5. El worker recibe los chunks modificados de los 3x3 alrededor, regenera el resto con la semilla, calcula la luz y la malla y devuelve arreglos tipados. El hilo principal crea la geometría nueva antes de quitar la vieja (nunca hay un frame con hueco).
+
+### Personaje, cámara y audio
+
+1. `GameInput` traduce las teclas a `{ type: "move", x, z }` en coordenadas del mundo usando el rumbo de la cámara (adelante es hacia donde mira), y lo reenvía si la cámara gira mientras se camina. Al perder el foco o al ocultarse la pestaña suelta todas las teclas.
+2. En cada paso, `Player.step` aplica la velocidad pedida, el salto y `moveBody` contra `Game.collision`, y `Game` emite `footstep`, `jumped` y los cambios de corazones. `Game.hitPlayer` resta un corazón (con invulnerabilidad); sin corazones, "poof" y reaparición en la granja con 5 s de invulnerabilidad y nada perdido.
+3. En cada frame, `RenderApp.render` lee una vista del jugador (`PlayerView`: posición, rumbo, animación, herramienta), `PlayerModel` la interpola y la anima, y `FollowCamera` coloca la cámara detrás. El render nunca escribe en la simulación.
+4. `connectGameAudio` traduce los eventos del juego a sonidos y `AudioService.setListener` recibe la cámara en cada frame para el paneo.
 
 ### Guardado
 

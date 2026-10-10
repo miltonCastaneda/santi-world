@@ -2,6 +2,7 @@ import type { Clock } from "../core/clock";
 import { EventBus } from "../core/events";
 import type { CameraView, ChunkRecord, GameState, SaveSnapshot, World } from "../domain/repository/model";
 import type { WorldRepository } from "../domain/repository/worldRepository";
+import { isToolId } from "../domain/rules/tools";
 import { TerrainWorld } from "../domain/world/terrainWorld";
 import type { GeneratorKind } from "../domain/worldgen/generator";
 import { GENERATOR_VERSION } from "../domain/worldgen/layout";
@@ -141,7 +142,13 @@ export class GameSession {
         version: state.version + 1,
         updatedAt: now,
         camera: this.deps.camera?.() ?? state.camera,
-        player: { ...state.player, selectedBlock: this.game.selection.block },
+        player: {
+          pos: { ...this.game.player.pos },
+          yaw: this.game.player.yaw,
+          hearts: this.game.player.hearts,
+          selectedTool: this.game.selection.tool,
+          selectedBlock: this.game.selection.block,
+        },
       },
       entities: [],
       dirtyChunks,
@@ -164,7 +171,12 @@ export class GameSession {
     const terrain = TerrainWorld.fromRecords(world.seed, world.generator, records);
     this.world = world;
     this.state = state;
-    this.game.replaceWorld(terrain, { mode: "place", block: state.player.selectedBlock });
+    const tool = isToolId(state.player.selectedTool) ? state.player.selectedTool : "hand";
+    this.game.replaceWorld(terrain, { tool, block: state.player.selectedBlock });
+    const player = this.game.player;
+    if (state.player.pos) player.teleport(state.player.pos);
+    player.yaw = state.player.yaw;
+    player.restoreHearts(state.player.hearts, this.game.timeMs);
     this.events.emit("worldOpened", { world, state });
     this.savedStateKey = this.stateKey();
     await repo.setMeta(LAST_WORLD_KEY, worldId);
@@ -207,6 +219,7 @@ export class GameSession {
   private stateKey(): string {
     const cam = this.deps.camera?.();
     const r = (v: { x: number; y: number; z: number }) => `${v.x.toFixed(1)},${v.y.toFixed(1)},${v.z.toFixed(1)}`;
-    return `${this.game.selection.block}|${cam ? `${r(cam.position)}|${r(cam.target)}` : ""}`;
+    const p = this.game.player;
+    return `${this.game.selection.tool}|${this.game.selection.block}|${r(p.pos)}|${p.hearts}|${cam ? `${r(cam.position)}|${r(cam.target)}` : ""}`;
   }
 }

@@ -1,6 +1,6 @@
 # ADR 0010: Modelos de entidades hechos de cajas, con InstancedMesh por especie y parte y animación procedural
 
-- **Estado**: Propuesto
+- **Estado**: Aceptado (incremento 5: personaje; el instancing llega con los animales)
 - **Fecha**: 2026-10-10
 - **Change relacionado**: `openspec/changes/fase-2-mundo-vivo/` (specs `personaje-y-herramientas`, `animales-y-granja` y `rendimiento-y-estabilidad-visual`)
 
@@ -27,3 +27,11 @@ Hay que mostrar el personaje, 8 especies de animales, zombis y un dragón con an
 - Positivas: rendimiento constante sin importar cuántas entidades haya; cero assets binarios de modelos.
 - Negativas: el dragón (más complejo) necesita más partes; las animaciones son más simples.
 - Reversión: un modelo concreto (por ejemplo, el dragón) se puede cambiar por GLTF sin afectar al resto (con otro ADR).
+
+## Implementación (incremento 5)
+
+- `src/render/playerModel.ts`: el personaje es un único `Group` de cajas (cabeza con pelo y ojos, torso, brazos y piernas). Como hay un solo personaje, usa un `Mesh` por parte (unas 10 draw calls) en vez de `InstancedMesh`; el instancing por especie y parte se aplica con los animales.
+- La camiseta lleva la "S" dibujada en un `CanvasTexture` generado por código (sin archivos).
+- Animación procedural según `PlayerView.anim`: `idle` (respiración), `walk` (piernas y brazos en seno, con un leve rebote), `jump` (brazos arriba) y `action` (balanceo del brazo derecho según la herramienta: poner, minar, golpear, disparar o lanzar). Las vueltas a la pose de reposo y de salto se suavizan con una constante de unos 50 ms. La posición se interpola entre los pasos de 20 Hz de la simulación para que se vea fluida a 60 FPS.
+- La herramienta elegida se muestra en la mano derecha (cajas de colores) en el frame siguiente a elegirla. Durante la invulnerabilidad el modelo parpadea.
+- E2E (`tests/e2e/character.spec.ts`): pasa a caminar en 100 ms o menos y a idle en 300 ms o menos, y la Espada aparece en la mano en 200 ms o menos desde el clic.

@@ -24,6 +24,8 @@ test.describe("[rendimiento-y-estabilidad-visual] estabilidad visual", () => {
   test.beforeEach(async ({ page }) => {
     await openTestGame(page, SEED, 4);
     await hideHud(page);
+    // Las capturas de referencia son del terreno; el personaje se prueba aparte.
+    await page.evaluate(() => window.__santi!.setPlayerVisible(false));
   });
 
   test("[rendimiento-y-estabilidad-visual] Comparación visual: la granja con semilla y cámara fijas", async ({ page }) => {

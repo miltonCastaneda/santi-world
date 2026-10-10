@@ -140,14 +140,14 @@
 - **Depende de**: 3. **Paralelizable**: sí, con el incremento 4.
 - **Demo**: Santi camina con WASD, salta, pone bloques con la Mano, rompe con el Pico, gira la cámara y silencia el audio.
 
-- [ ] 5.1 Implementar la física AABB (barrido por eje, gravedad, escalón de 1 bloque y borde del mundo; ADR-0007) y verificar con pruebas unitarias "Chocar contra un muro", "Saltar un escalón", "Caer en un hueco" y "Borde del mundo"
-- [ ] 5.2 Implementar el controlador del jugador (intents, velocidad de 4,3 bloques/s, alcance de 6 bloques, sin colocar bloques en la celda propia) y verificarlo con pruebas unitarias "Fuera de alcance" y "Atascado dentro de un bloque"
-- [ ] 5.3 Crear el modelo del personaje con cajas, la "S" y las animaciones idle, caminar, saltar y acción (ADR-0010), y verificar con un E2E de los tiempos de transición (100 ms o menos al caminar y 300 ms o menos al pasar a idle)
-- [ ] 5.4 Implementar la cámara de brazo de resorte con colisión, el giro con el botón derecho y la vuelta detrás del personaje, quitando `OrbitControls` del juego, y verificar con un E2E que la cámara nunca queda dentro de un bloque
-- [ ] 5.5 Implementar la entrada (WASD y flechas, espacio, 1 a 9, rueda, E, soltar las teclas en `blur`, sin menú contextual ni zoom) y verificar con E2E "Pérdida de foco", "Teclas no asignadas", "Menú contextual" y "Zoom accidental"
-- [ ] 5.6 Crear la barra vertical de herramientas (Mano, Pico, Espada, Arco y Collar), la hotbar inferior y la ayuda de controles según la referencia visual (íconos de 64 px o más), y verificar con un E2E "Tamaño de los objetivos" y "Elegir herramienta con un clic"
-- [ ] 5.7 Implementar los corazones (5, invulnerabilidad de 1 s, recuperación de 1 corazón cada 20 s, "poof" y reaparición en la granja sin perder nada, con 5 s de invulnerabilidad) y verificarlo con pruebas unitarias de los escenarios de "Corazones y reaparición sin pérdida"
-- [ ] 5.8 Implementar `AudioService` (buses, tope de 0,8, reanudación con la primera interacción, voces con prioridad y botón de silencio; ADR-0009) con sonidos CC0 de pasos, bloques y UI, y verificarlo con pruebas unitarias con un contexto falso ("Silencio" y tope) y documentarlo en `docs/assets.md`
+- [x] 5.1 Implementar la física AABB (barrido por eje, gravedad, escalón de 1 bloque y borde del mundo; ADR-0007) y verificar con pruebas unitarias "Chocar contra un muro", "Saltar un escalón", "Caer en un hueco" y "Borde del mundo"
+- [x] 5.2 Implementar el controlador del jugador (intents, velocidad de 4,3 bloques/s, alcance de 6 bloques, sin colocar bloques en la celda propia) y verificarlo con pruebas unitarias "Fuera de alcance" y "Atascado dentro de un bloque"
+- [x] 5.3 Crear el modelo del personaje con cajas, la "S" y las animaciones idle, caminar, saltar y acción (ADR-0010), y verificar con un E2E de los tiempos de transición (100 ms o menos al caminar y 300 ms o menos al pasar a idle)
+- [x] 5.4 Implementar la cámara de brazo de resorte con colisión, el giro con el botón derecho y la vuelta detrás del personaje, quitando `OrbitControls` del juego, y verificar con un E2E que la cámara nunca queda dentro de un bloque
+- [x] 5.5 Implementar la entrada (WASD y flechas, espacio, 1 a 9, rueda, E, soltar las teclas en `blur`, sin menú contextual ni zoom) y verificar con E2E "Pérdida de foco", "Teclas no asignadas", "Menú contextual" y "Zoom accidental"
+- [x] 5.6 Crear la barra vertical de herramientas (Mano, Pico, Espada, Arco y Collar), la hotbar inferior y la ayuda de controles según la referencia visual (íconos de 64 px o más), y verificar con un E2E "Tamaño de los objetivos" y "Elegir herramienta con un clic"
+- [x] 5.7 Implementar los corazones (5, invulnerabilidad de 1 s, recuperación de 1 corazón cada 20 s, "poof" y reaparición en la granja sin perder nada, con 5 s de invulnerabilidad) y verificarlo con pruebas unitarias de los escenarios de "Corazones y reaparición sin pérdida"
+- [x] 5.8 Implementar `AudioService` (buses, tope de 0,8, reanudación con la primera interacción, voces con prioridad y botón de silencio; ADR-0009) con sonidos CC0 de pasos, bloques y UI, y verificarlo con pruebas unitarias con un contexto falso ("Silencio" y tope) y documentarlo en `docs/assets.md`
 - [ ] 5.9 Actualizar `docs/guia-nino.md` (controles con íconos) y `docs/architecture.md`, marcar ADR-0007, 0009 y 0010 como Aceptados, agregar la entrada al CHANGELOG y hacer la prueba de juego con Santi (checklist)
 
 ## 6. Animales y granja (HITO JUGABLE, v1.2.0)

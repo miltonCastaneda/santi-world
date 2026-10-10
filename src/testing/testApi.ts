@@ -1,17 +1,36 @@
+import type { AudioService } from "../audio/audioService";
 import type { Vec3 } from "../core/math";
 import type { World } from "../domain/repository/model";
 import type { WorldRepository } from "../domain/repository/worldRepository";
+import type { ToolId } from "../domain/rules/tools";
 import type { AutosaveService } from "../persistence/autosave";
 import type { LegacyImportResult } from "../persistence/legacyImport";
 import type { Game } from "../sim/game";
 import type { FixedStepLoop } from "../sim/loop";
+import type { PlayerAnim } from "../sim/player";
 import type { GameSession } from "../sim/session";
 
 export type ViewControl = {
+  /** Vista fija (la cámara deja de seguir al personaje hasta `followPlayer`). */
   setView(position: Vec3, target: Vec3): void;
+  followPlayer(): void;
+  cameraPos(): Vec3;
+  playerModel(): { anim: PlayerAnim; shownTool: ToolId } | null;
+  setPlayerVisible(visible: boolean): void;
   /** Todo lo visible está dibujado y no queda trabajo del mesher. */
   isWorldReady(): boolean;
   stats(): Record<string, number>;
+};
+
+export type PlayerSnapshot = {
+  pos: Vec3;
+  yaw: number;
+  vel: Vec3;
+  onGround: boolean;
+  hearts: number;
+  tool: ToolId;
+  anim: PlayerAnim;
+  invulnerable: boolean;
 };
 
 export type SantiTestApi = {
@@ -27,10 +46,20 @@ export type SantiTestApi = {
   selection(): Game["selection"];
   isPaused(): boolean;
   setView: ViewControl["setView"];
+  followPlayer: ViewControl["followPlayer"];
+  cameraPos: ViewControl["cameraPos"];
+  playerModel: ViewControl["playerModel"];
+  setPlayerVisible: ViewControl["setPlayerVisible"];
   isWorldReady: ViewControl["isWorldReady"];
   stats: ViewControl["stats"];
   /** Coloca un bloque directamente (para preparar escenarios). */
   setBlock(x: number, y: number, z: number, block: Parameters<Game["world"]["place"]>[3] | null): void;
+  /** La celda (x, y, z) es sólida para la física. */
+  isSolid(x: number, y: number, z: number): boolean;
+  player(): PlayerSnapshot;
+  teleport(pos: Vec3): void;
+  hitPlayer(from: Vec3 | null): string;
+  audio(): { ready: boolean; muted: boolean; masterGain: number };
   /** Mundo abierto. */
   currentWorld(): World | null;
   /** Mundos del usuario (sin la papelera), del más reciente al más antiguo. */
@@ -58,8 +87,9 @@ export function installTestApi(deps: {
   autosave: AutosaveService;
   repo: WorldRepository;
   legacy: LegacyImportResult;
+  audio: AudioService;
 }): void {
-  const { game, loop, view, session, autosave, repo, legacy } = deps;
+  const { game, loop, view, session, autosave, repo, legacy, audio } = deps;
   window.__santi = {
     ready: true,
     get seed() {
@@ -78,12 +108,33 @@ export function installTestApi(deps: {
     selection: () => game.selection,
     isPaused: () => loop.isPaused,
     setView: view.setView,
+    followPlayer: view.followPlayer,
+    cameraPos: view.cameraPos,
+    playerModel: view.playerModel,
+    setPlayerVisible: view.setPlayerVisible,
     isWorldReady: view.isWorldReady,
     stats: view.stats,
     setBlock: (x, y, z, block) => {
       const pos = block ? game.world.place(x, y, z, block) : game.world.remove(x, y, z);
       if (pos) game.events.emit("blockChanged", { pos });
     },
+    isSolid: (x, y, z) => game.collision(x, y, z) > 0,
+    player: () => {
+      const p = game.player;
+      return {
+        pos: { ...p.pos },
+        yaw: p.yaw,
+        vel: { ...p.body.vel },
+        onGround: p.body.onGround,
+        hearts: p.hearts,
+        tool: p.tool,
+        anim: p.animAt(game.timeMs),
+        invulnerable: p.isInvulnerable(game.timeMs),
+      };
+    },
+    teleport: (pos) => game.player.teleport(pos),
+    hitPlayer: (from) => game.hitPlayer(from),
+    audio: () => ({ ready: audio.isReady, muted: audio.isMuted, masterGain: audio.masterGain }),
     currentWorld: () => session.world,
     worlds: () => repo.listWorlds(session.ownerId),
     saveNow: () => autosave.saveNow(),

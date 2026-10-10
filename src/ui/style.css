@@ -13,6 +13,11 @@ body {
   height: 100%;
   overflow: hidden;
   background: #87ceeb;
+  /* Navegador a prueba de niños: un arrastre accidental no selecciona nada. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
 }
 
 #game {
@@ -22,75 +27,116 @@ body {
   touch-action: none;
 }
 
-.top-bar {
+/* HUD según la referencia visual: nada tapa el centro de la pantalla. */
+.hud {
   position: fixed;
-  top: 12px;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
+  inset: 0;
   pointer-events: none;
 }
 
-.top-bar h1 {
-  margin: 0;
-  padding: 8px 22px;
-  background: rgba(255, 255, 255, 0.88);
-  border-radius: 999px;
-  font-size: 1.4rem;
-  box-shadow: 0 4px 0 #3d6b2e;
+.hud > * {
+  position: absolute;
+  pointer-events: auto;
 }
 
-.hud {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
+.hearts {
+  top: 16px;
+  left: 16px;
   display: flex;
-  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 2.2rem;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+.heart.empty {
+  filter: grayscale(1) opacity(0.35);
+}
+
+.hearts.hit {
+  animation: hearts-bounce 0.4s ease-out;
+}
+
+@keyframes hearts-bounce {
+  30% {
+    transform: scale(1.15);
+  }
+}
+
+.actions {
+  top: 16px;
+  right: 16px;
+  display: flex;
   gap: 10px;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 24px;
-  padding: 12px;
-  box-shadow: 0 8px 0 #3d6b2e;
 }
 
-.modes,
-.actions,
-.palette {
+.toolbar {
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
+  box-shadow: 0 6px 0 #3d6b2e;
+}
+
+.hotbar {
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  /* Sin invadir la columna de herramientas: en pantallas angostas pasa a dos filas. */
+  width: max-content;
+  max-width: calc(100vw - 2 * 124px);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
   justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+  box-shadow: 0 6px 0 #3d6b2e;
 }
 
-.mode-btn,
 .action-btn,
+.tool-btn,
 .block-btn {
+  position: relative;
+  width: 72px;
+  height: 72px;
   border: 4px solid #2c3e22;
-  border-radius: 16px;
-  min-height: 64px;
-  font-size: 1.15rem;
-  font-weight: 700;
+  border-radius: 18px;
+  font-size: 2.2rem;
+  line-height: 1;
   cursor: pointer;
-}
-
-.mode-btn,
-.action-btn {
-  padding: 0 18px;
   background: #f4e9c7;
   color: #223318;
+  transition: transform 80ms ease-out;
 }
 
-.mode-btn.active {
+/* Respuesta inmediata a cada pulsación (spec "Respuesta inmediata"). */
+.action-btn:active,
+.tool-btn:active,
+.block-btn:active {
+  transform: scale(0.9);
+}
+
+.tool-btn {
+  width: 80px;
+  height: 80px;
+  font-size: 2.6rem;
+}
+
+.tool-btn.active {
   background: #7ed957;
-}
-
-.mode-btn.remove.active {
-  background: #ff8a7a;
+  outline: 5px solid #fff;
+  box-shadow: 0 0 0 4px #2c3e22;
+  transform: scale(1.08);
 }
 
 .block-btn {
@@ -102,11 +148,141 @@ body {
 .block-btn.selected {
   outline: 5px solid #fff;
   box-shadow: 0 0 0 4px #2c3e22, inset 0 -8px 0 rgba(0, 0, 0, 0.18);
+  transform: translateY(-6px);
+}
+
+.slot-key {
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.action-btn.muted {
+  background: #ffcf9e;
 }
 
 .action-btn:disabled {
   opacity: 0.5;
   cursor: wait;
+}
+
+.too-far {
+  left: 50%;
+  bottom: 110px;
+  transform: translateX(-50%) scale(0.8);
+  padding: 6px 16px;
+  font-size: 2.4rem;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 150ms, transform 150ms;
+  pointer-events: none;
+}
+
+.too-far.show {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.controls-help {
+  left: 16px;
+  bottom: 16px;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  font-size: 1.3rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  pointer-events: none;
+}
+
+.controls-help .keys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 2px solid #2c3e22;
+  border-bottom-width: 4px;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.key.wide {
+  min-width: 72px;
+}
+
+/* En portátiles la barra de bloques llega hasta la esquina: la ayuda sube debajo de los corazones. */
+@media (max-width: 1439px) {
+  .controls-help {
+    top: 84px;
+    bottom: auto;
+  }
+}
+
+/* Pantallas bajas: más compacto, pero ningún botón baja de 64 px. */
+@media (max-height: 700px) {
+  .tool-btn,
+  .action-btn {
+    width: 64px;
+    height: 64px;
+    font-size: 2rem;
+  }
+
+  .toolbar {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .hearts {
+    font-size: 1.6rem;
+  }
+
+  .controls-help {
+    top: 72px;
+    bottom: auto;
+  }
+}
+
+.mouse {
+  display: inline-block;
+  width: 20px;
+  height: 30px;
+  border: 2px solid #2c3e22;
+  border-radius: 10px;
+  background: linear-gradient(#fff 0 0) padding-box;
+  position: relative;
+}
+
+.mouse::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 45%;
+  background: #f4a300;
+}
+
+.mouse.left::before {
+  left: 0;
+  border-top-left-radius: 8px;
+}
+
+.mouse.right::before {
+  right: 0;
+  border-top-right-radius: 8px;
 }
 
 .worlds-panel {
@@ -155,8 +331,8 @@ body {
 }
 
 .worlds-close {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   border: 4px solid #2c3e22;
   border-radius: 50%;
   background: #f4e9c7;
@@ -184,6 +360,10 @@ body {
   text-align: center;
   font: inherit;
   color: inherit;
+}
+
+.world-card:active {
+  transform: scale(0.97);
 }
 
 .world-card.current {
@@ -220,8 +400,9 @@ body {
 
 .save-warning {
   position: fixed;
-  top: 12px;
-  right: 16px;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   padding: 6px 12px;
   font-size: 2rem;
   background: #ffe08a;
@@ -232,7 +413,7 @@ body {
 
 .debug-overlay {
   position: fixed;
-  top: 8px;
+  top: 80px;
   left: 8px;
   margin: 0;
   padding: 8px 10px;
@@ -242,22 +423,4 @@ body {
   border-radius: 6px;
   pointer-events: none;
   z-index: 10;
-}
-
-@media (max-width: 720px) {
-  .top-bar h1 {
-    font-size: 1.1rem;
-  }
-
-  .mode-btn,
-  .action-btn,
-  .block-btn {
-    min-height: 52px;
-    font-size: 1rem;
-  }
-
-  .block-btn {
-    width: 52px;
-    height: 52px;
-  }
 }

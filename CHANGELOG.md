@@ -32,6 +32,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Vista de padres en `/padres/` (incremento 4), una página aparte (Vite multipágina, redirect de `/padres`) sin ningún enlace ni atajo desde el juego del niño: histórico con miniaturas, visor 3D de solo lectura, borrado con confirmación, papelera con restauración y purga a los 30 días, configuración por mundo (día y noche de 2 a 30 min, noche tranquila y volúmenes), exportar e importar, espacio usado y PIN opcional (PBKDF2, bloqueo de 60 s tras 5 fallos).
 - `BroadcastChannel('santi')`: la vista de padres se actualiza cuando el juego guarda, y el juego aplica en caliente la configuración que cambian los padres.
 - `WorldRepository.updateSettings` y `readOnly()` (el visor no tiene métodos que escriban). Guardar desde el juego conserva la configuración y la papelera que pusieron los padres.
+- Personaje en tercera persona (incremento 5): modelo de cajas con la "S" en la camisa y animaciones procedurales idle, caminar, saltar y acción (ADR-0010). Camina con WASD o flechas (4,3 bloques/s, relativo a la cámara) y salta con Espacio.
+- Física AABB propia con barrido por eje, gravedad, salto de 1 bloque, cercas de 1,5 y borde invisible del mundo (ADR-0007).
+- Cámara con brazo de resorte: sigue al personaje por detrás, nunca queda dentro de un bloque, gira arrastrando con el botón derecho y vuelve detrás a los 3 s.
+- Barra vertical de herramientas (Mano, Pico, Espada, Arco y Collar), barra de bloques con atajos 1 a 9 y rueda, corazones (5, invulnerabilidad de 1 s, uno nuevo cada 20 s, "poof" y reaparición en la granja sin perder nada) y ayuda de controles con pictogramas. Todos los botones miden 64 px o más.
+- Alcance de 6 bloques con un indicador "muy lejos"; no se puede poner un bloque donde está el personaje.
+- `AudioService` con buses master (tope de 0,8), music, sfx y ambient, botón de silencio, reanudación con la primera interacción y como máximo 3 voces de animales (ADR-0009). Sonidos de pasos, bloques, salto, golpe y UI generados por código (CC0, `docs/assets.md`).
+- Navegador a prueba de niños: sin menú contextual, sin zoom (Ctrl + rueda, Ctrl + "+"), sin desplazar ni seleccionar texto, sin atajos de recargar, buscar o imprimir, y se sueltan las teclas al perder el foco.
+- El estado guardado incluye la posición, el rumbo y los corazones del personaje, y la herramienta elegida.
 
 ### Cambiado
 - "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.
@@ -43,6 +51,9 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - El código se reorganizó en capas `core`, `domain`, `sim`, `persistence`, `render`, `input`, `ui`, `testing` y `apps` sin cambiar el comportamiento del juego. El punto de entrada ahora es `src/apps/game/main.ts`.
 - La selección del bloque apuntado usa un DDA de vóxeles del dominio en lugar del raycast de Three.js.
 - ADR-0001 y ADR-0004 pasan a "Aceptado".
+- El juego ya no usa la cámara orbital (queda solo en el visor de padres): poner es la Mano y romper es el Pico, con clic izquierdo; el botón derecho gira la cámara. Los botones de "poner" y "quitar" desaparecen.
+- El HUD sigue la referencia visual: corazones arriba a la izquierda, botones grandes de íconos arriba a la derecha (deshacer, Mis Mundos, nuevo mundo, silencio y pantalla completa) y herramientas a la derecha.
+- ADR-0007, ADR-0009 y ADR-0010 pasan a "Aceptado".
 
 ## [1.0.0] - 2026-10-10
 
