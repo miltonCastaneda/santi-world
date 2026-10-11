@@ -25,6 +25,29 @@ GPU integrada tipo Intel UHD 620, 8 GB de RAM, Chrome estable, 1080p y pantalla 
 
    Para regenerar las referencias después de un cambio visual intencional: `npx playwright test tests/e2e/visual.spec.ts --update-snapshots`, revisar las imágenes y hacer commit.
 
+## Arranque ("Primer momento jugable")
+
+El juego deja dos marcas de User Timing, visibles en la pestaña Performance de las herramientas del navegador y con `performance.getEntriesByName(...)`:
+
+- `santi:jugable`: el último mundo ya está abierto y el bucle va a empezar.
+- `santi:primer-movimiento`: el personaje se movió por primera vez (con una tecla pulsada desde el principio, es cuando responde al teclado).
+
+La prueba `tests/e2e/startup.prod.spec.ts` (proyecto `prod`, compilación de producción) abre el juego una vez para crear el mundo, recarga con la tecla W pulsada desde el inicio de la navegación y exige el primer movimiento antes de 3 s. Si el niño mantiene la tecla durante la carga, el personaje camina en cuanto el mundo se abre (`GameInput.resync` al reemplazar el mundo).
+
+| Fecha | Entorno | `santi:jugable` ms | `santi:primer-movimiento` ms |
+|---|---|---|---|
+| 2026-10-10 | Equipo de desarrollo, Chromium headless con WebGL por software (SwiftShader), `vite preview` | 1233 | 1296 |
+
+La medición en el equipo de referencia con GPU real queda para la tarea 14.1 junto con `npm run perf`.
+
+## Simulación sin interfaz
+
+`npm run test:perf` (`vitest.perf.config.ts`, paso propio en `npm run ci` y en el workflow) corre solo `tests/perf/`: 30 minutos simulados con la población completa y una noche con zombis, lobos y dragón deben tardar menos de 10 s reales. Va aparte de `npm test` porque, con los otros workers de vitest compitiendo por la CPU, el tiempo real se duplica en un equipo de 4 núcleos. En el equipo de desarrollo tarda unos 6,7 s. Lo que lo hizo posible:
+
+- `ChunkStore` indexa los chunks en un arreglo además del `Map`, y la física consulta una tabla de alturas de colisión por número de bloque (`COLLISION_BY_NUM`); el barrido de colisiones no crea objetos.
+- A\* (`findPath`) memoriza la colisión, el agua, "se puede pisar" y "hay espacio" de cada celda de la región de búsqueda, sin limpiar los arreglos entre búsquedas (sellos por búsqueda).
+- `Enclosures` (por partida, en `PathQueue`): cuando una búsqueda agota su presupuesto, se calcula hacia atrás desde el destino la región cerrada que lo contiene (hasta 1500 celdas); las búsquedas siguientes hacia esa región, desde fuera, fallan al instante mientras no cambie ningún chunk cercano. Antes, un zombi persiguiendo a un animal encerrado en la granja expandía el presupuesto completo en cada intento (1,9 millones de nodos en 30 minutos; ahora unos 290 000).
+
 ## Resultados por incremento
 
 | Incremento | Fecha | p50 ms | p95 ms | Draw calls máx. | Mesher p99 / máx. ms por frame | Entidades dibujadas / draw calls máx. | Carga ms | GPU |

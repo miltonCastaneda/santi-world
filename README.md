@@ -29,9 +29,11 @@ La **vista de padres** está en `http://localhost:5173/padres/` (no hay enlaces 
 | `npm run preview` | Sirve el build de producción. |
 | `npm test` | Pruebas unitarias y de integración (Vitest). |
 | `npm run e2e` | Pruebas E2E y smoke (Playwright + Chromium). |
-| `npm run check` | Tipos (`tsc --noEmit`) y lint, incluida la regla de capas. |
+| `npm run test:perf` | Pruebas con presupuesto de tiempo real (30 minutos simulados en menos de 10 s). |
+| `npm run check` | Tipos (`tsc --noEmit`), lint (incluida la regla de capas) y trazabilidad de escenarios (`npm run trace`). |
+| `npm run coverage` | Cobertura (mínimo 85 % en `domain` y `sim`). |
 | `npm run perf` | Medición de rendimiento con GPU real (ver [`docs/performance.md`](docs/performance.md)). |
-| `npm run ci` | `check`, `test` y `e2e`: lo mismo que GitHub Actions. |
+| `npm run ci` | `check`, `test`, `test:perf` y `e2e`: lo mismo que GitHub Actions. |
 
 La primera vez que vayas a ejecutar las E2E, instala el navegador con `npx playwright install chromium`. Los detalles están en [`docs/testing.md`](docs/testing.md).
 

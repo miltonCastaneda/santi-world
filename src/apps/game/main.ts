@@ -227,6 +227,7 @@ async function boot(): Promise<void> {
     cycleSlot: (d) => hud.cycleSlot(d),
     isBlocked: () => document.querySelector(".worlds-panel:not([hidden])") !== null,
   });
+  game.events.on("worldReplaced", () => input.resync());
 
   try {
     await session.openInitial({ seed: seedParam, worldId: legacy.status === "imported" && !seedParam ? legacy.world.id : undefined });
@@ -235,6 +236,9 @@ async function boot(): Promise<void> {
     logError("abrir el último mundo", error);
     await session.openInitial({ seed: newSeed() });
   }
+  // Marcas de User Timing del arranque (docs/performance.md): mundo abierto y primer paso del personaje.
+  performance.mark("santi:jugable");
+  let firstMoveFrom: { x: number; z: number } | null = { x: game.player.pos.x, z: game.player.pos.z };
 
   const perf = params.has("perf") && game.world.layout ? createPerfRoute(view, game.world.layout, game.seed, Number(params.get("perfMs") ?? 60_000)) : null;
   if (perf && params.has("night")) startPerfNight();
@@ -245,6 +249,10 @@ async function boot(): Promise<void> {
     frameStats.frame(now);
     input.update();
     loop.frame(now);
+    if (firstMoveFrom && Math.hypot(game.player.pos.x - firstMoveFrom.x, game.player.pos.z - firstMoveFrom.z) > 0.05) {
+      performance.mark("santi:primer-movimiento");
+      firstMoveFrom = null;
+    }
     perf?.frame(now);
     const clock = game.clock;
     view.setTime(clock.daylight, { isNight: clock.isNight, progress: clock.phaseProgress });
@@ -277,19 +285,24 @@ async function boot(): Promise<void> {
           if (view.entities) view.entities.group.visible = visible;
         },
         isWorldReady: () => view.chunks.idle && view.chunks.stats.meshed > 0,
+        chunkMeshed: (cx, cz) => view.chunks.isMeshed(cx, cz),
+        chunkUpToDate: (cx, cz) => view.chunks.isUpToDate(cx, cz),
         stats: () => ({
           updateP95: percentile(view.chunks.updateSamples, 0.95),
           updateP99: percentile(view.chunks.updateSamples, 0.99),
           drawCalls: view.renderer.info.render.calls,
+          frames: view.renderer.info.render.frame,
           meshed: view.chunks.stats.meshed,
           maxMainThreadMs: view.chunks.stats.maxMainThreadMs,
           workerMsAvg: view.chunks.stats.workerMsAvg,
+          meshJobs: view.chunks.stats.jobs,
           fps: frameStats.fps,
           entitiesDrawn: view.entities?.stats.drawn ?? 0,
           entityDrawCalls: view.entities?.stats.drawCalls ?? 0,
           poofs: view.entities?.stats.poofs ?? 0,
           effectDrawCalls: view.projectiles?.drawCalls ?? 0,
         }),
+        resetStats: () => view.chunks.resetMaxStats(),
       },
     });
   }

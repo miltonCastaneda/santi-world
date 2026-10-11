@@ -2,7 +2,7 @@ import type { Clock } from "../core/clock";
 import { EventBus } from "../core/events";
 import { normalize, rayAabb, type Aabb, type Ray, type Vec3 } from "../core/math";
 import { Rng } from "../core/rng";
-import { BLOCK_NUM, BLOCKS_BY_NUM, type BlockId } from "../domain/blocks";
+import { BLOCK_NUM, BLOCKS_BY_NUM, COLLISION_BY_NUM, type BlockId } from "../domain/blocks";
 import { EntityStore, type Entity, type EntityKind } from "../domain/entities/entityStore";
 import { isItemId, ITEMS, PICKUP_DELAY_MS, type ItemId } from "../domain/entities/items";
 import { createSpawnSlots, homesOf, type Home, type SpawnSlot } from "../domain/entities/population";
@@ -604,8 +604,7 @@ export class Game {
     if (x < 0 || z < 0 || x >= size || z >= size) return Infinity;
     if (y < 0) return 1;
     if (y >= CHUNK_HEIGHT) return 0;
-    const def = BLOCKS_BY_NUM[this.world.store.get(x, y, z)];
-    return def?.solid ? def.collisionHeight : 0;
+    return COLLISION_BY_NUM[this.world.store.get(x, y, z)] ?? 0;
   };
 
   /**

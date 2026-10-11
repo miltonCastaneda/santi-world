@@ -124,6 +124,15 @@ export class GameInput {
     this.deps.cycleSlot(e.deltaY > 0 ? 1 : -1);
   };
 
+  /**
+   * Vuelve a mandar la dirección de las teclas pulsadas. Al cambiar de mundo la simulación detiene al
+   * personaje; si el niño sigue con la tecla pulsada, debe seguir caminando sin soltarla.
+   */
+  resync(): void {
+    this.lastSent = { x: Number.NaN, z: Number.NaN };
+    this.sendMove();
+  }
+
   /** Suelta todas las teclas: el personaje se detiene y no queda caminando solo. */
   readonly releaseAll = () => {
     this.pressed.clear();

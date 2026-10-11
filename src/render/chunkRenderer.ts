@@ -27,6 +27,8 @@ export type ChunkRenderStats = {
   pending: number;
   inFlight: number;
   loadedChunks: number;
+  /** Trabajos de mallado terminados desde el inicio. */
+  jobs: number;
 };
 
 type Job = { cx: number; cz: number; priority: number };
@@ -42,11 +44,14 @@ const EDIT_PRIORITY = -1000;
 export class ChunkRenderer {
   readonly group = new THREE.Group();
   readonly options: ChunkRendererOptions;
-  readonly stats: ChunkRenderStats = { mainThreadMs: 0, maxMainThreadMs: 0, workerMsAvg: 0, meshed: 0, pending: 0, inFlight: 0, loadedChunks: 0 };
+  readonly stats: ChunkRenderStats = { mainThreadMs: 0, maxMainThreadMs: 0, workerMsAvg: 0, meshed: 0, pending: 0, inFlight: 0, loadedChunks: 0, jobs: 0 };
   private meshes = new Map<string, { opaque: THREE.Mesh | null; water: THREE.Mesh | null }>();
   private pending = new Map<string, Job>();
-  private inFlight = new Map<number, string>();
+  /** Trabajos en los workers: chunk y versión de sus bloques al encargarlo. */
+  private inFlight = new Map<number, { key: string; version: number }>();
   private inFlightKeys = new Set<string>();
+  /** Versión de los bloques con la que se hizo la malla que se ve de cada chunk. */
+  private meshVersions = new Map<string, number>();
   private results: MeshResponse[] = [];
   private slots: Slot[] = [];
   private nextId = 1;
@@ -141,6 +146,28 @@ export class ChunkRenderer {
     const t0 = performance.now();
     const budget = this.options.budgetMs;
 
+    // Primero los resultados y después los encargos: un chunk que cambió mientras se mallaba deja de
+    // estar "en vuelo" y se puede volver a encargar en este mismo frame, antes que trabajos de menos prioridad.
+    let applied = 0;
+    while (this.results.length > 0) {
+      const elapsed = performance.now() - t0;
+      // Se aplica una geometría solo si su costo estimado cabe en lo que queda del presupuesto.
+      if (applied > 0 && elapsed + this.applyMsEstimate > budget) break;
+      if (applied === 0 && elapsed > budget) break;
+      const res = this.results.shift()!;
+      const job = this.inFlight.get(res.id);
+      this.inFlight.delete(res.id);
+      if (job) this.inFlightKeys.delete(job.key);
+      this.workerMsTotal += res.ms;
+      this.workerJobs++;
+      if (!job || !this.isWanted(res.cx, res.cz)) continue;
+      const ta = performance.now();
+      this.apply(res.cx, res.cz, res.data);
+      this.meshVersions.set(job.key, job.version);
+      this.applyMsEstimate = this.applyMsEstimate * 0.8 + (performance.now() - ta) * 0.2;
+      applied++;
+    }
+
     for (const slot of this.slots) {
       if (slot.busy || this.pending.size === 0) continue;
       if (!slot.worker && performance.now() - t0 > budget) break;
@@ -148,7 +175,7 @@ export class ChunkRenderer {
       if (!job) break;
       const id = this.nextId++;
       const key = chunkKey(job.cx, job.cz);
-      this.inFlight.set(id, key);
+      this.inFlight.set(id, { key, version: this.store.peek(job.cx, job.cz)?.version ?? 0 });
       this.inFlightKeys.add(key);
       if (slot.worker) {
         slot.busy = true;
@@ -161,25 +188,6 @@ export class ChunkRenderer {
       }
     }
 
-    let applied = 0;
-    while (this.results.length > 0) {
-      const elapsed = performance.now() - t0;
-      // Se aplica una geometría solo si su costo estimado cabe en lo que queda del presupuesto.
-      if (applied > 0 && elapsed + this.applyMsEstimate > budget) break;
-      if (applied === 0 && elapsed > budget) break;
-      const res = this.results.shift()!;
-      const key = this.inFlight.get(res.id);
-      this.inFlight.delete(res.id);
-      if (key) this.inFlightKeys.delete(key);
-      this.workerMsTotal += res.ms;
-      this.workerJobs++;
-      if (!key || !this.isWanted(res.cx, res.cz)) continue;
-      const ta = performance.now();
-      this.apply(res.cx, res.cz, res.data);
-      this.applyMsEstimate = this.applyMsEstimate * 0.8 + (performance.now() - ta) * 0.2;
-      applied++;
-    }
-
     const ms = performance.now() - t0;
     this.stats.mainThreadMs = ms;
     this.stats.maxMainThreadMs = Math.max(this.stats.maxMainThreadMs, ms);
@@ -188,6 +196,7 @@ export class ChunkRenderer {
       if (this.updateSamples.length > 4000) this.updateSamples.shift();
     }
     this.stats.workerMsAvg = this.workerJobs ? this.workerMsTotal / this.workerJobs : 0;
+    this.stats.jobs = this.workerJobs;
     this.stats.meshed = this.meshes.size;
     this.stats.pending = this.pending.size;
     this.stats.inFlight = this.inFlight.size;
@@ -197,6 +206,17 @@ export class ChunkRenderer {
   /** Verdadero cuando no queda trabajo pendiente (todo lo visible está dibujado). */
   get idle(): boolean {
     return this.pending.size === 0 && this.inFlight.size === 0 && this.results.length === 0;
+  }
+
+  /** El chunk (cx, cz) ya tiene su malla en la escena (aunque esté vacía). */
+  isMeshed(cx: number, cz: number): boolean {
+    return this.meshes.has(chunkKey(cx, cz));
+  }
+
+  /** La malla que se ve del chunk ya incluye su último cambio de bloques. */
+  isUpToDate(cx: number, cz: number): boolean {
+    const shown = this.meshVersions.get(chunkKey(cx, cz));
+    return shown !== undefined && shown >= (this.store.peek(cx, cz)?.version ?? 0);
   }
 
   resetMaxStats(): void {
@@ -271,6 +291,7 @@ export class ChunkRenderer {
     const entry = this.meshes.get(key);
     if (entry) disposeEntry(this.group, entry);
     this.meshes.delete(key);
+    this.meshVersions.delete(key);
     this.pending.delete(key);
   }
 }

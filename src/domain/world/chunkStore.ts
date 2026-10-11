@@ -1,4 +1,4 @@
-import { Chunk, CHUNK_HEIGHT, CHUNK_SIZE, chunkKey } from "./chunk";
+import { Chunk, CHUNK_HEIGHT, CHUNK_SIZE, chunkIndex, chunkKey } from "./chunk";
 
 export type ChunkGenerator = (cx: number, cz: number) => Chunk;
 
@@ -25,12 +25,15 @@ export class ChunkStore {
   readonly sizeInBlocks: number;
   readonly height = CHUNK_HEIGHT;
   private chunks = new Map<string, Chunk>();
+  /** Los mismos chunks por índice numérico: `get` se llama millones de veces (A*, física, luz). */
+  private grid: (Chunk | undefined)[];
   private dirty = new Set<string>();
   private modified = new Set<string>();
 
   constructor(private readonly options: { sizeInChunks: number; generate: ChunkGenerator }) {
     this.sizeInChunks = options.sizeInChunks;
     this.sizeInBlocks = options.sizeInChunks * CHUNK_SIZE;
+    this.grid = new Array<Chunk | undefined>(this.sizeInChunks * this.sizeInChunks);
   }
 
   inBounds(x: number, y: number, z: number): boolean {
@@ -44,27 +47,29 @@ export class ChunkStore {
   /** Devuelve el chunk, generándolo si hace falta (null fuera del mundo). */
   chunk(cx: number, cz: number): Chunk | null {
     if (!this.chunkInBounds(cx, cz)) return null;
-    const key = chunkKey(cx, cz);
-    let c = this.chunks.get(key);
+    const i = cz * this.sizeInChunks + cx;
+    let c = this.grid[i];
     if (!c) {
       c = this.options.generate(cx, cz);
-      this.chunks.set(key, c);
+      this.chunks.set(c.key, c);
+      this.grid[i] = c;
     }
     return c;
   }
 
   /** Chunk ya en memoria, sin generar. */
   peek(cx: number, cz: number): Chunk | undefined {
-    return this.chunks.get(chunkKey(cx, cz));
+    return this.chunkInBounds(cx, cz) ? this.grid[cz * this.sizeInChunks + cx] : undefined;
   }
 
   isLoaded(cx: number, cz: number): boolean {
-    return this.chunks.has(chunkKey(cx, cz));
+    return this.peek(cx, cz) !== undefined;
   }
 
   /** Reemplaza un chunk. `modified` indica que difiere del generador (por ejemplo, uno cargado de la base de datos). */
   put(chunk: Chunk, modified = false): void {
     this.chunks.set(chunk.key, chunk);
+    if (this.chunkInBounds(chunk.cx, chunk.cz)) this.grid[chunk.cz * this.sizeInChunks + chunk.cx] = chunk;
     if (modified) this.modified.add(chunk.key);
   }
 
@@ -72,6 +77,7 @@ export class ChunkStore {
   unload(cx: number, cz: number): boolean {
     const key = chunkKey(cx, cz);
     if (this.modified.has(key)) return false;
+    if (this.chunkInBounds(cx, cz)) this.grid[cz * this.sizeInChunks + cx] = undefined;
     return this.chunks.delete(key);
   }
 
@@ -81,8 +87,11 @@ export class ChunkStore {
 
   get(x: number, y: number, z: number): number {
     if (!this.inBounds(x, y, z)) return 0;
-    const { cx, cz, lx, lz } = worldToChunk(x, z);
-    return this.chunk(cx, cz)?.get(lx, y, lz) ?? 0;
+    // Dentro del mundo x y z no son negativos: truncar es lo mismo que redondear hacia abajo.
+    const cx = (x / CHUNK_SIZE) | 0;
+    const cz = (z / CHUNK_SIZE) | 0;
+    const c = this.grid[cz * this.sizeInChunks + cx] ?? this.chunk(cx, cz)!;
+    return c.blocks[chunkIndex(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE)] ?? 0;
   }
 
   isPlaced(x: number, y: number, z: number): boolean {

@@ -169,7 +169,7 @@ describe("[experiencia-infantil] Audio controlado", () => {
     for (const id of SPECIES_IDS) expect(SOUND_NAMES as readonly string[], id).toContain(SPECIES[id].sound);
   });
 
-  it("[ciclo-dia-noche] la música cambia con un cruce suave de 5 s o más y la anterior se apaga", async () => {
+  it("[experiencia-infantil] Música de noche: al empezar la noche la música cambia con un cruce suave de 5 s o más y la anterior se apaga", async () => {
     const { ctx, audio } = await setup();
     const game = new Game({ seed: "musica" });
     connectGameAudio(audio, game);

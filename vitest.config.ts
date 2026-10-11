@@ -7,6 +7,11 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/core/**", "src/domain/**", "src/sim/**", "src/persistence/**"],
+      // Mínimo de la constitución para la lógica pura (tarea 14.5).
+      thresholds: {
+        "src/domain/**": { lines: 85, statements: 85, functions: 85 },
+        "src/sim/**": { lines: 85, statements: 85, functions: 85 },
+      },
     },
   },
 });

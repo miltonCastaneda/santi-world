@@ -57,22 +57,51 @@ function forEachSolid(box: Box, query: CollisionQuery, fn: (cell: Box) => void):
   }
 }
 
-/** Mueve un eje y lo detiene contra la primera caja sólida del barrido. Devuelve si chocó. */
+/**
+ * Mueve un eje y lo detiene contra la primera caja sólida del barrido. Devuelve si chocó.
+ * Es el mismo recorrido que `forEachSolid` sin crear objetos: se llama por cada entidad y paso.
+ */
 function sweepAxis(b: Body, axis: "x" | "y" | "z", delta: number, query: CollisionQuery): boolean {
   if (delta === 0) return false;
-  const box = bodyBox(b);
-  const lo = axis === "x" ? "x0" : axis === "y" ? "y0" : "z0";
-  const hi = axis === "x" ? "x1" : axis === "y" ? "y1" : "z1";
+  const hw = b.halfWidth;
+  const bx0 = b.pos.x - hw;
+  const bx1 = b.pos.x + hw;
+  const by0 = b.pos.y;
+  const by1 = b.pos.y + b.height;
+  const bz0 = b.pos.z - hw;
+  const bz1 = b.pos.z + hw;
   // Caja barrida: la de ahora más el recorrido en este eje.
-  const swept = { ...box };
-  if (delta > 0) swept[hi] += delta;
-  else swept[lo] += delta;
+  const sx0 = axis === "x" && delta < 0 ? bx0 + delta : bx0;
+  const sx1 = axis === "x" && delta > 0 ? bx1 + delta : bx1;
+  const sy0 = axis === "y" && delta < 0 ? by0 + delta : by0;
+  const sy1 = axis === "y" && delta > 0 ? by1 + delta : by1;
+  const sz0 = axis === "z" && delta < 0 ? bz0 + delta : bz0;
+  const sz1 = axis === "z" && delta > 0 ? bz1 + delta : bz1;
+  const boxLo = axis === "x" ? bx0 : axis === "y" ? by0 : bz0;
+  const boxHi = axis === "x" ? bx1 : axis === "y" ? by1 : bz1;
+  const x0 = Math.floor(sx0);
+  const x1 = Math.floor(sx1 - EPS);
+  const z0 = Math.floor(sz0);
+  const z1 = Math.floor(sz1 - EPS);
+  const y0 = Math.floor(sy0) - 1;
+  const y1 = Math.floor(sy1 - EPS);
   let allowed = delta;
-  forEachSolid(swept, query, (cell) => {
-    // Solo cuentan las celdas que no se solapaban ya antes de moverse (si está atascado, puede salir).
-    if (delta > 0 && cell[lo] >= box[hi] - EPS) allowed = Math.min(allowed, cell[lo] - box[hi] - EPS);
-    if (delta < 0 && cell[hi] <= box[lo] + EPS) allowed = Math.max(allowed, cell[hi] - box[lo] + EPS);
-  });
+  for (let x = x0; x <= x1; x++) {
+    for (let z = z0; z <= z1; z++) {
+      for (let y = y0; y <= y1; y++) {
+        const h = query(x, y, z);
+        if (h <= 0) continue;
+        const top = h === Infinity ? Infinity : y + h;
+        const bottom = h === Infinity ? -Infinity : y;
+        if (top <= sy0 + EPS || bottom >= sy1 - EPS) continue;
+        const cellLo = axis === "x" ? x : axis === "y" ? bottom : z;
+        const cellHi = axis === "x" ? x + 1 : axis === "y" ? top : z + 1;
+        // Solo cuentan las celdas que no se solapaban ya antes de moverse (si está atascado, puede salir).
+        if (delta > 0 && cellLo >= boxHi - EPS) allowed = Math.min(allowed, cellLo - boxHi - EPS);
+        if (delta < 0 && cellHi <= boxLo + EPS) allowed = Math.max(allowed, cellHi - boxLo + EPS);
+      }
+    }
+  }
   if (delta > 0) allowed = Math.max(0, allowed);
   else allowed = Math.min(0, allowed);
   b.pos[axis] += allowed;

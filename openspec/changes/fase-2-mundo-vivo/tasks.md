@@ -284,10 +284,10 @@
 - **Demo**: una sesión completa de Santi (día, noche, zombis, dragón y amanecer) a 60 FPS.
 
 - [ ] 14.1 Ejecutar `npm run perf` en el equipo de referencia con el escenario de máximo de entidades (día y noche) y verificar que p95 ≤ 20 ms, p50 ≤ 16,7 ms, menos de 300 draw calls y 60 entidades o menos; registrar los resultados en `docs/performance.md`
-- [ ] 14.2 Ejecutar la suite visual completa (bordes de chunks, agua, antorchas y noche) y la prueba de "Contexto perdido", y verificar que no hay regresiones
-- [ ] 14.3 Ejecutar el E2E de 1000 acciones aleatorias del niño ("Secuencia aleatoria de acciones") y "Cerrar el navegador de golpe", y verificar que no hay errores ni pérdidas de más de 30 s
-- [ ] 14.4 Medir el arranque (menos de 3 s hasta poder jugar) y verificar el escenario "Primer momento jugable"
-- [ ] 14.5 Comprobar que cada escenario de los 11 specs tiene al menos una prueba con su nombre `[capacidad] escenario` (script de trazabilidad) y que la cobertura de `domain` y `sim` es de al menos 85%
+- [x] 14.2 Ejecutar la suite visual completa (bordes de chunks, agua, antorchas y noche) y la prueba de "Contexto perdido", y verificar que no hay regresiones
+- [x] 14.3 Ejecutar el E2E de 1000 acciones aleatorias del niño ("Secuencia aleatoria de acciones") y "Cerrar el navegador de golpe", y verificar que no hay errores ni pérdidas de más de 30 s
+- [x] 14.4 Medir el arranque (menos de 3 s hasta poder jugar) y verificar el escenario "Primer momento jugable"
+- [x] 14.5 Comprobar que cada escenario de los 11 specs tiene al menos una prueba con su nombre `[capacidad] escenario` (script de trazabilidad) y que la cobertura de `domain` y `sim` es de al menos 85%
 - [ ] 14.6 Hacer la prueba de juego final con Santi y la revisión de la referencia visual ("Revisión visual"), y registrar los hallazgos en el CHANGELOG y etiquetar `v2.0.0`
 
 ## Workflow follow-up

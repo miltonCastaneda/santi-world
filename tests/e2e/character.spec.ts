@@ -14,7 +14,7 @@ test.describe("[personaje-y-herramientas] personaje y cámara", () => {
     await waitGrounded(page);
   });
 
-  test("[personaje-y-herramientas] Animaciones: caminar en 100 ms o menos e idle en 300 ms o menos", async ({ page }) => {
+  test("[personaje-y-herramientas] Animación de caminar: con la tecla pulsada, en 100 ms o menos se desplaza y camina", async ({ page }) => {
     // El margen de un frame es del WebGL por software de CI, no del juego.
     const frame = await frameMs(page);
     const start = await page.evaluate(() => window.__santi!.player().pos);
@@ -22,9 +22,44 @@ test.describe("[personaje-y-herramientas] personaje y cámara", () => {
     await page.waitForTimeout(400);
     const moved = await page.evaluate(() => window.__santi!.player().pos);
     expect(Math.hypot(moved.x - start.x, moved.z - start.z)).toBeGreaterThan(0.5);
-    const toIdle = await latencyMs(page, key("keyup", "KeyW"), `window.__santi.playerModel().anim === "idle"`);
     expect(toWalk).toBeLessThanOrEqual(100 + frame);
+  });
+
+  test("[personaje-y-herramientas] Volver a idle: al soltar las teclas, en 300 ms o menos se detiene y queda en idle", async ({ page }) => {
+    const frame = await frameMs(page);
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" })));
+    await page.waitForFunction(() => window.__santi!.playerModel()?.anim === "walk");
+    await page.waitForTimeout(300);
+    const toIdle = await latencyMs(page, key("keyup", "KeyW"), `window.__santi.playerModel().anim === "idle"`);
     expect(toIdle).toBeLessThanOrEqual(300 + frame);
+    const a = await page.evaluate(() => window.__santi!.player().pos);
+    await page.waitForTimeout(300);
+    const b = await page.evaluate(() => window.__santi!.player().pos);
+    expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeLessThan(0.05);
+  });
+
+  test("[personaje-y-herramientas] Animación de acción: cada herramienta hace su gesto (poner, minar, golpe, disparo, lanzar el collar)", async ({ page }) => {
+    const swings = { hand: "place", pickaxe: "mine", sword: "strike", bow: "shoot", collar: "throw" } as const;
+    const box = (await page.locator("canvas#game").boundingBox())!;
+    for (const [tool, swing] of Object.entries(swings)) {
+      await page.locator(`.tool-btn[data-tool="${tool}"]`).click();
+      await page.waitForFunction((t) => window.__santi!.playerModel()?.shownTool === t, tool);
+      // El gesto dura 300 ms: se mira el modelo en cada frame para no perderlo entre consultas.
+      await page.evaluate(() => {
+        const w = window as unknown as { __sawAction: boolean };
+        w.__sawAction = false;
+        const sample = () => {
+          if (window.__santi!.playerModel()?.anim === "action") w.__sawAction = true;
+          else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      });
+      // Hacia el cielo, para no cambiar el mundo.
+      await page.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.2);
+      await page.waitForFunction(() => (window as unknown as { __sawAction: boolean }).__sawAction, undefined, { timeout: 2000 });
+      expect(await page.evaluate(() => window.__santi!.player().swing), tool).toBe(swing);
+      await page.waitForFunction(() => window.__santi!.playerModel()?.anim !== "action");
+    }
   });
 
   test("[personaje-y-herramientas] La cámara sigue al personaje sin quedar dentro de los bloques", async ({ page }) => {
@@ -91,7 +126,7 @@ test.describe("[personaje-y-herramientas] personaje y cámara", () => {
     expect(errors).toEqual([]);
   });
 
-  test("[experiencia-infantil] Menú contextual y Zoom accidental", async ({ page }) => {
+  test("[experiencia-infantil] Menú contextual y [experiencia-infantil] Zoom accidental: sin menú ni zoom, y la rueda solo cambia la barra", async ({ page }) => {
     const prevented = await page.evaluate(() => {
       const canvas = document.querySelector("canvas#game")!;
       const menu = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 2 });

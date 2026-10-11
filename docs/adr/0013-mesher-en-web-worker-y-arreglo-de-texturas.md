@@ -39,6 +39,6 @@ Además, el atlas 2D con margen de 2 px (ADR-0003) sangra en los niveles de mipm
 ## Consecuencias
 
 - Positivas: se cumple el presupuesto por frame (p99 de 0,9 ms en el hilo principal durante la ruta de `npm run perf`; ver `docs/performance.md`).
-- A vigilar: la carga inicial con radio 6 tarda unos 3,3–4,4 s; el presupuesto de menos de 3 s con caché caliente se ataca en el incremento 3 (guardar los chunks ya generados) y se mide en el 14.
+- A vigilar: la carga inicial con radio 6 tarda unos 3,3–4,4 s; el presupuesto de menos de 3 s con caché caliente se ataca en el incremento 3 (guardar los chunks ya generados) y se mide en el 14. Medido en el incremento 14: el personaje responde al teclado a los 1,3 s de empezar la navegación (compilación de producción; ver "Arranque" en `docs/performance.md`), porque mover al personaje no espera a que se dibujen todos los chunks del radio de vista.
 - Negativas: una edición se ve tras un viaje al worker (unos 10 ms, dentro de los 100 ms del spec).
 - Reversión: `ChunkRenderer` admite la ruta síncrona; basta con no crear workers.

@@ -40,7 +40,7 @@ test.describe("[vista-de-padres] vista de padres", () => {
     expect(errors).toEqual([]);
   });
 
-  test("[vista-de-padres] Borrar con confirmación, cancelar y restaurar desde la papelera", async ({ page }) => {
+  test("[vista-de-padres] Borrar con confirmación, [vista-de-padres] Cancelar el borrado (el mundo sigue igual) y restaurar desde la papelera", async ({ page }) => {
     await openParents(page);
     await page.evaluate(() => window.__padres!.createWorlds(2));
 

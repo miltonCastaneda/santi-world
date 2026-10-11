@@ -12,6 +12,23 @@ async function setTime(page: Page, at: (t: { dayMs: number; nightMs: number }) =
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 200)))));
 }
 
+test("[plataforma-escalable] Adelantar a la noche: con el modo de pruebas, el juego entra en la noche en 1 s o menos", async ({ page }) => {
+  await openTestGame(page, "adelantar", 2);
+  expect(await page.evaluate(() => window.__santi!.dayNight().phase)).toBe("day");
+  const ms = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        const s = window.__santi!;
+        const t0 = performance.now();
+        s.setTimeOfCycle(s.dayNight().dayMs);
+        const check = () => (s.dayNight().phase === "night" ? resolve(performance.now() - t0) : requestAnimationFrame(check));
+        check();
+      }),
+  );
+  expect(ms).toBeLessThanOrEqual(1000);
+  await expect(page.locator(".day-clock")).toHaveClass(/(^|\s)night(\s|$)/);
+});
+
 test.describe("[ciclo-dia-noche] ciclo de día y noche", () => {
   test("[ciclo-dia-noche] Aviso de que se acerca la noche: la luna parpadea y suena un aviso una sola vez", async ({ page }) => {
     const errors = collectErrors(page);

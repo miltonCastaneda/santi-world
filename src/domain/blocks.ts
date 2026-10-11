@@ -102,6 +102,9 @@ export const BLOCKS = Object.fromEntries(
 /** Definición por número; el índice 0 (aire) es undefined. */
 export const BLOCKS_BY_NUM: readonly (BlockDef | undefined)[] = [undefined, ...BLOCK_IDS.map((id) => BLOCKS[id])];
 
+/** Altura de colisión por número de bloque (0 si no es sólido): la física la consulta millones de veces. */
+export const COLLISION_BY_NUM: readonly number[] = BLOCKS_BY_NUM.map((def) => (def?.solid ? def.collisionHeight : 0));
+
 export const BUILDABLE_IDS: readonly BlockId[] = BLOCK_IDS.filter((id) => BLOCKS[id].buildable);
 
 export const BLOCK_NUM = Object.fromEntries(BLOCK_IDS.map((id) => [id, BLOCKS[id].num])) as Record<BlockId, number>;

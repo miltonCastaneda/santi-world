@@ -4,7 +4,7 @@ import type { ItemId } from "../domain/entities/items";
 import type { World } from "../domain/repository/model";
 import type { WorldRepository } from "../domain/repository/worldRepository";
 import type { Inventory } from "../domain/rules/inventory";
-import type { ToolId } from "../domain/rules/tools";
+import type { ToolId, ToolSwing } from "../domain/rules/tools";
 import type { AutosaveService } from "../persistence/autosave";
 import type { LegacyImportResult } from "../persistence/legacyImport";
 import type { Game } from "../sim/game";
@@ -23,7 +23,13 @@ export type ViewControl = {
   setEntitiesVisible(visible: boolean): void;
   /** Todo lo visible está dibujado y no queda trabajo del mesher. */
   isWorldReady(): boolean;
+  /** El chunk (cx, cz) ya se dibuja. */
+  chunkMeshed(cx: number, cz: number): boolean;
+  /** Lo que se ve del chunk (cx, cz) ya incluye su último cambio de bloques. */
+  chunkUpToDate(cx: number, cz: number): boolean;
   stats(): Record<string, number>;
+  /** Pone a cero los máximos de `stats()` (por ejemplo, el del mesher en el hilo principal). */
+  resetStats(): void;
 };
 
 export type PlayerSnapshot = {
@@ -34,6 +40,8 @@ export type PlayerSnapshot = {
   hearts: number;
   tool: ToolId;
   anim: PlayerAnim;
+  /** Gesto de la última acción (golpe, minado, disparo, lanzar...). */
+  swing: ToolSwing;
   invulnerable: boolean;
 };
 
@@ -69,7 +77,10 @@ export type SantiTestApi = {
   setPlayerVisible: ViewControl["setPlayerVisible"];
   setEntitiesVisible: ViewControl["setEntitiesVisible"];
   isWorldReady: ViewControl["isWorldReady"];
+  chunkMeshed: ViewControl["chunkMeshed"];
+  chunkUpToDate: ViewControl["chunkUpToDate"];
   stats: ViewControl["stats"];
+  resetStats: ViewControl["resetStats"];
   /** Coloca un bloque directamente (para preparar escenarios). */
   setBlock(x: number, y: number, z: number, block: Parameters<Game["world"]["place"]>[3] | null): void;
   /** La celda (x, y, z) es sólida para la física. */
@@ -163,7 +174,10 @@ export function installTestApi(deps: {
     setPlayerVisible: view.setPlayerVisible,
     setEntitiesVisible: view.setEntitiesVisible,
     isWorldReady: view.isWorldReady,
+    chunkMeshed: view.chunkMeshed,
+    chunkUpToDate: view.chunkUpToDate,
     stats: view.stats,
+    resetStats: view.resetStats,
     setBlock: (x, y, z, block) => {
       const pos = block ? game.world.place(x, y, z, block) : game.world.remove(x, y, z);
       if (pos) game.events.emit("blockChanged", { pos });
@@ -179,6 +193,7 @@ export function installTestApi(deps: {
         hearts: p.hearts,
         tool: p.tool,
         anim: p.animAt(game.timeMs),
+        swing: p.swing,
         invulnerable: p.isInvulnerable(game.timeMs),
       };
     },

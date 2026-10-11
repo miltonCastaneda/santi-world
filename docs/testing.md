@@ -19,10 +19,12 @@
 | `npm test` | Unitarias e integración con Vitest (`tests/unit/**` y `tests/integration/**`, entorno node) |
 | `npm run test:watch` | Vitest en modo observación |
 | `npm run e2e` | E2E y smoke con Playwright (Chromium). Levanta `vite` en el puerto 5199, o reutiliza uno ya abierto. |
-| `npm run check` | `tsc --noEmit` y ESLint, incluida la regla de dependencias entre capas |
-| `npm run perf` | Medición de rendimiento (llega en el incremento 2) |
-| `npm run ci` | `check`, luego `test` y luego `e2e`: es lo mismo que ejecuta GitHub Actions |
-| `npx vitest run --coverage` | Cobertura de `core`, `domain`, `sim` y `persistence` |
+| `npm run test:perf` | Pruebas con presupuesto de tiempo real (`tests/perf/**`, `vitest.perf.config.ts`), solas para que otros workers no compitan por la CPU |
+| `npm run check` | `tsc --noEmit`, ESLint (incluida la regla de dependencias entre capas) y `npm run trace` |
+| `npm run trace` | Trazabilidad: cada escenario de los specs tiene una prueba con su nombre `[capacidad] escenario`, salvo los manuales listados en `scripts/trace.mjs` |
+| `npm run perf` | Medición de rendimiento con GPU real (ver `docs/performance.md`) |
+| `npm run ci` | `check`, `test`, `test:perf` y `e2e`: es lo mismo que ejecuta GitHub Actions |
+| `npm run coverage` | Cobertura de `core`, `domain`, `sim` y `persistence`; falla si `domain` o `sim` bajan del 85 % |
 
 La primera vez, instala el navegador de Playwright con `npx playwright install chromium`.
 
