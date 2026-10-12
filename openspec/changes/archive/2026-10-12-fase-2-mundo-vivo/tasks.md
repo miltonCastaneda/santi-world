@@ -162,7 +162,7 @@
 - [x] 5.6 Crear la barra vertical de herramientas (Mano, Pico, Espada, Arco y Collar), la hotbar inferior y la ayuda de controles según la referencia visual (íconos de 64 px o más), y verificar con un E2E "Tamaño de los objetivos" y "Elegir herramienta con un clic"
 - [x] 5.7 Implementar los corazones (5, invulnerabilidad de 1 s, recuperación de 1 corazón cada 20 s, "poof" y reaparición en la granja sin perder nada, con 5 s de invulnerabilidad) y verificarlo con pruebas unitarias de los escenarios de "Corazones y reaparición sin pérdida"
 - [x] 5.8 Implementar `AudioService` (buses, tope de 0,8, reanudación con la primera interacción, voces con prioridad y botón de silencio; ADR-0009) con sonidos CC0 de pasos, bloques y UI, y verificarlo con pruebas unitarias con un contexto falso ("Silencio" y tope) y documentarlo en `docs/assets.md`
-- [ ] 5.9 Actualizar `docs/guia-nino.md` (controles con íconos) y `docs/architecture.md`, marcar ADR-0007, 0009 y 0010 como Aceptados, agregar la entrada al CHANGELOG y hacer la prueba de juego con Santi (checklist)
+- [x] 5.9 Actualizar `docs/guia-nino.md` (controles con íconos) y `docs/architecture.md`, marcar ADR-0007, 0009 y 0010 como Aceptados, agregar la entrada al CHANGELOG y hacer la prueba de juego con Santi (checklist)
 
 
 
@@ -183,7 +183,7 @@
 - [x] 6.7 Agregar los sonidos por especie (CC0, atenuación hasta 24 bloques y como máximo 3 voces) y verificarlo con pruebas unitarias "Sonido por especie" y "Muchos animales"
 - [x] 6.8 Persistir las entidades (snapshot por mundo) y verificar con una prueba de integración que se recargan con la misma posición y el mismo estado
 - [x] 6.9 Verificar con una prueba de integración sin interfaz "Escapar por un hueco", "Animales vivos sin intervención" y "Determinismo" (10 min con la misma semilla)
-- [ ] 6.10 Ejecutar `npm run perf` con todos los animales y registrar los resultados en `docs/performance.md`; actualizar `docs/guia-nino.md` (animales) y `docs/architecture.md`, marcar ADR-0005 y 0006 como Aceptados, agregar la entrada al CHANGELOG, hacer la prueba de juego con Santi y etiquetar `v1.2.0`
+- [x] 6.10 Ejecutar `npm run perf` con todos los animales y registrar los resultados en `docs/performance.md`; actualizar `docs/guia-nino.md` (animales) y `docs/architecture.md`, marcar ADR-0005 y 0006 como Aceptados, agregar la entrada al CHANGELOG, hacer la prueba de juego con Santi y etiquetar `v1.2.0`
 
 
 
@@ -320,7 +320,7 @@
 - [x] 14.3 Ejecutar el E2E de 1000 acciones aleatorias del niño ("Secuencia aleatoria de acciones") y "Cerrar el navegador de golpe", y verificar que no hay errores ni pérdidas de más de 30 s
 - [x] 14.4 Medir el arranque (menos de 3 s hasta poder jugar) y verificar el escenario "Primer momento jugable"
 - [x] 14.5 Comprobar que cada escenario de los 11 specs tiene al menos una prueba con su nombre `[capacidad] escenario` (script de trazabilidad) y que la cobertura de `domain` y `sim` es de al menos 85%
-- [ ] 14.6 Hacer la prueba de juego final con Santi y la revisión de la referencia visual ("Revisión visual"), y registrar los hallazgos en el CHANGELOG y etiquetar `v2.0.0`
+- [x] 14.6 Hacer la prueba de juego final con Santi y la revisión de la referencia visual ("Revisión visual"), y registrar los hallazgos en el CHANGELOG y etiquetar `v2.0.0`
 
 
 

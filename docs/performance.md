@@ -38,7 +38,7 @@ La prueba `tests/e2e/startup.prod.spec.ts` (proyecto `prod`, compilación de pro
 |---|---|---|---|
 | 2026-10-10 | Equipo de desarrollo, Chromium headless con WebGL por software (SwiftShader), `vite preview` | 1233 | 1296 |
 
-La medición en el equipo de referencia con GPU real queda para la tarea 14.1 junto con `npm run perf`.
+Las mediciones de la tarea 14.1 en el equipo de referencia con GPU real (`npm run perf`, de día y de noche) están en la tabla "Resultados por incremento".
 
 ## Simulación sin interfaz
 
