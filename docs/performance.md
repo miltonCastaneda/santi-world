@@ -56,3 +56,5 @@ La medición en el equipo de referencia con GPU real queda para la tarea 14.1 ju
 | incremento 6, 15 animales (equipo de desarrollo) | 2026-10-10 | 16.7 | 16.8 | 186 | 4.0 / 6.9 | 15 / 19 | 3139 | ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11) |
 | incremento 7, día y noche (equipo de desarrollo) | 2026-10-10 | 16.7 | 17.2 | 186 | 2.3 / 4.3 | 15 / 19 | 3865 | ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11) |
 | incremento 8, noche con 8 zombis (equipo de desarrollo) | 2026-10-10 | 16.7 | 17.3 | 175 | 2.0 / 15.5 | 19 / 22 | 4432 | ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11) |
+| incremento 14, día (equipo de referencia) | 2026-10-12 | 16.7 | 1015.7 | 153 | 0.4 / 0.4 | 20 / 26 | 2416 | ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11) |
+| incremento 14, noche (equipo de referencia) | 2026-10-12 | 16.7 | 16.8 | 179 | 0.6 / 1.1 | 24 / 27 | 2458 | ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11) |

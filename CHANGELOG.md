@@ -6,6 +6,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 ## [Sin publicar]
 
 ### Agregado
+
 - Constitution del proyecto (`docs/constitution.md`) y plantilla de ADR.
 - README con la guía de ejecución local, esqueletos de arquitectura, pruebas, rendimiento y guías de uso.
 - Change de OpenSpec `fase-2-mundo-vivo` con proposal, specs, design y tasks (solo planeación).
@@ -75,12 +76,20 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - E2E de estabilidad: contexto gráfico perdido y recuperado, pico de entidades de noche, edición rápida, caminar hasta el borde de la región cargada, respuesta inmediata de los botones del HUD, 1000 acciones aleatorias del niño, cerrar el navegador de golpe y mundos que sobreviven a reiniciar el navegador. Prueba de arquitectura de las reglas de dependencias entre capas.
 - Marcas de User Timing `santi:jugable` y `santi:primer-movimiento`, y la prueba de arranque en producción (primer movimiento en 1,3 s en el equipo de desarrollo con WebGL por software; ver `docs/performance.md`).
 
+
+
 ### Corregido
+
 - Si el niño mantenía una tecla de movimiento mientras se abría o cambiaba el mundo, el personaje se quedaba quieto hasta soltarla: ahora camina en cuanto el mundo se abre.
 - Un bloque puesto en un chunk que se estaba remallando esperaba un trabajo extra del worker (la luz de un vecino): `ChunkRenderer.update` aplica primero los resultados y después encarga, así la edición vuelve a pasar delante en el mismo frame. La prueba "Edición rápida" comprueba que cada bloque se dibuja como mucho tras 2 trabajos del worker.
 - La simulación es unas 4 veces más rápida (30 minutos simulados pasan de unos 25 s a unos 7 s) con zombis persiguiendo animales encerrados en la granja: el A* memoriza las celdas de la región de búsqueda y recuerda las regiones cerradas (`Enclosures`) hasta que cambia un chunk cercano; la física consulta una tabla de colisión por bloque y su barrido no crea objetos.
+- Se realiza prueba de juego y se comporta de forma correcta y segun lo esperado para visualizaciones y para interacciones.
+- Se realizan pruebas con santi y le encanto, menciono que por que su personaje no nadaba y no se ahogaba en algua, esto podra se implementado mas adelante, de momento se aprueba la version V1.2.0 y v2.0.0
+
+
 
 ### Cambiado
+
 - "Empezar de nuevo" se reemplaza por "Crear nuevo mundo": ningún botón del niño borra un mundo.
 - El mundo de 32x32 se reemplaza por el mundo generado (en el incremento 2 no se guardaba; desde el 3 se guarda en IndexedDB).
 - ADR-0002 pasa a "Aceptado".
@@ -101,8 +110,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - `Game.spawnMissingWolves` pasa a `spawnMissing`: los mundos guardados antes de los lobos o de los cerdos-gallina los reciben una sola vez. Las máquinas de estado suman las acciones `fly` y `land`.
 - La tabla de daño agrega la columna del dragón (de cerca, nada) y la tabla de flechas `ARROW_HITS`. El Arco ya no hace el sonido `swish`: suena `shoot` cuando sale la flecha.
 
+
+
 ## [1.0.0] - 2026-10-10
 
+
+
 ### Agregado
+
 - Sandbox de vóxeles local de 32x32x12: poner y quitar bloques, 8 tipos de bloque, deshacer, empezar de nuevo y pantalla completa.
 - Mundo guardado en `localStorage` (`minecraf-de-santi-world-v2`).
+

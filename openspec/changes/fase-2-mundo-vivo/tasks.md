@@ -7,7 +7,9 @@
 >   - El CHANGELOG y los docs indicados están actualizados.
 >   - Hay una demo en `npm run dev`.
 >   - Si el incremento es visible para el niño, se aplica la checklist de prueba con Santi.
-> - Las tareas asumen los **valores por defecto** de [`preguntas-abiertas.md`](preguntas-abiertas.md). Si cambias alguno, primero se actualizan los specs con `/opsx-update`.
+> - Las tareas asumen los **valores por defecto** de `[preguntas-abiertas.md](preguntas-abiertas.md)`. Si cambias alguno, primero se actualizan los specs con `/opsx-update`.
+
+
 
 ## Orden recomendado y dependencias
 
@@ -45,6 +47,8 @@
 - **12 va antes que 13** porque el dragón se come cerdo-gallinas.
 - **10 y 11** son independientes entre sí, igual que **4 y 5**.
 
+
+
 ## 0. Fundaciones de calidad y documentación
 
 - **Objetivo**: tener las herramientas de prueba, lint y CI funcionando antes de tocar la lógica.
@@ -59,6 +63,8 @@
 - [x] 0.4 Escribir una prueba unitaria de ejemplo y un smoke E2E del juego v1 (carga sin errores en consola y el canvas no está en blanco), y verificar que `npm test` y `npm run e2e` pasan
 - [x] 0.5 Crear el workflow de GitHub Actions (`check` + `test` + `e2e` smoke) y verificar que pasa en un push a la rama
 - [x] 0.6 Completar `docs/testing.md` (comandos reales y convención de nombres `[capacidad] escenario`) y el README (scripts), agregar la entrada al CHANGELOG, y verificar que los comandos documentados funcionan tal cual
+
+
 
 ## 1. Refactor a arquitectura modular y bucle de paso fijo (sin cambiar el comportamiento)
 
@@ -75,6 +81,8 @@
 - [x] 1.5 Crear `apps/game/main.ts` como raíz de composición y verificar que `npm run check` no reporta violaciones de capas
 - [x] 1.6 Agregar `testing/testApi` (`window.__santi`, solo con `?test=1` en desarrollo) y verificar con un E2E que no existe en `npm run build`
 - [x] 1.7 Actualizar `docs/architecture.md` (módulos reales y regla de dependencias), marcar ADR-0001 y ADR-0004 como Aceptados y agregar la entrada al CHANGELOG
+
+
 
 ## 2. Mundo por chunks, mesher, texturas y mundo de 256x256 con zonas
 
@@ -95,6 +103,8 @@
 - [x] 2.9 Implementar el overlay de debug F3 (FPS, tiempo de frame, draw calls, chunks) y el primer `npm run perf` (ruta de cámara fija y semilla `perf-001`), y registrar los resultados en `docs/performance.md`
 - [x] 2.10 Actualizar `docs/architecture.md`, marcar ADR-0003 como Aceptado y agregar la entrada al CHANGELOG
 
+
+
 ## 3. Persistencia con IndexedDB, autoguardado, migración heredada y "Mis Mundos"
 
 - **Objetivo**: varios mundos guardados de forma segura, sin pérdidas, y con el mundo actual de Santi importado.
@@ -114,6 +124,8 @@
 - [x] 3.9 Reemplazar "Empezar de nuevo" por "Crear nuevo mundo" y llamar a `navigator.storage.persist()` en el primer guardado, y verificar con un E2E que ningún botón del niño borra un mundo
 - [x] 3.10 Actualizar `docs/guia-padres.md` (dónde se guardan los mundos y el respaldo heredado), `docs/guia-nino.md` (Mis Mundos), README y `docs/architecture.md`, marcar ADR-0002 como Aceptado y agregar la entrada al CHANGELOG
 
+
+
 ## 4. Vista de padres en `/padres/`
 
 - **Objetivo**: los padres ven el histórico, abren mundos en solo lectura, borran con papelera y configuran el juego.
@@ -129,8 +141,10 @@
 - [x] 4.5 Implementar la configuración por mundo (día y noche de 2 a 30 min, noche tranquila y volúmenes, con los límites aplicados) y verificar con pruebas unitarias de validación de rango
 - [x] 4.6 Implementar el PIN opcional (hash PBKDF2, bloqueo de 60 s tras 5 fallos, desactivado por defecto; ADR-0012) y verificarlo con pruebas unitarias y un E2E del escenario "PIN activo e incorrecto"
 - [x] 4.7 Implementar `BroadcastChannel` para refrescar la lista cuando el juego guarda, el uso de almacenamiento (`estimate()`) y exportar o importar un mundo, y verificar con un E2E con dos pestañas
-- [x] 4.8 Escribir un E2E que confirme que **la UI del niño no tiene ningún enlace ni atajo a `/padres`** (escenario "Sin enlaces desde la UI del niño")
+- [x] 4.8 Escribir un E2E que confirme que **la UI del niño no tiene ningún enlace ni atajo a** `/padres` (escenario "Sin enlaces desde la UI del niño")
 - [x] 4.9 Actualizar `docs/guia-padres.md` (cómo entrar, borrar, restaurar, configurar, PIN y restablecerlo), marcar ADR-0008 y ADR-0012 como Aceptados y agregar la entrada al CHANGELOG
+
+
 
 ## 5. Personaje, cámara en tercera persona, herramientas y servicio de audio
 
@@ -149,6 +163,8 @@
 - [x] 5.7 Implementar los corazones (5, invulnerabilidad de 1 s, recuperación de 1 corazón cada 20 s, "poof" y reaparición en la granja sin perder nada, con 5 s de invulnerabilidad) y verificarlo con pruebas unitarias de los escenarios de "Corazones y reaparición sin pérdida"
 - [x] 5.8 Implementar `AudioService` (buses, tope de 0,8, reanudación con la primera interacción, voces con prioridad y botón de silencio; ADR-0009) con sonidos CC0 de pasos, bloques y UI, y verificarlo con pruebas unitarias con un contexto falso ("Silencio" y tope) y documentarlo en `docs/assets.md`
 - [ ] 5.9 Actualizar `docs/guia-nino.md` (controles con íconos) y `docs/architecture.md`, marcar ADR-0007, 0009 y 0010 como Aceptados, agregar la entrada al CHANGELOG y hacer la prueba de juego con Santi (checklist)
+
+
 
 ## 6. Animales y granja (HITO JUGABLE, v1.2.0)
 
@@ -169,6 +185,8 @@
 - [x] 6.9 Verificar con una prueba de integración sin interfaz "Escapar por un hueco", "Animales vivos sin intervención" y "Determinismo" (10 min con la misma semilla)
 - [ ] 6.10 Ejecutar `npm run perf` con todos los animales y registrar los resultados en `docs/performance.md`; actualizar `docs/guia-nino.md` (animales) y `docs/architecture.md`, marcar ADR-0005 y 0006 como Aceptados, agregar la entrada al CHANGELOG, hacer la prueba de juego con Santi y etiquetar `v1.2.0`
 
+
+
 ## 7. Ciclo día/noche y reaparición al amanecer
 
 - **Objetivo**: el tiempo pasa; anochece y amanece de forma visible, y los animales que faltan vuelven al amanecer.
@@ -184,6 +202,8 @@
 - [x] 7.5 Implementar la música de día y de noche con un cruce de 5 s o más, y verificarlo con una prueba unitaria del cruce y la checklist de "música que no asusta"
 - [x] 7.6 Aplicar la configuración de los padres en caliente (duración y noche tranquila) y verificar con un E2E "Cambiar la duración de la noche"
 - [x] 7.7 Actualizar `docs/guia-padres.md` (ciclo y configuración) y `docs/guia-nino.md` (sol y luna) y agregar la entrada al CHANGELOG
+
+
 
 ## 8. Zombis nocturnos
 
@@ -201,6 +221,8 @@
 - [x] 8.6 Crear el modelo de zombi cartoon, los destellos y los sonidos suaves, y verificar con la checklist "Revisión de efectos" (violencia solo cartoon)
 - [x] 8.7 Ejecutar `npm run perf` de noche con 8 zombis y registrar los resultados; actualizar `docs/guia-nino.md` ("construye muros") y `docs/guia-padres.md` (noche tranquila) y agregar la entrada al CHANGELOG
 
+
+
 ## 9. Inventario, carne y antorchas
 
 - **Objetivo**: el niño junta carne de la granja, ve su inventario y coloca antorchas que alejan a los zombis.
@@ -214,6 +236,8 @@
 - [x] 9.3 Crear el inventario visual (E o mochila, contadores con puntos de 1 a 5, por mundo y persistente) y verificar con un E2E "Abrir el inventario", "Persistencia del inventario" e "Inventario independiente por mundo"
 - [x] 9.4 Implementar la antorcha como bloque de la hotbar (luz por vértice) y verificar con un E2E "Refugio iluminado"
 - [x] 9.5 Actualizar `docs/guia-nino.md` (inventario y antorchas) y agregar la entrada al CHANGELOG
+
+
 
 ## 10. Lobos, su montaña y la domesticación con el Collar
 
@@ -231,6 +255,8 @@
 - [x] 10.6 Crear el modelo del lobo, el collar visible, el efecto de corazones y los sonidos, y verificarlo con la checklist visual
 - [x] 10.7 Actualizar `docs/guia-nino.md` (el collar y los lobos amigos) y agregar la entrada al CHANGELOG
 
+
+
 ## 11. Montaña de rocas y diamantes
 
 - **Objetivo**: el niño mina diamantes con el Pico y los ve en su inventario.
@@ -243,6 +269,8 @@
 - [x] 11.2 Implementar la reaparición de diamantes cada 3 días del juego, solo en piedra natural (`placed=0`), y verificarlo con una prueba unitaria "Diamantes que vuelven"
 - [x] 11.3 Verificar con una prueba de generación que hay al menos 10 diamantes accesibles (visibles o a 2 bloques o menos de la superficie) en varias semillas
 - [x] 11.4 Actualizar `docs/guia-nino.md` (diamantes) y agregar la entrada al CHANGELOG
+
+
 
 ## 12. Cerdo-gallina volador
 
@@ -257,6 +285,8 @@
 - [x] 12.3 Implementar soltarlo y el límite de 3 libres, con la reaparición al amanecer de los que faltan, y verificar con pruebas unitarias "Soltar un cerdo-gallina" y "Límite de libres"
 - [x] 12.4 Crear el modelo (cerdo rosado con alas y cresta, como en la referencia), las animaciones y los sonidos, y verificarlo con la checklist visual
 - [x] 12.5 Actualizar `docs/guia-nino.md` (el cerdo-gallina) y agregar la entrada al CHANGELOG
+
+
 
 ## 13. Arco, proyectiles y dragón
 
@@ -275,6 +305,8 @@
 - [x] 13.7 Verificar con una prueba de integración sin interfaz una noche completa con el dragón (árboles, cerdo-gallina, 5 impactos y amanecer)
 - [x] 13.8 Actualizar `docs/guia-nino.md` (el arco y el dragón) y `docs/guia-padres.md` (qué pasa de noche) y agregar la entrada al CHANGELOG
 
+
+
 ## 14. Integración final: rendimiento, estabilidad visual y aceptación
 
 - **Objetivo**: verificar el sistema completo contra el presupuesto y la experiencia infantil, solo con comprobaciones de integración (las pruebas y los docs de cada incremento ya se entregaron).
@@ -283,14 +315,17 @@
 - **Depende de**: 13. **Paralelizable**: no.
 - **Demo**: una sesión completa de Santi (día, noche, zombis, dragón y amanecer) a 60 FPS.
 
-- [ ] 14.1 Ejecutar `npm run perf` en el equipo de referencia con el escenario de máximo de entidades (día y noche) y verificar que p95 ≤ 20 ms, p50 ≤ 16,7 ms, menos de 300 draw calls y 60 entidades o menos; registrar los resultados en `docs/performance.md`
+- [x] 14.1 Ejecutar `npm run perf` en el equipo de referencia con el escenario de máximo de entidades (día y noche) y verificar que p95 ≤ 20 ms, p50 ≤ 16,7 ms, menos de 300 draw calls y 60 entidades o menos; registrar los resultados en `docs/performance.md`
 - [x] 14.2 Ejecutar la suite visual completa (bordes de chunks, agua, antorchas y noche) y la prueba de "Contexto perdido", y verificar que no hay regresiones
 - [x] 14.3 Ejecutar el E2E de 1000 acciones aleatorias del niño ("Secuencia aleatoria de acciones") y "Cerrar el navegador de golpe", y verificar que no hay errores ni pérdidas de más de 30 s
 - [x] 14.4 Medir el arranque (menos de 3 s hasta poder jugar) y verificar el escenario "Primer momento jugable"
 - [x] 14.5 Comprobar que cada escenario de los 11 specs tiene al menos una prueba con su nombre `[capacidad] escenario` (script de trazabilidad) y que la cobertura de `domain` y `sim` es de al menos 85%
 - [ ] 14.6 Hacer la prueba de juego final con Santi y la revisión de la referencia visual ("Revisión visual"), y registrar los hallazgos en el CHANGELOG y etiquetar `v2.0.0`
 
+
+
 ## Workflow follow-up
 
 - Al cerrar cada hito (después de los incrementos 4, 6, 9 y 14), ejecutar `/opsx-sync` para consolidar los specs implementados en `openspec/specs/`.
 - Cuando todos los incrementos estén hechos y revisados, ejecutar `/opsx-archive` para archivar `fase-2-mundo-vivo` y verificar el resultado archivado.
+
